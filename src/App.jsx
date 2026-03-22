@@ -950,15 +950,13 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
             <Input label="Nº de parcelas" t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",parseInt(e.target.value)||1)} />
             <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-            <div>
-              <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
-              <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8 }}>
-                {totalValue > 0 ? fmt(totalValue) : "—"}
-              </div>
+          <div>
+            <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
+            <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8,marginBottom:16 }}>
+              {totalValue > 0 ? fmt(totalValue) : "—"}
             </div>
-            <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
+          <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
           {creditInfo && (
             <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
               💳 {creditInfo}
@@ -966,10 +964,8 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
           )}
         </>
       ) : (
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-          <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
-        </div>
+        <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+        <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
       )}
       {form.category && (
         <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:t.accentSoft,fontSize:13,color:t.accent,fontWeight:600,border:`1px solid ${t.accent}33`,display:"flex",alignItems:"center",gap:8 }}>
@@ -1001,10 +997,8 @@ function IncomeForm({ t, onSave, onClose, familyMembers }) {
       <Select label="Categoria" t={t} value={form.category} onChange={e=>setForm({...form,category:e.target.value,source:e.target.value})}>
         {INCOME_SOURCES.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
       </Select>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-        <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="0,00" />
-        <Input label="Data" t={t} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
-      </div>
+      <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="0,00" />
+      <Input label="Data" t={t} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
         <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
         <Btn t={t} variant="success" type="button" onClick={handle}>💾 Salvar</Btn>
@@ -1126,15 +1120,13 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
               <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01"
                 value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
             </div>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-              <div>
-                <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
-                <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8 }}>
-                  {totalVal > 0 ? fmt(totalVal) : "—"}
-                </div>
+            <div>
+              <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
+              <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8,marginBottom:16 }}>
+                {totalVal > 0 ? fmt(totalVal) : "—"}
               </div>
-              <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
             </div>
+            <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
             {creditInfo && (
               <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
                 💳 {creditInfo}
@@ -1142,11 +1134,9 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
             )}
           </>);
         })() : (
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-            <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
-              onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-            <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
-          </div>
+          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
+            onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+          <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
         )}
       </>) : (<>
         {/* Income: Quem recebeu → Categoria → Valor + Data */}
@@ -1154,11 +1144,9 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
         <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value,set("source",e.target.value))}>
           {INCOME_SOURCES.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
         </Select>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
-            onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-          <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
-        </div>
+        <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
+          onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+        <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
       </>)}
 
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
