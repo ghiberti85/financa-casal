@@ -964,8 +964,10 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
           )}
         </>
       ) : (
-        <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-        <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+        <>
+          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+          <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+        </>
       )}
       {form.category && (
         <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:t.accentSoft,fontSize:13,color:t.accent,fontWeight:600,border:`1px solid ${t.accent}33`,display:"flex",alignItems:"center",gap:8 }}>
@@ -1134,9 +1136,11 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
             )}
           </>);
         })() : (
-          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
-            onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-          <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+          <>
+            <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
+              onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+            <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+          </>
         )}
       </>) : (<>
         {/* Income: Quem recebeu → Categoria → Valor + Data */}
