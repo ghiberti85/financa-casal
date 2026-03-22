@@ -2248,23 +2248,15 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
     try {
       await supabaseRpc("update_member_role", { p_target_user_id: userId, p_new_role: newRole });
       setFamilyMembers(p => p.map(m => m.user_id === userId ? { ...m, role: newRole } : m));
-      addToast(`Permissão atualizada para ${newRole === "admin" ? "Administrador" : "Membro"}!`, "success");
+      addToast("Permissão atualizada!", "success");
     } catch(e) { addToast(e.message, "error"); }
     finally { setUpdatingRole(null); }
-  };
-
-  const partnerLabel = (members) => {
-    // Detect if partner is esposa or esposo based on names — fallback to "cônjuge"
-    const others = members.filter(m => m.user_id !== family?.user_id);
-    if (!others.length) return "cônjuge";
-    const name = others[0]?.first_name?.toLowerCase() || "";
-    return name ? name : "cônjuge";
   };
 
   return (
     <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
 
-      {/* Invite code — only admins see it */}
+      {/* Invite code — admin only */}
       {isAdmin ? (
         <div>
           <p style={{ color:t.textSecondary,fontSize:13,marginBottom:16,lineHeight:1.6 }}>
@@ -2277,7 +2269,7 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
             </div>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16 }}>
-            <Btn t={t} type="button" onClick={() => { navigator.clipboard?.writeText(family?.invite_code||"").catch(()=>{}); addToast("Código copiado!","success"); }} style={{ fontSize:13 }}>
+            <Btn t={t} type="button" onClick={()=>{ navigator.clipboard?.writeText(family?.invite_code||"").catch(()=>{}); addToast("Código copiado!","success"); }} style={{ fontSize:13 }}>
               📋 Copiar
             </Btn>
             <Btn t={t} variant="ghost" type="button" onClick={onRegenCode} style={{ fontSize:13 }}>
@@ -2303,32 +2295,25 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {familyMembers.map(m => {
               const isMe = m.user_id === currentUserId;
-              const displayName = [m.first_name, m.last_name].filter(Boolean).join(" ") || m.email;
+              const displayName = [m.first_name, m.last_name].filter(Boolean).join(" ") || m.email || "Membro";
               return (
                 <div key={m.user_id} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,background:t.surface,border:`1px solid ${t.border}` }}>
-                  {/* Avatar */}
                   <div style={{ width:38,height:38,borderRadius:"50%",background:m.role==="admin"?t.accentSoft:t.successSoft,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0 }}>
                     {m.role==="admin"?"👑":"👤"}
                   </div>
-                  {/* Info */}
                   <div style={{ flex:1,minWidth:0 }}>
                     <div style={{ fontSize:13,fontWeight:700,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-                      {displayName}
+                      {displayName}{isMe ? " (você)" : ""}
                     </div>
                     <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>
-                      {m.email}
-                      {m.phone && ` · ${m.phone}`}
+                      {m.email}{m.phone ? ` · ${m.phone}` : ""}
                     </div>
                   </div>
-                  {/* Role badge / selector */}
                   <div style={{ flexShrink:0 }}>
                     {isAdmin && !isMe ? (
-                      <select
-                        value={m.role}
-                        disabled={updatingRole === m.user_id}
-                        onChange={e => handleRoleChange(m.user_id, e.target.value)}
-                        style={{ padding:"5px 10px",borderRadius:8,border:`1px solid ${t.border}`,background:t.inputBg,color:m.role==="admin"?t.accent:t.textSecondary,fontSize:12,fontWeight:700,cursor:"pointer",outline:"none" }}
-                      >
+                      <select value={m.role} disabled={updatingRole===m.user_id}
+                        onChange={e=>handleRoleChange(m.user_id, e.target.value)}
+                        style={{ padding:"5px 10px",borderRadius:8,border:`1px solid ${t.border}`,background:t.inputBg,color:m.role==="admin"?t.accent:t.textSecondary,fontSize:12,fontWeight:700,cursor:"pointer",outline:"none" }}>
                         <option value="member">Membro</option>
                         <option value="admin">Administrador</option>
                       </select>
@@ -2341,22 +2326,6 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Edit modal */}
-      {editItem && (
-        <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
-          style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
-          <div onClick={e=>e.stopPropagation()}
-            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
-              <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
-            </div>
-            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers}
-              onSave={async(payload)=>{ if(payload._type==="expense") await onEditExpense(payload); else await onEditIncome(payload); setEditItem(null); }} />
           </div>
         </div>
       )}
@@ -2662,47 +2631,71 @@ export default function App() {
         <div style={{ position:"fixed",width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle, ${t.successSoft} 0%, transparent 70%)`,bottom:50,left:-50,pointerEvents:"none",zIndex:0 }} />
 
         <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
-          <div style={{ maxWidth:900,margin:"0 auto",padding:"0 16px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+          {/* ── Desktop nav ── */}
+          <div className="mobile-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 20px",height:64,display:"flex",alignItems:"center",gap:16 }}>
             {/* Logo */}
-            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-              <span style={{ fontSize:24 }}>💎</span>
-              <span className="mobile-hide" style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:18,color:t.text,letterSpacing:"-0.02em" }}>Finanças do Casal</span>
+            <div style={{ display:"flex",alignItems:"center",gap:10,flexShrink:0 }}>
+              <span style={{ fontSize:22 }}>💎</span>
+              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:17,color:t.text,letterSpacing:"-0.02em" }}>Finanças do Casal</span>
             </div>
-
-            {/* Desktop nav buttons */}
-            <div className="mobile-hide" style={{ display:"flex",alignItems:"center",gap:8 }}>
+            {/* Tabs centered */}
+            <div style={{ flex:1,display:"flex",justifyContent:"center",gap:4 }}>
+              {tabs.map(tb=>(
+                <button key={tb.id} onClick={()=>setTab(tb.id)}
+                  style={{ padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
+                  {tb.icon} {tb.label}
+                </button>
+              ))}
+            </div>
+            {/* User buttons */}
+            <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
               {isDemo&&<span style={{ fontSize:11,background:t.warningSoft,color:t.warning,padding:"4px 10px",borderRadius:8,fontWeight:700,border:`1px solid ${t.warning}33` }}>DEMO</span>}
               {!isDemo && user && (
-                <button onClick={()=>setShowProfile(true)} title="Meu perfil" style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.textMuted,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
+                <button onClick={()=>setShowProfile(true)} title="Meu perfil"
+                  style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.textMuted,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor=t.accent;e.currentTarget.style.color=t.accent;}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor=t.border;e.currentTarget.style.color=t.textMuted;}}>
                   👤 {profile?.first_name || "Perfil"}
                 </button>
               )}
               {!isDemo && family && (
-                <button onClick={()=>setShowInvite(true)} title="Família" style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.accent,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
+                <button onClick={()=>setShowInvite(true)} title="Família"
+                  style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.accent,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
                   👥 Família
                 </button>
               )}
               <button onClick={()=>setDarkMode(!darkMode)} style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>{darkMode?"☀️":"🌙"}</button>
               <button onClick={handleLogout} style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 14px",cursor:"pointer",color:t.textMuted,fontSize:13,fontWeight:600 }}>Sair</button>
             </div>
+          </div>
 
-            {/* Mobile hamburger */}
-            <div className="desktop-hide" style={{ display:"flex",alignItems:"center",gap:8 }}>
+          {/* ── Mobile nav ── */}
+          <div className="desktop-hide" style={{ padding:"0 16px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              <span style={{ fontSize:22 }}>💎</span>
+              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:16,color:t.text }}>Finanças do Casal</span>
+            </div>
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <button onClick={()=>setDarkMode(!darkMode)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.text,fontSize:18,padding:4 }}>{darkMode?"☀️":"🌙"}</button>
               <button onClick={()=>setMobileMenu(v=>!v)}
                 style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,width:38,height:38,cursor:"pointer",color:t.text,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,padding:"8px 9px" }}>
-                <span style={{ width:18,height:2,background:t.text,borderRadius:2,transition:"all 0.2s" }} />
-                <span style={{ width:18,height:2,background:t.text,borderRadius:2,transition:"all 0.2s" }} />
-                <span style={{ width:18,height:2,background:t.text,borderRadius:2,transition:"all 0.2s" }} />
+                <span style={{ width:18,height:2,background:t.text,borderRadius:2 }} />
+                <span style={{ width:18,height:2,background:t.text,borderRadius:2 }} />
+                <span style={{ width:18,height:2,background:t.text,borderRadius:2 }} />
               </button>
             </div>
           </div>
 
-          {/* Mobile dropdown — only user/family/sair/importar */}
+          {/* Mobile dropdown: Lançamentos + Importar + Perfil + Família + Sair */}
           {mobileMenu && (
             <div className="desktop-hide" style={{ background:t.glassModal,borderTop:`1px solid ${t.border}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8 }}>
+              {[{id:"transactions",icon:"📋",label:"Lançamentos"},{id:"import",icon:"📥",label:"Importar"}].map(tb=>(
+                <button key={tb.id} onClick={()=>{ setTab(tb.id); setMobileMenu(false); }}
+                  style={{ padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.text }}>
+                  {tb.icon} {tb.label}
+                </button>
+              ))}
+              <div style={{ height:1,background:t.border,margin:"4px 0" }} />
               {!isDemo && user && (
                 <button onClick={()=>{ setShowProfile(true); setMobileMenu(false); }}
                   style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.text }}>
@@ -2715,11 +2708,6 @@ export default function App() {
                   👥 Família
                 </button>
               )}
-              <button onClick={()=>{ setTab("import"); setMobileMenu(false); }}
-                style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab==="import"?t.accent:t.surfaceHover,color:tab==="import"?"#fff":t.text }}>
-                📥 Importar
-              </button>
-              <div style={{ height:1,background:t.border,margin:"4px 0" }} />
               <button onClick={()=>{ handleLogout(); setMobileMenu(false); }}
                 style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.textMuted }}>
                 🚪 Sair
@@ -2728,11 +2716,14 @@ export default function App() {
           )}
         </nav>
 
-        {/* Tab bar — shown on both desktop and mobile (excluding Importar which is in hamburger) */}
-        <div style={{ maxWidth:900,margin:"0 auto",padding:"0 16px" }}>
-          <div style={{ display:"flex",gap:4,padding:"16px 0 0",overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
-            {tabs.filter(tb=>tb.id!=="import").map(tb=>(
-              <button key={tb.id} onClick={()=>setTab(tb.id)} style={{ padding:"9px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",flexShrink:0,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>{tb.icon} {tb.label}</button>
+        {/* Mobile tab bar: apenas Dashboard, Calendário, Gráficos */}
+        <div className="desktop-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 16px" }}>
+          <div style={{ display:"flex",gap:4,padding:"12px 0 0",overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
+            {tabs.filter(tb=>["dashboard","calendar","charts"].includes(tb.id)).map(tb=>(
+              <button key={tb.id} onClick={()=>setTab(tb.id)}
+                style={{ padding:"9px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flexShrink:0,transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
+                {tb.icon} {tb.label}
+              </button>
             ))}
           </div>
         </div>
