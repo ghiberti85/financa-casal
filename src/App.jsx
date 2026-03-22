@@ -280,7 +280,7 @@ function Toast({ toasts, remove }) {
 function Modal({ open, onClose, title, children, t, darkMode }) {
   if (!open) return null;
   return (
-    <div onClick={onClose} style={{
+    <div onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }} style={{
       position: "fixed", inset: 0, zIndex: 1000,
       background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
@@ -594,8 +594,8 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                 {hasExp&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.danger }}/>}
                 {hasInc&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.success }}/>}
               </div>
-              {totalDay>0&&<span style={{ fontSize:9,color:t.danger,fontWeight:700 }}>-{fmtShort(totalDay)}</span>}
-              {(incByDay[day]||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)>0&&<span style={{ fontSize:9,color:t.success,fontWeight:700 }}>+{fmtShort((incByDay[day]||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</span>}
+              {totalDay>0&&<span style={{ fontSize:9,color:t.danger,fontWeight:700 }}>{fmtShort(totalDay)}</span>}
+              {(incByDay[day]||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)>0&&<span style={{ fontSize:9,color:t.success,fontWeight:700 }}>{fmtShort((incByDay[day]||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</span>}
             </div>
           );
         })}
@@ -2700,16 +2700,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Mobile dropdown menu */}
+          {/* Mobile dropdown — only user/family/sair/importar */}
           {mobileMenu && (
             <div className="desktop-hide" style={{ background:t.glassModal,borderTop:`1px solid ${t.border}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8 }}>
-              {tabs.map(tb=>(
-                <button key={tb.id} onClick={()=>{ setTab(tb.id); setMobileMenu(false); }}
-                  style={{ padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.text,transition:"all 0.2s" }}>
-                  {tb.icon} {tb.label}
-                </button>
-              ))}
-              <div style={{ height:1,background:t.border,margin:"4px 0" }} />
               {!isDemo && user && (
                 <button onClick={()=>{ setShowProfile(true); setMobileMenu(false); }}
                   style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.text }}>
@@ -2722,6 +2715,11 @@ export default function App() {
                   👥 Família
                 </button>
               )}
+              <button onClick={()=>{ setTab("import"); setMobileMenu(false); }}
+                style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab==="import"?t.accent:t.surfaceHover,color:tab==="import"?"#fff":t.text }}>
+                📥 Importar
+              </button>
+              <div style={{ height:1,background:t.border,margin:"4px 0" }} />
               <button onClick={()=>{ handleLogout(); setMobileMenu(false); }}
                 style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.textMuted }}>
                 🚪 Sair
@@ -2730,11 +2728,11 @@ export default function App() {
           )}
         </nav>
 
-        {/* Desktop tab bar — hidden on mobile (uses hamburger instead) */}
-        <div className="mobile-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 20px" }}>
-          <div style={{ display:"flex",gap:4,padding:"16px 0 0",overflowX:"auto" }}>
-            {tabs.map(tb=>(
-              <button key={tb.id} onClick={()=>setTab(tb.id)} style={{ padding:"9px 18px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>{tb.icon} {tb.label}</button>
+        {/* Tab bar — shown on both desktop and mobile (excluding Importar which is in hamburger) */}
+        <div style={{ maxWidth:900,margin:"0 auto",padding:"0 16px" }}>
+          <div style={{ display:"flex",gap:4,padding:"16px 0 0",overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
+            {tabs.filter(tb=>tb.id!=="import").map(tb=>(
+              <button key={tb.id} onClick={()=>setTab(tb.id)} style={{ padding:"9px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",flexShrink:0,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>{tb.icon} {tb.label}</button>
             ))}
           </div>
         </div>
@@ -2809,7 +2807,7 @@ export default function App() {
 
       {/* Invite code modal */}
       <Modal open={showInvite} onClose={()=>setShowInvite(false)} title="👥 Família" t={t} darkMode={darkMode}>
-        <FamilyModal t={t} family={family} currentUserId={user?.id} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} onRegenCode={handleRegenCode} addToast={addToast} isAdmin={family?.role==="admin"} />
+        {showInvite && <FamilyModal t={t} family={family} currentUserId={user?.id} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} onRegenCode={handleRegenCode} addToast={addToast} isAdmin={family?.role==="admin"} />}
       </Modal>
 
       <Modal open={showProfile} onClose={()=>setShowProfile(false)} title="👤 Meu Perfil" t={t} darkMode={darkMode}>
