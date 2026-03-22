@@ -605,8 +605,8 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h3 style={{ margin: 0, color: t.text, fontFamily: "'Sora', sans-serif", fontSize: 16, fontWeight: 700 }}>{selectedDay} de {MONTH_FULL[mo]}</h3>
             <div style={{ display: "flex", gap: 12 }}>
-              {sInc.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.success }}>+{fmt(sInc.reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</span>}
-              {sExp.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.danger }}>-{fmt(sExp.reduce((s,e)=>s+(parseFloat(e.amount)||0),0))}</span>}
+              {sInc.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.success }}>{fmt(sInc.reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</span>}
+              {sExp.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(sExp.reduce((s,e)=>s+(parseFloat(e.amount)||0),0))}</span>}
             </div>
           </div>
           {sExp.length===0&&sInc.length===0 ? <p style={{ color:t.textMuted,fontSize:14,margin:0,textAlign:"center" }}>Nenhum lançamento neste dia</p> : (
@@ -629,7 +629,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       </div>
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-                      <span style={{ fontWeight:700,fontSize:14,color:t.success }}>+{fmt(parseFloat(inc.amount)||0)}</span>
+                      <span style={{ fontWeight:700,fontSize:14,color:t.success }}>{fmt(parseFloat(inc.amount)||0)}</span>
                       <button onClick={e=>{ e.stopPropagation(); setEditItem({...inc,_type:"income"}); }} title="Editar"
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
@@ -676,7 +676,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       </div>
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-                      <span style={{ fontWeight:700,fontSize:14,color:t.danger }}>-{fmt(parseFloat(exp.amount)||0)}</span>
+                      <span style={{ fontWeight:700,fontSize:14,color:t.danger }}>{fmt(parseFloat(exp.amount)||0)}</span>
                       <button onClick={e=>{ e.stopPropagation(); setEditItem({...exp,_type:"expense"}); }} title="Editar"
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
@@ -699,7 +699,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
           style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
           <div onClick={e=>e.stopPropagation()}
-            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"28px 28px 24px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
+            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
               <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
@@ -1433,7 +1433,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 </div>
               </div>
               <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-                <span style={{ fontWeight:700,fontSize:14,color:isDup?t.warning:isExp?t.danger:t.success }}>{isExp?"-":"+"}{fmt(item.amount)}</span>
+                <span style={{ fontWeight:700,fontSize:14,color:isDup?t.warning:isExp?t.danger:t.success }}>{fmt(item.amount)}</span>
                 <button onClick={()=>setEditItem(item)} title="Editar"
                   style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                   onMouseEnter={e=>e.currentTarget.style.color=t.accent}
@@ -1455,7 +1455,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
           style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
           <div onClick={e=>e.stopPropagation()}
-            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"28px 28px 24px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
+            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
               <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
@@ -2350,7 +2350,7 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
           style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
           <div onClick={e=>e.stopPropagation()}
-            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"28px 28px 24px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
+            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
               <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
@@ -2379,6 +2379,7 @@ export default function App() {
   const [showInvite, setShowInvite] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [mobileMenu, setMobileMenu] = useState(false);
 
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT");
@@ -2393,7 +2394,7 @@ export default function App() {
 
   // Listen for navigation events from ImportView
   useEffect(() => {
-    const handler = (e) => setTab(e.detail);
+    const handler = (e) => { setTab(e.detail); setMobileMenu(false); };
     window.addEventListener("goto-tab", handler);
     return () => window.removeEventListener("goto-tab", handler);
   }, []);
@@ -2585,13 +2586,21 @@ export default function App() {
   const css=`
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'DM Sans',sans-serif;background:${t.bg};}
+    html{-webkit-text-size-adjust:100%;touch-action:manipulation;}
+    body{font-family:'DM Sans',sans-serif;background:${t.bg};-webkit-overflow-scrolling:touch;}
     @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideInRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
     @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(124,106,247,0.3);border-radius:3px}
     input[type=date]::-webkit-calendar-picker-indicator{opacity:0.7;cursor:pointer;filter:${darkMode?"brightness(0) saturate(100%) invert(96%) sepia(5%) saturate(200%) hue-rotate(200deg) brightness(105%)":"brightness(0) saturate(100%) invert(8%) sepia(20%) saturate(800%) hue-rotate(215deg) brightness(90%)"}}
     input[type=date]::-webkit-calendar-picker-indicator:hover{opacity:1}
+    @media(max-width:600px){
+      .mobile-hide{display:none!important;}
+      .mobile-nav-label{display:none!important;}
+    }
+    @media(min-width:601px){
+      .desktop-hide{display:none!important;}
+    }
   `;
 
   if (initializing) return (
@@ -2653,35 +2662,76 @@ export default function App() {
         <div style={{ position:"fixed",width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle, ${t.successSoft} 0%, transparent 70%)`,bottom:50,left:-50,pointerEvents:"none",zIndex:0 }} />
 
         <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
-          <div style={{ maxWidth:900,margin:"0 auto",padding:"0 20px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+          <div style={{ maxWidth:900,margin:"0 auto",padding:"0 16px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+            {/* Logo */}
             <div style={{ display:"flex",alignItems:"center",gap:10 }}>
               <span style={{ fontSize:24 }}>💎</span>
-              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:18,color:t.text,letterSpacing:"-0.02em" }}>Finanças do Casal</span>
+              <span className="mobile-hide" style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:18,color:t.text,letterSpacing:"-0.02em" }}>Finanças do Casal</span>
             </div>
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+
+            {/* Desktop nav buttons */}
+            <div className="mobile-hide" style={{ display:"flex",alignItems:"center",gap:8 }}>
               {isDemo&&<span style={{ fontSize:11,background:t.warningSoft,color:t.warning,padding:"4px 10px",borderRadius:8,fontWeight:700,border:`1px solid ${t.warning}33` }}>DEMO</span>}
-              {/* Profile button — subtle, in nav */}
               {!isDemo && user && (
                 <button onClick={()=>setShowProfile(true)} title="Meu perfil" style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.textMuted,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor=t.accent;e.currentTarget.style.color=t.accent;}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor=t.border;e.currentTarget.style.color=t.textMuted;}}
-                >
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor=t.border;e.currentTarget.style.color=t.textMuted;}}>
                   👤 {profile?.first_name || "Perfil"}
                 </button>
               )}
-              {/* Invite button — only for real mode */}
               {!isDemo && family && (
                 <button onClick={()=>setShowInvite(true)} title="Família" style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.accent,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
-                  👥
+                  👥 Família
                 </button>
               )}
               <button onClick={()=>setDarkMode(!darkMode)} style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>{darkMode?"☀️":"🌙"}</button>
               <button onClick={handleLogout} style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 14px",cursor:"pointer",color:t.textMuted,fontSize:13,fontWeight:600 }}>Sair</button>
             </div>
+
+            {/* Mobile hamburger */}
+            <div className="desktop-hide" style={{ display:"flex",alignItems:"center",gap:8 }}>
+              <button onClick={()=>setDarkMode(!darkMode)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.text,fontSize:18,padding:4 }}>{darkMode?"☀️":"🌙"}</button>
+              <button onClick={()=>setMobileMenu(v=>!v)}
+                style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,width:38,height:38,cursor:"pointer",color:t.text,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,padding:"8px 9px" }}>
+                <span style={{ width:18,height:2,background:t.text,borderRadius:2,transition:"all 0.2s" }} />
+                <span style={{ width:18,height:2,background:t.text,borderRadius:2,transition:"all 0.2s" }} />
+                <span style={{ width:18,height:2,background:t.text,borderRadius:2,transition:"all 0.2s" }} />
+              </button>
+            </div>
           </div>
+
+          {/* Mobile dropdown menu */}
+          {mobileMenu && (
+            <div className="desktop-hide" style={{ background:t.glassModal,borderTop:`1px solid ${t.border}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8 }}>
+              {tabs.map(tb=>(
+                <button key={tb.id} onClick={()=>{ setTab(tb.id); setMobileMenu(false); }}
+                  style={{ padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.text,transition:"all 0.2s" }}>
+                  {tb.icon} {tb.label}
+                </button>
+              ))}
+              <div style={{ height:1,background:t.border,margin:"4px 0" }} />
+              {!isDemo && user && (
+                <button onClick={()=>{ setShowProfile(true); setMobileMenu(false); }}
+                  style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.text }}>
+                  👤 {profile?.first_name || "Perfil"}
+                </button>
+              )}
+              {!isDemo && family && (
+                <button onClick={()=>{ setShowInvite(true); setMobileMenu(false); }}
+                  style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.accent}33`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:t.accentSoft,color:t.accent }}>
+                  👥 Família
+                </button>
+              )}
+              <button onClick={()=>{ handleLogout(); setMobileMenu(false); }}
+                style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.textMuted }}>
+                🚪 Sair
+              </button>
+            </div>
+          )}
         </nav>
 
-        <div style={{ maxWidth:900,margin:"0 auto",padding:"0 20px" }}>
+        {/* Desktop tab bar — hidden on mobile (uses hamburger instead) */}
+        <div className="mobile-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 20px" }}>
           <div style={{ display:"flex",gap:4,padding:"16px 0 0",overflowX:"auto" }}>
             {tabs.map(tb=>(
               <button key={tb.id} onClick={()=>setTab(tb.id)} style={{ padding:"9px 18px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>{tb.icon} {tb.label}</button>
@@ -2727,6 +2777,26 @@ export default function App() {
             <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Gasto</Btn>
           </div>
         )}
+
+        {/* Footer */}
+        <footer style={{ borderTop:`1px solid ${t.border}`,marginTop:40,padding:"28px 20px",textAlign:"center" }}>
+          <div style={{ maxWidth:900,margin:"0 auto" }}>
+            <div style={{ fontSize:13,color:t.textMuted,lineHeight:1.8 }}>
+              <span style={{ fontSize:16 }}>💎</span>
+              <br />
+              <span style={{ fontWeight:600,color:t.textSecondary }}>Finanças do Casal</span>
+              {" "}· Desenvolvido por{" "}
+              <span style={{ color:t.accent,fontWeight:700 }}>Fernando Ghiberti</span>
+              {" "}em parceria com{" "}
+              <span style={{ fontWeight:700,background:`linear-gradient(135deg,#7c6af7,#34d399)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>Claude IA</span>
+              {" · "}
+              <span style={{ fontSize:11 }}>Anthropic · {new Date().getFullYear()}</span>
+            </div>
+            <div style={{ marginTop:8,fontSize:11,color:t.textMuted,opacity:0.5 }}>
+              Feito com 💜 e muita iteração entre humano e IA
+            </div>
+          </div>
+        </footer>
       </div>
 
       {/* Expense / Income modals */}
