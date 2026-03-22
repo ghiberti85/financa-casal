@@ -312,9 +312,9 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
 // ─── INPUT / SELECT / BTN ─────────────────────────────────────────────────────
 function Input({ label, t, ...props }) {
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 16, minWidth: 0 }}>
       {label && <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600, color: t.textSecondary, letterSpacing: "0.02em", textAlign: "left" }}>{label}</label>}
-      <input {...props} style={{ width: "100%", padding: "11px 14px", borderRadius: 12, fontSize: 14, fontFamily: "'DM Sans', sans-serif", background: t.inputBg, border: `1px solid ${t.border}`, color: t.text, outline: "none", transition: "border-color 0.2s", boxSizing: "border-box", ...(props.style||{}) }}
+      <input {...props} style={{ width: "100%", maxWidth: "100%", padding: "11px 14px", borderRadius: 12, fontSize: 14, fontFamily: "'DM Sans', sans-serif", background: t.inputBg, border: `1px solid ${t.border}`, color: t.text, outline: "none", transition: "border-color 0.2s", boxSizing: "border-box", minWidth: 0, ...(props.style||{}) }}
         onFocus={(e) => { e.target.style.borderColor = t.accent; }}
         onBlur={(e) => { e.target.style.borderColor = t.border; }}
       />
@@ -2552,6 +2552,7 @@ export default function App() {
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(124,106,247,0.3);border-radius:3px}
     input[type=date]::-webkit-calendar-picker-indicator{opacity:0.7;cursor:pointer;filter:${darkMode?"brightness(0) saturate(100%) invert(96%) sepia(5%) saturate(200%) hue-rotate(200deg) brightness(105%)":"brightness(0) saturate(100%) invert(8%) sepia(20%) saturate(800%) hue-rotate(215deg) brightness(90%)"}}
     input[type=date]::-webkit-calendar-picker-indicator:hover{opacity:1}
+    input[type=date]{width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
     @media(max-width:600px){
       .mobile-hide{display:none!important;}
       .mobile-nav-label{display:none!important;}
