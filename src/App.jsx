@@ -624,7 +624,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
                         <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{inc.description}</div>
                         <div style={{ fontSize:11,color:t.textMuted,marginTop:1,textAlign:"left" }}>
-                          {inc.user_label} · {inc.date?.slice(0,10)}{incCat ? ` · ${incCat.label}` : ""}
+                          {inc.user_label} · {(inc.date||"").slice(8,10)+"/"+(inc.date||"").slice(5,7)+"/"+(inc.date||"").slice(2,4)}{incCat ? ` · ${incCat.label}` : ""}
                         </div>
                       </div>
                     </div>
@@ -671,7 +671,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
                         <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{exp.description}</div>
                         <div style={{ fontSize:11,color:t.textMuted,marginTop:1,textAlign:"left" }}>
-                          {exp.user_label} · {exp.date?.slice(0,10)}{subtitleExtra}
+                          {exp.user_label} · {(exp.date||"").slice(8,10)+"/"+(exp.date||"").slice(5,7)+"/"+(exp.date||"").slice(2,4)}{subtitleExtra}
                         </div>
                       </div>
                     </div>
@@ -1412,7 +1412,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                     )}
                   </div>
                   <div style={{ fontSize:11,color:t.textMuted,marginTop:1,textAlign:"left" }}>
-                    {item.user_label} · {item.date?.slice(0,10)}{isExp && (() => {
+                    {item.user_label} · {(item.date||"").slice(8,10)+"/"+(item.date||"").slice(5,7)+"/"+(item.date||"").slice(2,4)}{isExp && (() => {
                       const typeLabel = item.type==="pix"?"PIX":item.type==="debito"?"Débito":"Crédito";
                       const p = parseInt(item.parcelas)||1;
                       const catLabel = cat?.label || "";
@@ -1476,22 +1476,11 @@ function SummaryCards({ expenses, incomes, t }) {
   const monthExp=expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
   const monthInc=incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const balance=monthInc-monthExp;
-  // Pending: credit expenses whose remaining installments fall in future months
-  const creditPending=expenses
-    .filter(e=>e.type==="credito"&&(parseInt(e.parcelas)||1)>1)
-    .reduce((s,e)=>{
-      const inst = parseFloat(e.amount)||0; // amount is already installment value
-      const parcelas = parseInt(e.parcelas)||1;
-      const startDate = new Date((e.date||"").slice(0,10)+"T12:00:00");
-      const todayMs = today.getTime();
-      let remaining = 0;
-      for(let i=0;i<parcelas;i++){
-        const d = new Date(startDate);
-        d.setMonth(d.getMonth()+i);
-        if(d.getTime() > todayMs) remaining++;
-      }
-      return s + inst * remaining;
-    }, 0);
+  // Pending: each credit row IS one installment — sum rows with dates strictly after today
+  const todayStr = today.toISOString().slice(0,10);
+  const creditPending = expenses
+    .filter(e => e.type==="credito" && (parseInt(e.parcelas)||1) > 1 && (e.date||"").slice(0,10) > todayStr)
+    .reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
   const cards=[
     { label:"Receitas do Mês",value:fmt(monthInc),color:t.success,bg:t.successSoft,border:`${t.success}33`,icon:"💰" },
     { label:"Gastos do Mês",value:fmt(monthExp),color:t.danger,bg:t.dangerSoft,border:`${t.danger}33`,icon:"💸" },
@@ -2638,9 +2627,9 @@ export default function App() {
               <span style={{ fontSize:22 }}>💎</span>
               <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:17,color:t.text,letterSpacing:"-0.02em" }}>Finanças do Casal</span>
             </div>
-            {/* Tabs centered */}
+            {/* Lançamentos + Importar in top nav */}
             <div style={{ flex:1,display:"flex",justifyContent:"center",gap:4 }}>
-              {tabs.map(tb=>(
+              {tabs.filter(tb=>["transactions","import"].includes(tb.id)).map(tb=>(
                 <button key={tb.id} onClick={()=>setTab(tb.id)}
                   style={{ padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
                   {tb.icon} {tb.label}
@@ -2716,7 +2705,18 @@ export default function App() {
           )}
         </nav>
 
-        {/* Mobile tab bar: apenas Dashboard, Calendário, Gráficos */}
+        {/* Desktop bottom tab bar: Dashboard, Calendário, Gráficos */}
+        <div className="mobile-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 20px" }}>
+          <div style={{ display:"flex",gap:4,padding:"14px 0 0",justifyContent:"center" }}>
+            {tabs.filter(tb=>["dashboard","calendar","charts"].includes(tb.id)).map(tb=>(
+              <button key={tb.id} onClick={()=>setTab(tb.id)}
+                style={{ padding:"9px 18px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
+                {tb.icon} {tb.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Mobile tab bar: Dashboard, Calendário, Gráficos */}
         <div className="desktop-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 16px" }}>
           <div style={{ display:"flex",gap:4,padding:"12px 0 0",overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
             {tabs.filter(tb=>["dashboard","calendar","charts"].includes(tb.id)).map(tb=>(
@@ -2768,22 +2768,9 @@ export default function App() {
         )}
 
         {/* Footer */}
-        <footer style={{ borderTop:`1px solid ${t.border}`,marginTop:40,padding:"28px 20px",textAlign:"center" }}>
-          <div style={{ maxWidth:900,margin:"0 auto" }}>
-            <div style={{ fontSize:13,color:t.textMuted,lineHeight:1.8 }}>
-              <span style={{ fontSize:16 }}>💎</span>
-              <br />
-              <span style={{ fontWeight:600,color:t.textSecondary }}>Finanças do Casal</span>
-              {" "}· Desenvolvido por{" "}
-              <span style={{ color:t.accent,fontWeight:700 }}>Fernando Ghiberti</span>
-              {" "}em parceria com{" "}
-              <span style={{ fontWeight:700,background:`linear-gradient(135deg,#7c6af7,#34d399)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>Claude IA</span>
-              {" · "}
-              <span style={{ fontSize:11 }}>Anthropic · {new Date().getFullYear()}</span>
-            </div>
-            <div style={{ marginTop:8,fontSize:11,color:t.textMuted,opacity:0.5 }}>
-              Feito com 💜 e muita iteração entre humano e IA
-            </div>
+        <footer style={{ borderTop:`1px solid ${t.border}`,marginTop:40,padding:"20px",textAlign:"center" }}>
+          <div style={{ fontSize:12,color:t.textMuted }}>
+            Desenvolvido com 💜 por Fernando Ghiberti em parceria com Claude IA · 2026
           </div>
         </footer>
       </div>
