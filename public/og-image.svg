@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0f"/>
+      <stop offset="100%" style="stop-color:#1a1040"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c6af7"/>
+      <stop offset="100%" style="stop-color:#4c3cb3"/>
+    </linearGradient>
+    <linearGradient id="diamond" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#c4b5fd"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="40%" r="50%">
+      <stop offset="0%" style="stop-color:#7c6af7;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#7c6af7;stop-opacity:0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="70%" cy="70%" r="40%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#34d399;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Glow effects -->
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <!-- App icon background -->
+  <rect x="80" y="215" width="140" height="140" rx="32" fill="url(#accent)"/>
+  <!-- Diamond icon -->
+  <polygon points="150,235 220,275 150,355 80,275" fill="url(#diamond)" opacity="0.95"/>
+  <polygon points="150,235 220,275 150,285 80,275" fill="white" opacity="0.3"/>
+
+  <!-- App name -->
+  <text x="252" y="285" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="800" fill="white" letter-spacing="-2">Finanças do Casal</text>
+
+  <!-- Tagline -->
+  <text x="252" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="400" fill="#a78bfa">Gerencie juntos, cresçam juntos 💑</text>
+
+  <!-- Feature pills -->
+  <rect x="80" y="420" width="220" height="44" rx="22" fill="#7c6af722" stroke="#7c6af755" stroke-width="1"/>
+  <text x="190" y="447" font-family="system-ui, sans-serif" font-size="18" fill="#a78bfa" text-anchor="middle">📊 Gráficos</text>
+
+  <rect x="320" y="420" width="220" height="44" rx="22" fill="#34d39922" stroke="#34d39955" stroke-width="1"/>
+  <text x="430" y="447" font-family="system-ui, sans-serif" font-size="18" fill="#34d399" text-anchor="middle">💳 Parcelas</text>
+
+  <rect x="560" y="420" width="220" height="44" rx="22" fill="#f8717122" stroke="#f8717155" stroke-width="1"/>
+  <text x="670" y="447" font-family="system-ui, sans-serif" font-size="18" fill="#f87171" text-anchor="middle">📅 Calendário</text>
+
+  <rect x="800" y="420" width="260" height="44" rx="22" fill="#fbbf2422" stroke="#fbbf2455" stroke-width="1"/>
+  <text x="930" y="447" font-family="system-ui, sans-serif" font-size="18" fill="#fbbf24" text-anchor="middle">🤖 IA Financeira</text>
+
+  <!-- Bottom border accent -->
+  <rect x="0" y="610" width="1200" height="20" fill="url(#accent)" opacity="0.6"/>
+
+  <!-- URL hint -->
+  <text x="1120" y="598" font-family="system-ui, sans-serif" font-size="16" fill="#6b7280" text-anchor="end">financa-casal.vercel.app</text>
+</svg>
