@@ -1467,6 +1467,298 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   );
 }
 
+
+
+// ─── BUDGET ALERT CARD (shown in Dashboard) ───────────────────────────────────
+function BudgetAlertCard({ expenses, t, family, isDemo, onGoToBudget }) {
+  const [budgets, setBudgets] = useState([]);
+  const prefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+
+  useEffect(() => {
+    if (isDemo || !family) return;
+    supabaseFetch(`/budgets?family_id=eq.${family.family_id}&month=eq.${today.getMonth()+1}&year=eq.${today.getFullYear()}&select=*`)
+      .then(rows => setBudgets(rows || []))
+      .catch(() => {});
+  }, [family, isDemo]);
+
+  if (!budgets.length) return null;
+
+  const alerts = budgets.map(b => {
+    const cat = CATEGORIES.find(c => c.id === b.category);
+    const spent = expenses.filter(e => e.date?.startsWith(prefix) && e.category === b.category)
+                          .reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+    const pct = (spent / parseFloat(b.amount)) * 100;
+    return { ...b, cat, spent, pct };
+  }).filter(a => a.pct >= 80).sort((a,b) => b.pct - a.pct);
+
+  if (!alerts.length) return null;
+
+  return (
+    <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:16,padding:"14px 18px" }}>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
+        <span style={{ fontSize:13,fontWeight:700,color:t.warning }}>⚡ Alertas de Orçamento</span>
+        <button onClick={onGoToBudget}
+          style={{ background:"transparent",border:"none",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700 }}>
+          Ver todos →
+        </button>
+      </div>
+      <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+        {alerts.slice(0,3).map(a => (
+          <div key={a.category} style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <span style={{ fontSize:16 }}>{a.cat?.emoji || "📦"}</span>
+            <div style={{ flex:1,minWidth:0 }}>
+              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:3 }}>
+                <span style={{ fontSize:12,fontWeight:600,color:t.text }}>{a.cat?.label}</span>
+                <span style={{ fontSize:12,fontWeight:700,color:a.pct>=100?t.danger:t.warning }}>
+                  {a.pct.toFixed(0)}%
+                </span>
+              </div>
+              <div style={{ height:5,borderRadius:3,background:t.surfaceHover,overflow:"hidden" }}>
+                <div style={{ height:"100%",borderRadius:3,width:`${Math.min(100,a.pct)}%`,background:a.pct>=100?t.danger:t.warning }} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
+function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
+  const [budgets, setBudgets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingCat, setEditingCat] = useState(null); // category id being edited
+  const [inputVal, setInputVal] = useState("");
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+
+  const prefix = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}`;
+
+  // Load budgets for current month/year
+  useEffect(() => {
+    if (isDemo || !family) { setLoading(false); return; }
+    setLoading(true);
+    supabaseFetch(`/budgets?family_id=eq.${family.family_id}&month=eq.${viewMonth+1}&year=eq.${viewYear}&select=*`)
+      .then(rows => { setBudgets(rows || []); setLoading(false); })
+      .catch(() => { setLoading(false); });
+  }, [family, viewMonth, viewYear, isDemo]);
+
+  const getBudget = (catId) => budgets.find(b => b.category === catId);
+
+  const saveBudget = async (catId, value) => {
+    const amount = parseFloat(value);
+    if (!amount || amount <= 0) { deleteBudget(catId); return; }
+    const existing = getBudget(catId);
+    try {
+      if (existing) {
+        await supabaseFetch(`/budgets?id=eq.${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ amount, updated_at: new Date().toISOString() }),
+          headers: { "Prefer": "return=representation" },
+        });
+        setBudgets(p => p.map(b => b.id === existing.id ? { ...b, amount } : b));
+      } else {
+        const rows = await supabaseFetch("/budgets", {
+          method: "POST",
+          body: JSON.stringify({
+            family_id: family.family_id,
+            category: catId,
+            amount,
+            month: viewMonth + 1,
+            year: viewYear,
+          }),
+          headers: { "Prefer": "return=representation" },
+        });
+        if (rows?.[0]) setBudgets(p => [...p, rows[0]]);
+      }
+      addToast("Orçamento salvo!", "success");
+    } catch (e) { addToast("Erro ao salvar: " + e.message, "error"); }
+    setEditingCat(null);
+  };
+
+  const deleteBudget = async (catId) => {
+    const existing = getBudget(catId);
+    if (!existing) return;
+    try {
+      await supabaseFetch(`/budgets?id=eq.${existing.id}`, { method: "DELETE" });
+      setBudgets(p => p.filter(b => b.id !== existing.id));
+    } catch (e) { addToast("Erro ao remover", "error"); }
+    setEditingCat(null);
+  };
+
+  // Copy budgets from previous month
+  const copyFromPrevMonth = async () => {
+    const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+    const prevYear  = viewMonth === 0 ? viewYear - 1 : viewYear;
+    try {
+      const prevBudgets = await supabaseFetch(
+        `/budgets?family_id=eq.${family.family_id}&month=eq.${prevMonth+1}&year=eq.${prevYear}&select=*`
+      );
+      if (!prevBudgets?.length) { addToast("Nenhum orçamento encontrado no mês anterior", "info"); return; }
+      const inserts = prevBudgets
+        .filter(b => !getBudget(b.category))
+        .map(b => ({ family_id: family.family_id, category: b.category, amount: b.amount, month: viewMonth+1, year: viewYear }));
+      if (!inserts.length) { addToast("Todas as categorias já têm orçamento este mês", "info"); return; }
+      const rows = await supabaseFetch("/budgets", {
+        method: "POST",
+        body: JSON.stringify(inserts),
+        headers: { "Prefer": "return=representation" },
+      });
+      if (rows) setBudgets(p => [...p, ...rows]);
+      addToast(`${inserts.length} orçamento(s) copiado(s)!`, "success");
+    } catch (e) { addToast("Erro ao copiar: " + e.message, "error"); }
+  };
+
+  // Totals
+  const totalBudgeted = budgets.reduce((s, b) => s + parseFloat(b.amount), 0);
+  const totalSpent    = expenses.filter(e => e.date?.startsWith(prefix)).reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+  const totalPct      = totalBudgeted > 0 ? Math.min(100, (totalSpent / totalBudgeted) * 100) : 0;
+
+  // Month navigation
+  const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y-1); } else setViewMonth(m => m-1); };
+  const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y+1); } else setViewMonth(m => m+1); };
+  const isCurrentMonth = viewMonth === today.getMonth() && viewYear === today.getFullYear();
+
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
+
+      {/* Header */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+          <button onClick={prevMonth}
+            style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:34,height:34,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>‹</button>
+          <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:700,fontSize:16,color:t.text,minWidth:140,textAlign:"center" }}>
+            {MONTH_FULL[viewMonth]} {viewYear}
+          </span>
+          <button onClick={nextMonth}
+            style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:34,height:34,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>›</button>
+        </div>
+        {!isDemo && (
+          <button onClick={copyFromPrevMonth}
+            style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:10,padding:"7px 14px",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
+            📋 Copiar do mês anterior
+          </button>
+        )}
+      </div>
+
+      {/* Total summary bar */}
+      {totalBudgeted > 0 && (
+        <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:"16px 20px" }}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
+            <span style={{ fontSize:13,fontWeight:700,color:t.text }}>Total do orçamento</span>
+            <span style={{ fontSize:13,fontWeight:700,color:totalPct>=100?t.danger:totalPct>=80?t.warning:t.success }}>
+              {fmt(totalSpent)} <span style={{ color:t.textMuted,fontWeight:400 }}>de {fmt(totalBudgeted)}</span>
+            </span>
+          </div>
+          <div style={{ height:8,borderRadius:4,background:t.surfaceHover,overflow:"hidden" }}>
+            <div style={{ height:"100%",borderRadius:4,width:`${totalPct}%`,transition:"width 0.6s ease",
+              background: totalPct>=100 ? t.danger : totalPct>=80 ? t.warning : t.success }} />
+          </div>
+          <div style={{ fontSize:11,color:t.textMuted,marginTop:6 }}>
+            {totalPct>=100 ? "⚠️ Orçamento estourado" : totalPct>=80 ? `⚡ ${(100-totalPct).toFixed(0)}% restante` : `✅ ${(100-totalPct).toFixed(0)}% restante`}
+            {" · "}{fmt(Math.max(0, totalBudgeted - totalSpent))} disponível
+          </div>
+        </div>
+      )}
+
+      {/* Category list */}
+      {loading ? (
+        <div style={{ textAlign:"center",padding:"32px 0",color:t.textMuted,fontSize:14 }}>Carregando orçamentos...</div>
+      ) : (
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          {CATEGORIES.map(cat => {
+            const budget = getBudget(cat.id);
+            const spent  = expenses.filter(e => e.date?.startsWith(prefix) && e.category === cat.id)
+                                   .reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+            const pct    = budget ? Math.min(100, (spent / parseFloat(budget.amount)) * 100) : 0;
+            const over   = budget && spent > parseFloat(budget.amount);
+            const warn   = budget && !over && pct >= 80;
+            const barColor = over ? t.danger : warn ? t.warning : t.accent;
+            const isEditing = editingCat === cat.id;
+
+            return (
+              <div key={cat.id} style={{
+                background:t.surface,border:`1px solid ${over ? t.danger+"55" : warn ? t.warning+"55" : t.border}`,
+                borderRadius:16,padding:"14px 16px",transition:"all 0.2s"
+              }}>
+                <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                  {/* Icon + name */}
+                  <span style={{ fontSize:20,flexShrink:0 }}>{cat.emoji}</span>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom: budget ? 6 : 0 }}>
+                      <span style={{ fontSize:13,fontWeight:600,color:t.text }}>{cat.label}</span>
+                      <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
+                        {budget && (
+                          <span style={{ fontSize:12,color:over?t.danger:warn?t.warning:t.textMuted,fontWeight:600 }}>
+                            {fmt(spent)} / {fmt(parseFloat(budget.amount))}
+                          </span>
+                        )}
+                        {!budget && spent > 0 && (
+                          <span style={{ fontSize:12,color:t.textMuted }}>
+                            {fmt(spent)} <span style={{ color:t.textMuted,opacity:0.6 }}>(sem limite)</span>
+                          </span>
+                        )}
+                        {/* Edit/Set button */}
+                        {!isDemo && !isEditing && (
+                          <button onClick={() => { setEditingCat(cat.id); setInputVal(budget ? String(budget.amount) : ""); }}
+                            style={{ background:budget?t.surfaceHover:t.accentSoft,border:`1px solid ${budget?t.border:t.accent+"33"}`,borderRadius:8,padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:700,color:budget?t.textMuted:t.accent,whiteSpace:"nowrap" }}>
+                            {budget ? "✏️ Editar" : "+ Definir"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    {budget && (
+                      <div style={{ height:6,borderRadius:3,background:t.surfaceHover,overflow:"hidden" }}>
+                        <div style={{ height:"100%",borderRadius:3,width:`${pct}%`,background:barColor,transition:"width 0.5s ease" }} />
+                      </div>
+                    )}
+                    {/* Inline edit */}
+                    {isEditing && (
+                      <div style={{ display:"flex",gap:8,marginTop:10,alignItems:"center" }} onClick={e=>e.stopPropagation()}>
+                        <input
+                          type="number" step="0.01" min="0" autoFocus
+                          value={inputVal} onChange={e=>setInputVal(e.target.value)}
+                          onKeyDown={e=>{ if(e.key==="Enter") saveBudget(cat.id,inputVal); if(e.key==="Escape") setEditingCat(null); }}
+                          placeholder="Ex: 500,00"
+                          style={{ flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${t.accent}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
+                        />
+                        <button onClick={()=>saveBudget(cat.id,inputVal)}
+                          style={{ background:t.accent,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700 }}>✓</button>
+                        <button onClick={()=>setEditingCat(null)}
+                          style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>✕</button>
+                        {budget && (
+                          <button onClick={()=>deleteBudget(cat.id)}
+                            style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.danger,fontSize:12 }}>🗑</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Over budget warning */}
+                {over && (
+                  <div style={{ marginTop:8,fontSize:11,color:t.danger,fontWeight:600,display:"flex",alignItems:"center",gap:4 }}>
+                    ⚠️ Limite ultrapassado em {fmt(spent - parseFloat(budget.amount))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!isDemo && budgets.length === 0 && !loading && (
+        <div style={{ textAlign:"center",padding:"24px 0",color:t.textMuted,fontSize:13,lineHeight:1.7 }}>
+          Nenhum orçamento definido para este mês.<br/>
+          Clique em <strong style={{color:t.accent}}>+ Definir</strong> em cada categoria para estabelecer limites.<br/>
+          Ou use <strong style={{color:t.accent}}>Copiar do mês anterior</strong> se já configurou antes.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── SUMMARY CARDS ────────────────────────────────────────────────────────────
 function SummaryCards({ expenses, incomes, t }) {
   const prefix=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
@@ -2535,6 +2827,7 @@ export default function App() {
     {id:"dashboard",label:"Dashboard",icon:"🏠"},
     {id:"calendar",label:"Calendário",icon:"📅"},
     {id:"charts",label:"Gráficos",icon:"📊"},
+    {id:"budget",label:"Orçamento",icon:"🎯"},
     {id:"transactions",label:"Lançamentos",icon:"📋"},
     {id:"import",label:"Importar",icon:"📥"},
   ];
@@ -2629,7 +2922,7 @@ export default function App() {
             </div>
             {/* Lançamentos + Importar in top nav */}
             <div style={{ flex:1,display:"flex",justifyContent:"center",gap:4 }}>
-              {tabs.filter(tb=>["transactions","import"].includes(tb.id)).map(tb=>(
+              {tabs.filter(tb=>["budget","transactions","import"].includes(tb.id)).map(tb=>(
                 <button key={tb.id} onClick={()=>setTab(tb.id)}
                   style={{ padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
                   {tb.icon} {tb.label}
@@ -2678,7 +2971,7 @@ export default function App() {
           {/* Mobile dropdown: Lançamentos + Importar + Perfil + Família + Sair */}
           {mobileMenu && (
             <div className="desktop-hide" style={{ background:t.glassModal,borderTop:`1px solid ${t.border}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8 }}>
-              {[{id:"transactions",icon:"📋",label:"Lançamentos"},{id:"import",icon:"📥",label:"Importar"}].map(tb=>(
+              {[{id:"budget",icon:"🎯",label:"Orçamento"},{id:"transactions",icon:"📋",label:"Lançamentos"},{id:"import",icon:"📥",label:"Importar"}].map(tb=>(
                 <button key={tb.id} onClick={()=>{ setTab(tb.id); setMobileMenu(false); }}
                   style={{ padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.text }}>
                   {tb.icon} {tb.label}
@@ -2738,6 +3031,7 @@ export default function App() {
                 <p style={{ color:t.textMuted,fontSize:14 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
               </div>
               <SummaryCards expenses={expenses} incomes={incomes} t={t} />
+              <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
               <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                 <h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>📊 Últimos 6 meses</h3>
                 <ResponsiveContainer width="100%" height={200}>
@@ -2755,6 +3049,15 @@ export default function App() {
           )}
           {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} />}
           {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} />}
+          {tab==="budget"&&(
+            <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
+              <div style={{ marginBottom:20 }}>
+                <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🎯 Orçamento Mensal</h2>
+                <p style={{ color:t.textMuted,fontSize:14 }}>Defina limites de gastos por categoria e acompanhe em tempo real</p>
+              </div>
+              <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
+            </div>
+          )}
           {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} />}
           {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
         </main>
