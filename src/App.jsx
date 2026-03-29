@@ -1929,9 +1929,9 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
 
   return (
     <div onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}
-      style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px 16px",overflowY:"auto" }}>
+      style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:80,paddingBottom:32,paddingLeft:16,paddingRight:16,overflowY:"auto",WebkitOverflowScrolling:"touch" }}>
       <div onClick={e=>e.stopPropagation()}
-        style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,boxShadow:t.shadow,animation:"modalIn 0.25s ease",margin:"auto" }}>
+        style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,boxShadow:t.shadow,animation:"modalIn 0.25s ease",flexShrink:0 }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
           <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>
             {isEdit ? "✏️ Editar Recorrente" : "🔁 Novo Recorrente"}
