@@ -872,24 +872,24 @@ function MemberSelect({ label, t, value, onChange, familyMembers }) {
 // ─── EXPENSE FORM ─────────────────────────────────────────────────────────────
 function ExpenseForm({ t, onSave, onClose, familyMembers }) {
   const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:"Você" });
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
+  const setR = (k, v) => setRecurringForm(p => ({ ...p, [k]: v }));
 
   const set = (k, v) => {
     let next = { ...form, [k]: v };
     if (k === "description" && !form.category) next.category = autoCategory(v);
-    // parcela → total (primary: type installAmount to get total)
     if (k === "installAmount") {
       const inst = parseFloat(v) || 0;
       const n = parseInt(next.parcelas) || 1;
       next.amount = n > 1 ? (inst * n).toFixed(2) : v;
     }
-    // total → parcela (secondary: type total to get parcela)
     if (k === "amount") {
       const total = parseFloat(v) || 0;
       const n = parseInt(next.parcelas) || 1;
       if (total > 0 && n > 1) next.installAmount = (total / n).toFixed(2);
       else next.installAmount = "";
     }
-    // Recalc when parcelas changes
     if (k === "parcelas") {
       const n = parseInt(v) || 1;
       if (parseFloat(form.installAmount) > 0) {
@@ -907,13 +907,14 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
     if (!form.description) return;
     const isCredit = form.type === "credito";
     const parcelas = parseInt(form.parcelas) || 1;
-    // For credit with multiple installments, store installAmount as amount
-    // so each month shows the installment value, not the total
     const effectiveAmount = isCredit && parcelas > 1
       ? (parseFloat(form.installAmount) || parseFloat(form.amount) / parcelas)
       : parseFloat(form.amount);
     if (!effectiveAmount) return;
-    onSave({ ...form, amount: effectiveAmount, parcelas, id: Date.now() });
+    onSave({
+      ...form, amount: effectiveAmount, parcelas, id: Date.now(),
+      _recurring: isRecurring ? recurringForm : null,
+    });
   };
 
   const isCredit = form.type === "credito";
@@ -976,6 +977,39 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
           ✨ {CATEGORIES.find(c=>c.id===form.category)?.emoji} {CATEGORIES.find(c=>c.id===form.category)?.label}
         </div>
       )}
+
+      {/* ── Recurring toggle ── */}
+      <div style={{ marginBottom:16 }}>
+        <button type="button" onClick={()=>setIsRecurring(v=>!v)}
+          style={{ width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${isRecurring?t.accent:t.border}`,background:isRecurring?t.accentSoft:"transparent",color:isRecurring?t.accent:t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.2s",textAlign:"left" }}>
+          <span style={{ fontSize:16 }}>{isRecurring?"🔁":"🔁"}</span>
+          {isRecurring ? "Gasto recorrente ativado" : "Tornar recorrente?"}
+          <span style={{ marginLeft:"auto",fontSize:11,opacity:0.7 }}>{isRecurring?"▲ ocultar":"▼ configurar"}</span>
+        </button>
+        {isRecurring && (
+          <div style={{ marginTop:12,padding:"14px 14px 2px",borderRadius:12,background:t.surface,border:`1px solid ${t.accent}33` }}>
+            <Select label="Frequência" t={t} value={recurringForm.frequency} onChange={e=>setR("frequency",e.target.value)}>
+              <option value="monthly">📅 Mensal</option>
+              <option value="weekly">📅 Semanal</option>
+              <option value="yearly">📅 Anual</option>
+            </Select>
+            <Input label="Dia de vencimento" t={t} type="number" min={1} max={31} value={recurringForm.day_of_month} onChange={e=>setR("day_of_month",e.target.value)} />
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary }}>Tipo de valor</label>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+                {[{v:"fixed",label:"💰 Fixo"},{v:"variable",label:"🔔 Variável"}].map(opt=>(
+                  <button key={opt.v} type="button" onClick={()=>setR("amount_type",opt.v)}
+                    style={{ padding:"9px 10px",borderRadius:10,border:`1.5px solid ${recurringForm.amount_type===opt.v?t.accent:t.border}`,background:recurringForm.amount_type===opt.v?t.accentSoft:"transparent",color:recurringForm.amount_type===opt.v?t.accent:t.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s" }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Input label="Data de término (opcional)" t={t} type="date" value={recurringForm.end_date} onChange={e=>setR("end_date",e.target.value)} style={{ height:44,padding:"11px 14px" }} />
+          </div>
+        )}
+      </div>
+
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
         <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
         <Btn t={t} type="button" onClick={handle}>💾 Salvar</Btn>
@@ -1895,9 +1929,9 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
 
   return (
     <div onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}
-      style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+      style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px 16px",overflowY:"auto" }}>
       <div onClick={e=>e.stopPropagation()}
-        style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
+        style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,boxShadow:t.shadow,animation:"modalIn 0.25s ease",margin:"auto" }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
           <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>
             {isEdit ? "✏️ Editar Recorrente" : "🔁 Novo Recorrente"}
@@ -1948,7 +1982,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
         <div style={{ marginBottom:16 }}>
           <label style={{ display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary }}>Tipo de valor</label>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-            {[{v:"fixed",label:"💰 Valor fixo"},{v:"variable",label:"🔔 Variável (lembrete)"}].map(opt=>(
+            {[{v:"fixed",label:"💰 Valor fixo"},{v:"variable",label:"🔔 Variável"}].map(opt=>(
               <button key={opt.v} type="button" onClick={()=>set("amount_type",opt.v)}
                 style={{ padding:"10px 12px",borderRadius:12,border:`1.5px solid ${form.amount_type===opt.v?t.accent:t.border}`,background:form.amount_type===opt.v?t.accentSoft:"transparent",color:form.amount_type===opt.v?t.accent:t.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s" }}>
                 {opt.label}
@@ -1966,7 +2000,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
           </div>
         )}
 
-        <Input label="Data de término (opcional)" t={t} type="date" value={form.end_date} onChange={e=>set("end_date",e.target.value)} />
+        <Input label="Data de término (opcional)" t={t} type="date" value={form.end_date} onChange={e=>set("end_date",e.target.value)} style={{ height:44,padding:"11px 14px" }} />
 
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:4 }}>
           <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
@@ -3218,10 +3252,38 @@ export default function App() {
   };
 
   const saveExpense=async(data)=>{
-    const payload = { ...data, family_id: family?.family_id, user_id: user?.id };
-    if(!isDemo){try{const s=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(payload)});setExpenses(p=>[s[0],...p]);}catch(err){addToast(err.message,"error");return;}}
-    else setExpenses(p=>[payload,...p]);
-    setModal(null); addToast("Gasto registrado!","success");
+    const { _recurring, ...expData } = data;
+    const payload = { ...expData, family_id: family?.family_id, user_id: user?.id };
+    if(!isDemo){
+      try{
+        const s=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(payload)});
+        setExpenses(p=>[s[0],...p]);
+        // If marked as recurring, also create the recurring rule
+        if(_recurring && family?.family_id){
+          const recPayload = {
+            family_id: family.family_id,
+            description: expData.description,
+            category: expData.category,
+            type: expData.type,
+            user_label: expData.user_label,
+            amount_type: _recurring.amount_type,
+            amount: _recurring.amount_type === "fixed" ? (parseFloat(expData.amount)||null) : null,
+            frequency: _recurring.frequency,
+            day_of_month: parseInt(_recurring.day_of_month) || today.getDate(),
+            end_date: _recurring.end_date || null,
+            active: true,
+          };
+          await supabaseFetch("/recurring_expenses",{method:"POST",body:JSON.stringify(recPayload),headers:{"Prefer":"return=minimal"}});
+          addToast("Gasto registrado e regra recorrente criada! ✅","success");
+        } else {
+          addToast("Gasto registrado!","success");
+        }
+      }catch(err){addToast(err.message,"error");return;}
+    } else {
+      setExpenses(p=>[payload,...p]);
+      addToast("Gasto registrado!","success");
+    }
+    setModal(null);
   };
 
   const saveIncome=async(data)=>{
