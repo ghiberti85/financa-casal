@@ -1524,6 +1524,498 @@ function BudgetAlertCard({ expenses, t, family, isDemo, onGoToBudget }) {
   );
 }
 
+
+// ─── RECURRING EXPENSES ───────────────────────────────────────────────────────
+function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpenses, familyMembers }) {
+  const [rules, setRules]         = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [showForm, setShowForm]   = useState(false);
+  const [editRule, setEditRule]   = useState(null);      // rule being edited
+  const [pendingAmt, setPendingAmt] = useState({});      // { reminderId: "210" }
+  const [confirmingId, setConfirmingId] = useState(null);
+
+  const curMonth = today.getMonth() + 1;
+  const curYear  = today.getFullYear();
+
+  // ── Load rules + reminders ──────────────────────────────────────────────────
+  const loadAll = useCallback(async () => {
+    if (isDemo || !family) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const [r, rem] = await Promise.all([
+        supabaseFetch(`/recurring_expenses?family_id=eq.${family.family_id}&order=created_at.asc`),
+        supabaseFetch(`/recurring_reminders?family_id=eq.${family.family_id}&month=eq.${curMonth}&year=eq.${curYear}&select=*`),
+      ]);
+      setRules(r || []);
+      setReminders(rem || []);
+    } catch (e) { addToast("Erro ao carregar: " + e.message, "error"); }
+    finally { setLoading(false); }
+  }, [family, isDemo, curMonth, curYear, addToast]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  // ── Generate reminders for rules that don't have one this month ─────────────
+  useEffect(() => {
+    if (!rules.length || isDemo || !family) return;
+    const generate = async () => {
+      const toCreate = [];
+      for (const rule of rules) {
+        if (!rule.active) continue;
+        const alreadyExists = reminders.some(r => r.recurring_id === rule.id);
+        if (alreadyExists) continue;
+        // Check if rule applies this month
+        if (rule.frequency === "yearly" && rule.month_of_year !== curMonth) continue;
+        if (rule.end_date && rule.end_date < `${curYear}-${String(curMonth).padStart(2,"0")}-01`) continue;
+        toCreate.push({
+          family_id: family.family_id,
+          recurring_id: rule.id,
+          month: curMonth,
+          year: curYear,
+          amount: rule.amount_type === "fixed" ? rule.amount : null,
+          status: rule.amount_type === "fixed" ? "pending" : "pending",
+        });
+      }
+      if (!toCreate.length) return;
+      try {
+        const created = await supabaseFetch("/recurring_reminders", {
+          method: "POST",
+          body: JSON.stringify(toCreate),
+          headers: { "Prefer": "return=representation" },
+        });
+        if (created) setReminders(p => [...p, ...created]);
+      } catch {}
+    };
+    generate();
+  }, [rules, reminders, family, isDemo, curMonth, curYear]);
+
+  // ── Confirm a reminder (create expense) ─────────────────────────────────────
+  const confirmReminder = async (reminder, rule) => {
+    const amt = parseFloat(pendingAmt[reminder.id] ?? reminder.amount ?? "");
+    if (!amt || amt <= 0) { addToast("Informe um valor válido", "error"); return; }
+    setConfirmingId(reminder.id);
+    const day = rule.day_of_month || 1;
+    const dateStr = `${curYear}-${String(curMonth).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    try {
+      // Create expense
+      const expRows = await supabaseFetch("/expenses", {
+        method: "POST",
+        body: JSON.stringify({
+          family_id: family.family_id,
+          user_id: user?.id,
+          description: rule.description,
+          amount: amt,
+          date: dateStr,
+          category: rule.category,
+          type: rule.type,
+          parcelas: 1,
+          user_label: rule.user_label,
+        }),
+        headers: { "Prefer": "return=representation" },
+      });
+      const exp = expRows?.[0];
+      // Update reminder
+      await supabaseFetch(`/recurring_reminders?id=eq.${reminder.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "confirmed", expense_id: exp?.id, amount: amt }),
+        headers: { "Prefer": "return=minimal" },
+      });
+      setReminders(p => p.map(r => r.id === reminder.id ? { ...r, status: "confirmed", expense_id: exp?.id, amount: amt } : r));
+      if (exp) setExpenses(p => [exp, ...p]);
+      addToast(`${rule.description} — ${fmt(amt)} lançado!`, "success");
+    } catch (e) { addToast("Erro: " + e.message, "error"); }
+    finally { setConfirmingId(null); }
+  };
+
+  const skipReminder = async (reminder) => {
+    try {
+      await supabaseFetch(`/recurring_reminders?id=eq.${reminder.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "skipped" }),
+        headers: { "Prefer": "return=minimal" },
+      });
+      setReminders(p => p.map(r => r.id === reminder.id ? { ...r, status: "skipped" } : r));
+      addToast("Lembrete ignorado para este mês", "info");
+    } catch (e) { addToast("Erro: " + e.message, "error"); }
+  };
+
+  const toggleActive = async (rule) => {
+    try {
+      await supabaseFetch(`/recurring_expenses?id=eq.${rule.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ active: !rule.active, updated_at: new Date().toISOString() }),
+        headers: { "Prefer": "return=minimal" },
+      });
+      setRules(p => p.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
+      addToast(rule.active ? "Recorrente pausado" : "Recorrente reativado", "info");
+    } catch (e) { addToast("Erro: " + e.message, "error"); }
+  };
+
+  const deleteRule = async (rule) => {
+    if (!window.confirm(`Remover "${rule.description}"? Os lançamentos já feitos não serão afetados.`)) return;
+    try {
+      await supabaseFetch(`/recurring_expenses?id=eq.${rule.id}`, { method: "DELETE" });
+      setRules(p => p.filter(r => r.id !== rule.id));
+      setReminders(p => p.filter(r => r.recurring_id !== rule.id));
+      addToast("Recorrente removido", "info");
+    } catch (e) { addToast("Erro: " + e.message, "error"); }
+  };
+
+  const pending  = reminders.filter(r => r.status === "pending");
+  const confirmed = reminders.filter(r => r.status === "confirmed");
+
+  if (loading) return <div style={{ textAlign:"center",padding:"48px 0",color:t.textMuted,fontSize:14 }}>Carregando...</div>;
+
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
+
+      {/* ── Pending reminders ── */}
+      {pending.length > 0 && (
+        <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:20,padding:20 }}>
+          <div style={{ fontSize:14,fontWeight:700,color:t.warning,marginBottom:14,display:"flex",alignItems:"center",gap:8 }}>
+            🔔 {pending.length} lembrete{pending.length>1?"s":""} aguardando valor — {MONTH_FULL[today.getMonth()]}
+          </div>
+          <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+            {pending.map(rem => {
+              const rule = rules.find(r => r.id === rem.recurring_id);
+              if (!rule) return null;
+              const cat = CATEGORIES.find(c => c.id === rule.category);
+              const isFixed = rule.amount_type === "fixed";
+              const isConfirming = confirmingId === rem.id;
+              return (
+                <div key={rem.id} style={{ background:t.glassModal,border:`1px solid ${t.border}`,borderRadius:14,padding:"14px 16px" }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom: isFixed ? 10 : 10 }}>
+                    <span style={{ fontSize:20 }}>{cat?.emoji || "📦"}</span>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13,fontWeight:700,color:t.text }}>{rule.description}</div>
+                      <div style={{ fontSize:11,color:t.textMuted }}>
+                        {cat?.label} · dia {rule.day_of_month} · {rule.user_label}
+                        {isFixed && <span style={{ color:t.accent,fontWeight:600 }}> · {fmt(rule.amount)}</span>}
+                        {!isFixed && <span style={{ color:t.warning,fontWeight:600 }}> · valor variável</span>}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Value input for variable OR confirm for fixed */}
+                  <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                    <input
+                      type="number" step="0.01" min="0" placeholder={isFixed ? String(rule.amount) : "Quanto foi?"}
+                      value={pendingAmt[rem.id] ?? (isFixed ? String(rule.amount) : "")}
+                      onChange={e => setPendingAmt(p => ({ ...p, [rem.id]: e.target.value }))}
+                      style={{ flex:1,padding:"9px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
+                    />
+                    <button onClick={() => confirmReminder(rem, rule)} disabled={isConfirming}
+                      style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
+                      {isConfirming ? "..." : "✓ Confirmar"}
+                    </button>
+                    <button onClick={() => skipReminder(rem)} title="Ignorar este mês"
+                      style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirmed this month ── */}
+      {confirmed.length > 0 && (
+        <div style={{ background:t.successSoft,border:`1px solid ${t.success}33`,borderRadius:16,padding:"14px 18px" }}>
+          <div style={{ fontSize:13,fontWeight:700,color:t.success,marginBottom:10 }}>
+            ✅ {confirmed.length} lançado{confirmed.length>1?"s":""} em {MONTH_FULL[today.getMonth()]}
+          </div>
+          <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+            {confirmed.map(rem => {
+              const rule = rules.find(r => r.id === rem.recurring_id);
+              if (!rule) return null;
+              const cat = CATEGORIES.find(c => c.id === rule.category);
+              return (
+                <div key={rem.id} style={{ display:"flex",alignItems:"center",gap:10 }}>
+                  <span style={{ fontSize:16 }}>{cat?.emoji || "📦"}</span>
+                  <span style={{ fontSize:13,color:t.text,flex:1 }}>{rule.description}</span>
+                  <span style={{ fontSize:13,fontWeight:700,color:t.success }}>{fmt(rem.amount)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Rules list ── */}
+      <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:20,padding:20 }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <span style={{ fontSize:14,fontWeight:700,color:t.text }}>📋 Gastos recorrentes cadastrados</span>
+          {!isDemo && (
+            <button onClick={() => { setEditRule(null); setShowForm(true); }}
+              style={{ background:t.accent,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
+              + Novo
+            </button>
+          )}
+        </div>
+
+        {rules.length === 0 ? (
+          <div style={{ textAlign:"center",padding:"32px 0",color:t.textMuted,fontSize:13,lineHeight:1.8 }}>
+            Nenhum gasto recorrente cadastrado ainda.<br/>
+            Clique em <strong style={{ color:t.accent }}>+ Novo</strong> para adicionar aluguel, contas fixas, assinaturas...
+          </div>
+        ) : (
+          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            {rules.map(rule => {
+              const cat = CATEGORIES.find(c => c.id === rule.category);
+              const hasReminder = reminders.find(r => r.recurring_id === rule.id);
+              const freqLabel = rule.frequency==="monthly" ? "Mensal" : rule.frequency==="weekly" ? "Semanal" : "Anual";
+              const typeLabel = rule.type==="pix" ? "PIX" : rule.type==="debito" ? "Débito" : "Crédito";
+              return (
+                <div key={rule.id} style={{
+                  display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
+                  borderRadius:14,background:t.surface,border:`1px solid ${rule.active ? t.border : t.border}`,
+                  opacity: rule.active ? 1 : 0.55,
+                }}>
+                  <span style={{ fontSize:20,flexShrink:0 }}>{rule.active ? (cat?.emoji || "📦") : "⏸️"}</span>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                      {rule.description}
+                    </div>
+                    <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
+                      {freqLabel} · dia {rule.day_of_month}
+                      {rule.frequency==="yearly" && ` de ${MONTHS[rule.month_of_year-1]}`}
+                      {" · "}{cat?.label}{" · "}{typeLabel}{" · "}{rule.user_label}
+                    </div>
+                  </div>
+                  <div style={{ flexShrink:0,textAlign:"right" }}>
+                    {rule.amount_type === "fixed"
+                      ? <div style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(rule.amount)}</div>
+                      : <div style={{ fontSize:11,color:t.warning,fontWeight:600 }}>Variável</div>
+                    }
+                    {hasReminder && (
+                      <div style={{ fontSize:10,color:hasReminder.status==="confirmed"?t.success:t.warning,fontWeight:600,marginTop:2 }}>
+                        {hasReminder.status==="confirmed" ? "✅ lançado" : hasReminder.status==="skipped" ? "⏭ ignorado" : "🔔 pendente"}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display:"flex",gap:4,flexShrink:0 }}>
+                    <button onClick={() => { setEditRule(rule); setShowForm(true); }} title="Editar"
+                      style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}
+                      onMouseEnter={e=>e.currentTarget.style.color=t.accent}
+                      onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
+                    <button onClick={() => toggleActive(rule)} title={rule.active?"Pausar":"Reativar"}
+                      style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                      {rule.active ? "⏸" : "▶"}
+                    </button>
+                    <button onClick={() => deleteRule(rule)} title="Remover"
+                      style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}
+                      onMouseEnter={e=>e.currentTarget.style.color=t.danger}
+                      onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Form modal (create / edit) ── */}
+      {showForm && (
+        <RecurringForm
+          t={t} rule={editRule} family={family} user={user}
+          familyMembers={familyMembers} addToast={addToast}
+          onClose={() => { setShowForm(false); setEditRule(null); }}
+          onSaved={(saved, isEdit) => {
+            if (isEdit) setRules(p => p.map(r => r.id === saved.id ? saved : r));
+            else setRules(p => [...p, saved]);
+            setShowForm(false); setEditRule(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── RECURRING FORM ───────────────────────────────────────────────────────────
+function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose, onSaved }) {
+  const isEdit = !!rule;
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    description:   rule?.description   || "",
+    category:      rule?.category      || "",
+    type:          rule?.type          || "debito",
+    user_label:    rule?.user_label    || (familyMembers[0]?.first_name || "Você"),
+    amount_type:   rule?.amount_type   || "fixed",
+    amount:        rule?.amount        || "",
+    frequency:     rule?.frequency     || "monthly",
+    day_of_month:  rule?.day_of_month  || new Date().getDate(),
+    month_of_year: rule?.month_of_year || (new Date().getMonth() + 1),
+    end_date:      rule?.end_date      || "",
+  });
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handle = async () => {
+    if (!form.description.trim()) { addToast("Informe a descrição", "error"); return; }
+    if (!form.category) { addToast("Selecione uma categoria", "error"); return; }
+    if (form.amount_type === "fixed" && (!form.amount || parseFloat(form.amount) <= 0)) {
+      addToast("Informe o valor", "error"); return;
+    }
+    setSaving(true);
+    const payload = {
+      family_id:    family.family_id,
+      description:  form.description.trim(),
+      category:     form.category,
+      type:         form.type,
+      user_label:   form.user_label,
+      amount_type:  form.amount_type,
+      amount:       form.amount_type === "fixed" ? parseFloat(form.amount) : null,
+      frequency:    form.frequency,
+      day_of_month: parseInt(form.day_of_month),
+      month_of_year: form.frequency === "yearly" ? parseInt(form.month_of_year) : null,
+      end_date:     form.end_date || null,
+      updated_at:   new Date().toISOString(),
+    };
+    try {
+      if (isEdit) {
+        await supabaseFetch(`/recurring_expenses?id=eq.${rule.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+          headers: { "Prefer": "return=minimal" },
+        });
+        onSaved({ ...rule, ...payload }, true);
+        addToast("Recorrente atualizado!", "success");
+      } else {
+        const rows = await supabaseFetch("/recurring_expenses", {
+          method: "POST",
+          body: JSON.stringify({ ...payload, active: true }),
+          headers: { "Prefer": "return=representation" },
+        });
+        onSaved(rows[0], false);
+        addToast("Recorrente criado!", "success");
+      }
+    } catch (e) { addToast("Erro: " + e.message, "error"); setSaving(false); }
+  };
+
+  return (
+    <div onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}
+      style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+      <div onClick={e=>e.stopPropagation()}
+        style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
+          <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>
+            {isEdit ? "✏️ Editar Recorrente" : "🔁 Novo Recorrente"}
+          </h3>
+          <button onClick={onClose} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,padding:"2px 8px" }}>×</button>
+        </div>
+
+        <Input label="Descrição" t={t} value={form.description} onChange={e=>set("description",e.target.value)} placeholder="Ex: Conta de Luz, Netflix, Aluguel..." />
+
+        {/* Who pays */}
+        <Select label="Quem paga?" t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)}>
+          {familyMembers.length > 0
+            ? familyMembers.map(m => {
+                const name = [m.first_name, m.last_name].filter(Boolean).join(" ") || m.email;
+                return <option key={m.user_id} value={name}>{name}</option>;
+              })
+            : <option value="Você">Você</option>
+          }
+        </Select>
+
+        <Select label="Tipo de pagamento" t={t} value={form.type} onChange={e=>set("type",e.target.value)}>
+          <option value="pix">💸 PIX</option>
+          <option value="debito">🏦 Débito</option>
+          <option value="credito">💳 Crédito</option>
+        </Select>
+
+        <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
+          <option value="">Selecione...</option>
+          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+        </Select>
+
+        <Select label="Frequência" t={t} value={form.frequency} onChange={e=>set("frequency",e.target.value)}>
+          <option value="monthly">📅 Mensal</option>
+          <option value="weekly">📅 Semanal</option>
+          <option value="yearly">📅 Anual</option>
+        </Select>
+
+        <div style={{ display:"grid",gridTemplateColumns: form.frequency==="yearly" ? "1fr 1fr" : "1fr",gap:12 }}>
+          <Input label="Dia de vencimento" t={t} type="number" min={1} max={31} value={form.day_of_month} onChange={e=>set("day_of_month",e.target.value)} />
+          {form.frequency === "yearly" && (
+            <Select label="Mês" t={t} value={form.month_of_year} onChange={e=>set("month_of_year",e.target.value)}>
+              {MONTH_FULL.map((m,i) => <option key={i} value={i+1}>{m}</option>)}
+            </Select>
+          )}
+        </div>
+
+        {/* Amount type toggle */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary }}>Tipo de valor</label>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+            {[{v:"fixed",label:"💰 Valor fixo"},{v:"variable",label:"🔔 Variável (lembrete)"}].map(opt=>(
+              <button key={opt.v} type="button" onClick={()=>set("amount_type",opt.v)}
+                style={{ padding:"10px 12px",borderRadius:12,border:`1.5px solid ${form.amount_type===opt.v?t.accent:t.border}`,background:form.amount_type===opt.v?t.accentSoft:"transparent",color:form.amount_type===opt.v?t.accent:t.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s" }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {form.amount_type === "fixed" && (
+          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+        )}
+        {form.amount_type === "variable" && (
+          <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:t.warningSoft,border:`1px solid ${t.warning}33`,fontSize:12,color:t.warning,fontWeight:600 }}>
+            🔔 Todo mês você receberá um lembrete para inserir o valor pago.
+          </div>
+        )}
+
+        <Input label="Data de término (opcional)" t={t} type="date" value={form.end_date} onChange={e=>set("end_date",e.target.value)} />
+
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:4 }}>
+          <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
+          <Btn t={t} type="button" onClick={handle} disabled={saving}>
+            {saving ? "Salvando..." : isEdit ? "💾 Atualizar" : "💾 Criar"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── RECURRING ALERT CARD (Dashboard) ────────────────────────────────────────
+function RecurringAlertCard({ t, family, isDemo, onGoToRecurring }) {
+  const [pending, setPending] = useState([]);
+
+  useEffect(() => {
+    if (isDemo || !family) return;
+    const curMonth = today.getMonth() + 1;
+    const curYear  = today.getFullYear();
+    Promise.all([
+      supabaseFetch(`/recurring_reminders?family_id=eq.${family.family_id}&month=eq.${curMonth}&year=eq.${curYear}&status=eq.pending&select=*,recurring_expenses(*)`),
+    ]).then(([rems]) => setPending(rems || [])).catch(() => {});
+  }, [family, isDemo]);
+
+  if (!pending.length) return null;
+
+  return (
+    <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:16,padding:"14px 18px",cursor:"pointer" }} onClick={onGoToRecurring}>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+        <span style={{ fontSize:13,fontWeight:700,color:t.warning }}>🔔 {pending.length} conta{pending.length>1?"s":""} aguardando valor</span>
+        <span style={{ fontSize:12,color:t.accent,fontWeight:700 }}>Registrar →</span>
+      </div>
+      <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+        {pending.slice(0,4).map(rem => {
+          const rule = rem.recurring_expenses;
+          const cat  = CATEGORIES.find(c => c.id === rule?.category);
+          return (
+            <span key={rem.id} style={{ fontSize:11,background:t.surface,border:`1px solid ${t.border}`,borderRadius:8,padding:"3px 8px",color:t.text }}>
+              {cat?.emoji} {rule?.description}
+            </span>
+          );
+        })}
+        {pending.length > 4 && <span style={{ fontSize:11,color:t.textMuted }}>+{pending.length-4} mais</span>}
+      </div>
+    </div>
+  );
+}
+
 // ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
 function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
   const [budgets, setBudgets] = useState([]);
@@ -2828,6 +3320,7 @@ export default function App() {
     {id:"calendar",label:"Calendário",icon:"📅"},
     {id:"charts",label:"Gráficos",icon:"📊"},
     {id:"budget",label:"Orçamento",icon:"🎯"},
+    {id:"recurring",label:"Recorrentes",icon:"🔁"},
     {id:"transactions",label:"Lançamentos",icon:"📋"},
     {id:"import",label:"Importar",icon:"📥"},
   ];
@@ -2922,7 +3415,7 @@ export default function App() {
             </div>
             {/* Lançamentos + Importar in top nav */}
             <div style={{ flex:1,display:"flex",justifyContent:"center",gap:4 }}>
-              {tabs.filter(tb=>["budget","transactions","import"].includes(tb.id)).map(tb=>(
+              {tabs.filter(tb=>["budget","recurring","transactions","import"].includes(tb.id)).map(tb=>(
                 <button key={tb.id} onClick={()=>setTab(tb.id)}
                   style={{ padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
                   {tb.icon} {tb.label}
@@ -2971,7 +3464,7 @@ export default function App() {
           {/* Mobile dropdown: Lançamentos + Importar + Perfil + Família + Sair */}
           {mobileMenu && (
             <div className="desktop-hide" style={{ background:t.glassModal,borderTop:`1px solid ${t.border}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8 }}>
-              {[{id:"budget",icon:"🎯",label:"Orçamento"},{id:"transactions",icon:"📋",label:"Lançamentos"},{id:"import",icon:"📥",label:"Importar"}].map(tb=>(
+              {[{id:"budget",icon:"🎯",label:"Orçamento"},{id:"recurring",icon:"🔁",label:"Recorrentes"},{id:"transactions",icon:"📋",label:"Lançamentos"},{id:"import",icon:"📥",label:"Importar"}].map(tb=>(
                 <button key={tb.id} onClick={()=>{ setTab(tb.id); setMobileMenu(false); }}
                   style={{ padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.text }}>
                   {tb.icon} {tb.label}
@@ -3032,6 +3525,7 @@ export default function App() {
               </div>
               <SummaryCards expenses={expenses} incomes={incomes} t={t} />
               <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
+              <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
               <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                 <h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>📊 Últimos 6 meses</h3>
                 <ResponsiveContainer width="100%" height={200}>
@@ -3049,6 +3543,15 @@ export default function App() {
           )}
           {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} />}
           {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} />}
+          {tab==="recurring"&&(
+            <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
+              <div style={{ marginBottom:20 }}>
+                <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🔁 Gastos Recorrentes</h2>
+                <p style={{ color:t.textMuted,fontSize:14 }}>Aluguel, contas fixas, assinaturas e lembretes mensais</p>
+              </div>
+              <RecurringView expenses={expenses} setExpenses={setExpenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} />
+            </div>
+          )}
           {tab==="budget"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
               <div style={{ marginBottom:20 }}>
