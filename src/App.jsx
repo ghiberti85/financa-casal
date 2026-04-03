@@ -6,13 +6,40 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 let _authToken = localStorage.getItem("sb_token") || null;
 
-function setAuthToken(token) {
+let _refreshToken = localStorage.getItem("sb_refresh") || null;
+
+function setAuthToken(token, refreshToken = null) {
   _authToken = token;
   if (token) localStorage.setItem("sb_token", token);
   else localStorage.removeItem("sb_token");
+  if (refreshToken) {
+    _refreshToken = refreshToken;
+    localStorage.setItem("sb_refresh", refreshToken);
+  } else if (!token) {
+    _refreshToken = null;
+    localStorage.removeItem("sb_refresh");
+  }
 }
 
-async function supabaseFetch(path, options = {}) {
+// Silently refresh the access token using the refresh token
+async function refreshAccessToken() {
+  const rt = _refreshToken || localStorage.getItem("sb_refresh");
+  if (!rt) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: rt }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data.access_token) return false;
+    setAuthToken(data.access_token, data.refresh_token);
+    return true;
+  } catch { return false; }
+}
+
+async function supabaseFetch(path, options = {}, _retry = true) {
   const token = _authToken;
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
     ...options,
@@ -24,6 +51,15 @@ async function supabaseFetch(path, options = {}) {
       ...(options.headers || {}),
     },
   });
+  // Token expired — try to refresh once and retry the request
+  if (res.status === 401 && _retry) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return supabaseFetch(path, options, false);
+    // Refresh failed — token truly invalid, trigger re-login
+    setAuthToken(null);
+    window.dispatchEvent(new CustomEvent("sb-session-expired"));
+    throw new Error("Sessão expirada. Por favor, faça login novamente.");
+  }
   if (!res.ok && res.status !== 204) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `HTTP ${res.status}`);
@@ -400,7 +436,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
         addToast("Conta criada! Verifique seu e-mail antes de entrar.", "info");
         setMode("login"); setLoading(false); return;
       }
-      setAuthToken(data.access_token);
+      setAuthToken(data.access_token, data.refresh_token);
       const user = data.user;
       if (!user?.id) {
         addToast("Erro ao obter dados do usuário. Tente fazer login.", "error");
@@ -874,6 +910,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
   const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:"Você" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
+  const [saving, setSaving] = useState(false);
   const setR = (k, v) => setRecurringForm(p => ({ ...p, [k]: v }));
 
   const set = (k, v) => {
@@ -904,6 +941,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
   };
 
   const handle = () => {
+    if (saving) return;
     if (!form.description) return;
     const isCredit = form.type === "credito";
     const parcelas = parseInt(form.parcelas) || 1;
@@ -911,6 +949,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
       ? (parseFloat(form.installAmount) || parseFloat(form.amount) / parcelas)
       : parseFloat(form.amount);
     if (!effectiveAmount) return;
+    setSaving(true);
     onSave({
       ...form, amount: effectiveAmount, parcelas, id: Date.now(),
       _recurring: isRecurring ? recurringForm : null,
@@ -1012,7 +1051,10 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
 
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
         <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
-        <Btn t={t} type="button" onClick={handle}>💾 Salvar</Btn>
+        <Btn t={t} type="button" onClick={handle} disabled={saving}
+          style={{ opacity: saving ? 0.7 : 1 }}>
+          {saving ? "Salvando..." : "💾 Salvar"}
+        </Btn>
       </div>
     </div>
   );
@@ -1021,10 +1063,11 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
 // ─── INCOME FORM ──────────────────────────────────────────────────────────────
 function IncomeForm({ t, onSave, onClose, familyMembers }) {
   const [form, setForm] = useState({ description:"Salário", amount:"", date:today.toISOString().slice(0,10), source:"salario", category:"salario", user_label:"Você" });
+  const [saving, setSaving] = useState(false);
 
   const handle = () => {
-    if (!form.amount) return;
-    // Keep source in sync with category for DB compatibility
+    if (saving || !form.amount) return;
+    setSaving(true);
     onSave({ ...form, source: form.category, amount:parseFloat(form.amount), id:Date.now() });
   };
 
@@ -1041,7 +1084,10 @@ function IncomeForm({ t, onSave, onClose, familyMembers }) {
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
         <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
-        <Btn t={t} variant="success" type="button" onClick={handle}>💾 Salvar</Btn>
+        <Btn t={t} variant="success" type="button" onClick={handle} disabled={saving}
+          style={{ opacity: saving ? 0.7 : 1 }}>
+          {saving ? "Salvando..." : "💾 Salvar"}
+        </Btn>
       </div>
     </div>
   );
@@ -3170,7 +3216,16 @@ export default function App() {
   useEffect(() => {
     const handler = (e) => { setTab(e.detail); setMobileMenu(false); };
     window.addEventListener("goto-tab", handler);
-    return () => window.removeEventListener("goto-tab", handler);
+    // Handle expired session: log user out cleanly
+    const expiredHandler = () => {
+      setUser(null); setFamily(null); setProfile(null);
+      setFamilyMembers([]); setExpenses([]); setIncomes([]);
+    };
+    window.addEventListener("sb-session-expired", expiredHandler);
+    return () => {
+      window.removeEventListener("goto-tab", handler);
+      window.removeEventListener("sb-session-expired", expiredHandler);
+    };
   }, []);
 
   // Restore session from localStorage on page load
@@ -3183,7 +3238,7 @@ export default function App() {
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(async u => {
       if (!u?.id) { setInitializing(false); return; }
-      setAuthToken(token);
+      setAuthToken(token, localStorage.getItem("sb_refresh"));
       const fam = await getOrCreateFamily(u.id).catch(() => null);
       if (!fam) { setInitializing(false); return; }
       setUser(u);
@@ -3267,7 +3322,7 @@ export default function App() {
     };
     if(!isDemo){
       try{
-        const s=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(payload)});
+        const s=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(payload),headers:{"Prefer":"return=representation,resolution=ignore-duplicates"}});
         setExpenses(p=>[s[0],...p]);
         // If marked as recurring, also create the recurring rule
         if(_recurring && family?.family_id){
