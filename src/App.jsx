@@ -3544,7 +3544,7 @@ export default function App() {
 
         <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
           {/* ── Desktop nav ── */}
-          <div className="mobile-hide" style={{ maxWidth:1100,margin:"0 auto",padding:"0 16px",height:64,display:"flex",alignItems:"center",gap:8,overflow:"hidden" }}>
+          <div className="mobile-hide" style={{ maxWidth:1100,margin:"0 auto",padding:"0 16px",height:64,display:"flex",alignItems:"center",gap:8 }}>
             {/* Logo — compact */}
             <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
               <span style={{ fontSize:20 }}>💎</span>
@@ -3555,7 +3555,7 @@ export default function App() {
             <div style={{ width:1,height:24,background:t.border,flexShrink:0 }} />
 
             {/* All secondary tabs centered */}
-            <div style={{ flex:1,display:"flex",justifyContent:"center",gap:2 }}>
+            <div style={{ flex:1,display:"flex",justifyContent:"center",gap:2,overflow:"hidden",minWidth:0 }}>
               {tabs.filter(tb=>["budget","recurring","transactions","import"].includes(tb.id)).map(tb=>(
                 <button key={tb.id} onClick={()=>setTab(tb.id)}
                   title={tb.label}
@@ -3586,7 +3586,7 @@ export default function App() {
 
               {/* Avatar button — opens user dropdown */}
               {!isDemo && user && (
-                <div style={{ position:"relative" }}>
+                <div style={{ position:"relative",zIndex:9997 }}>
                   <button onClick={e=>{ e.stopPropagation(); setShowUserMenu(v=>!v); }}
                     style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:9,padding:"5px 10px",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
                     onMouseEnter={e=>e.currentTarget.style.background=t.accent+"22"}
@@ -3601,12 +3601,12 @@ export default function App() {
                   {/* Backdrop to close menu on outside click */}
                   {showUserMenu && (
                     <div onClick={()=>setShowUserMenu(false)}
-                      style={{ position:"fixed",inset:0,zIndex:199 }} />
+                      style={{ position:"fixed",inset:0,zIndex:9998 }} />
                   )}
                   {/* Dropdown */}
                   {showUserMenu && (
                     <div onClick={e=>e.stopPropagation()}
-                      style={{ position:"absolute",top:"calc(100% + 8px)",right:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:190,boxShadow:t.shadow,zIndex:200,animation:"fadeInUp 0.15s ease" }}>
+                      style={{ position:"absolute",top:"calc(100% + 8px)",right:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:190,boxShadow:t.shadow,zIndex:9999,animation:"fadeInUp 0.15s ease" }}>
                       <div style={{ padding:"8px 12px",borderBottom:`1px solid ${t.border}`,marginBottom:6 }}>
                         <div style={{ fontSize:12,fontWeight:700,color:t.text }}>{profile?.first_name} {profile?.last_name}</div>
                         <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
