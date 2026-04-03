@@ -3252,8 +3252,19 @@ export default function App() {
   };
 
   const saveExpense=async(data)=>{
-    const { _recurring, ...expData } = data;
-    const payload = { ...expData, family_id: family?.family_id, user_id: user?.id };
+    const { _recurring, installAmount, id: _id, ...expData } = data;
+    // Only send columns that exist in the expenses table
+    const payload = {
+      description: expData.description,
+      amount:      expData.amount,
+      date:        expData.date,
+      category:    expData.category,
+      type:        expData.type,
+      parcelas:    expData.parcelas,
+      user_label:  expData.user_label,
+      family_id:   family?.family_id,
+      user_id:     user?.id,
+    };
     if(!isDemo){
       try{
         const s=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(payload)});
