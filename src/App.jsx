@@ -577,9 +577,10 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [editItem, setEditItem] = useState(null);
-  const yr = viewDate.getFullYear(), mo = viewDate.getMonth();
-  const firstDay = new Date(yr, mo, 1).getDay();
-  const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+  const yr = viewDate.getUTCFullYear(), mo = viewDate.getUTCMonth();
+  // Use UTC to avoid timezone/DST issues in Safari/iOS
+  const firstDay = new Date(Date.UTC(yr, mo, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(yr, mo + 1, 0)).getUTCDate();
 
   const expByDay = useMemo(() => {
     const map = {};
@@ -608,9 +609,9 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <button onClick={() => setViewDate(new Date(yr,mo-1,1))} style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.text, fontSize: 16 }}>‹</button>
+        <button onClick={() => setViewDate(new Date(Date.UTC(yr,mo-1,1)))} style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.text, fontSize: 16 }}>‹</button>
         <h2 style={{ margin: 0, fontFamily: "'Sora', sans-serif", fontSize: 20, fontWeight: 700, color: t.text }}>{MONTH_FULL[mo]} {yr}</h2>
-        <button onClick={() => setViewDate(new Date(yr,mo+1,1))} style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.text, fontSize: 16 }}>›</button>
+        <button onClick={() => setViewDate(new Date(Date.UTC(yr,mo+1,1)))} style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.text, fontSize: 16 }}>›</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 8 }}>
         {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
@@ -619,7 +620,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
         {cells.map((day, i) => {
           if (!day) return <div key={i} />;
           const hasExp = expByDay[day]?.length > 0, hasInc = incByDay[day]?.length > 0;
-          const isToday = yr===today.getFullYear()&&mo===today.getMonth()&&day===today.getDate();
+          const isToday = yr===today.getUTCFullYear()&&mo===today.getUTCMonth()&&day===today.getUTCDate();
           const isSel = selectedDay === day;
           const totalDay = (expByDay[day]||[]).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
           return (
