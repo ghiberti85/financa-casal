@@ -65,7 +65,9 @@ async function supabaseFetch(path, options = {}, _retry = true) {
     throw new Error(err.message || `HTTP ${res.status}`);
   }
   if (res.status === 204) return null;
-  return res.json();
+  const text = await res.text();
+  if (!text || text.trim() === "") return null;
+  try { return JSON.parse(text); } catch { return null; }
 }
 
 async function supabaseAuth(action, email, password) {
