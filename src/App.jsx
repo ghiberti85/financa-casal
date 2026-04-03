@@ -634,6 +634,10 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
         <h2 style={{ margin: 0, fontFamily: "'Sora', sans-serif", fontSize: 20, fontWeight: 700, color: t.text }}>{MONTH_FULL[mo]} {yr}</h2>
         <button onClick={() => { if(mo===11){setViewYr(y=>y+1);setViewMo(0);}else{setViewMo(m=>m+1);} setSelectedDay(null); }} style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.text, fontSize: 16 }}>›</button>
       </div>
+      {/* DEBUG — remove after fix */}
+      <div style={{ padding:"8px 12px",marginBottom:8,borderRadius:8,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.4)",fontSize:11,color:"#f87171",fontFamily:"monospace" }}>
+        DEBUG: yr={yr} mo={mo} firstDay={firstDay} | 1/{String(mo+1).padStart(2,"0")}/{yr} = {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][firstDay]} | cells[0-6]={JSON.stringify(cells.slice(0,7))}
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 8 }}>
         {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
       </div>
