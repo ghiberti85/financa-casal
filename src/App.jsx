@@ -3200,6 +3200,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT");
@@ -3216,6 +3217,8 @@ export default function App() {
   useEffect(() => {
     const handler = (e) => { setTab(e.detail); setMobileMenu(false); };
     window.addEventListener("goto-tab", handler);
+    const closeUserMenu = () => setShowUserMenu(false);
+    window.addEventListener("click", closeUserMenu);
     // Handle expired session: log user out cleanly
     const expiredHandler = () => {
       setUser(null); setFamily(null); setProfile(null);
@@ -3225,6 +3228,7 @@ export default function App() {
     return () => {
       window.removeEventListener("goto-tab", handler);
       window.removeEventListener("sb-session-expired", expiredHandler);
+      window.removeEventListener("click", closeUserMenu);
     };
   }, []);
 
@@ -3535,40 +3539,91 @@ export default function App() {
 
         <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
           {/* ── Desktop nav ── */}
-          <div className="mobile-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 20px",height:64,display:"flex",alignItems:"center",gap:16 }}>
-            {/* Logo */}
-            <div style={{ display:"flex",alignItems:"center",gap:10,flexShrink:0 }}>
-              <span style={{ fontSize:22 }}>💎</span>
-              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:17,color:t.text,letterSpacing:"-0.02em" }}>Finanças do Casal</span>
+          <div className="mobile-hide" style={{ maxWidth:1100,margin:"0 auto",padding:"0 24px",height:64,display:"flex",alignItems:"center",gap:12 }}>
+            {/* Logo — compact */}
+            <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
+              <span style={{ fontSize:20 }}>💎</span>
+              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.02em",whiteSpace:"nowrap" }}>Finanças do Casal</span>
             </div>
-            {/* Lançamentos + Importar in top nav */}
-            <div style={{ flex:1,display:"flex",justifyContent:"center",gap:4 }}>
+
+            {/* Separator */}
+            <div style={{ width:1,height:24,background:t.border,flexShrink:0 }} />
+
+            {/* All secondary tabs centered */}
+            <div style={{ flex:1,display:"flex",justifyContent:"center",gap:2 }}>
               {tabs.filter(tb=>["budget","recurring","transactions","import"].includes(tb.id)).map(tb=>(
                 <button key={tb.id} onClick={()=>setTab(tb.id)}
-                  style={{ padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
+                  style={{ padding:"6px 12px",borderRadius:9,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:"transparent",color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 2px 10px ${t.accentGlow}`:"none" }}
+                  onMouseEnter={e=>{ if(tab!==tb.id){ e.currentTarget.style.background=t.surfaceHover; e.currentTarget.style.color=t.text; }}}
+                  onMouseLeave={e=>{ if(tab!==tb.id){ e.currentTarget.style.background="transparent"; e.currentTarget.style.color=t.textMuted; }}}>
                   {tb.icon} {tb.label}
                 </button>
               ))}
             </div>
-            {/* User buttons */}
-            <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
-              {isDemo&&<span style={{ fontSize:11,background:t.warningSoft,color:t.warning,padding:"4px 10px",borderRadius:8,fontWeight:700,border:`1px solid ${t.warning}33` }}>DEMO</span>}
+
+            {/* Separator */}
+            <div style={{ width:1,height:24,background:t.border,flexShrink:0 }} />
+
+            {/* Right: theme toggle + user avatar menu */}
+            <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
+              {isDemo&&<span style={{ fontSize:11,background:t.warningSoft,color:t.warning,padding:"3px 8px",borderRadius:6,fontWeight:700,border:`1px solid ${t.warning}33` }}>DEMO</span>}
+
+              {/* Dark/light toggle — icon only */}
+              <button onClick={()=>setDarkMode(!darkMode)}
+                title={darkMode?"Modo claro":"Modo escuro"}
+                style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:9,width:34,height:34,cursor:"pointer",color:t.text,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.2s" }}
+                onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                {darkMode?"☀️":"🌙"}
+              </button>
+
+              {/* Avatar button — opens user dropdown */}
               {!isDemo && user && (
-                <button onClick={()=>setShowProfile(true)} title="Meu perfil"
-                  style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.textMuted,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor=t.accent;e.currentTarget.style.color=t.accent;}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor=t.border;e.currentTarget.style.color=t.textMuted;}}>
-                  👤 {profile?.first_name || "Perfil"}
-                </button>
+                <div style={{ position:"relative" }}>
+                  <button onClick={()=>setShowUserMenu(v=>!v)}
+                    style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:9,padding:"5px 10px",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
+                    onMouseEnter={e=>e.currentTarget.style.background=t.accent+"22"}
+                    onMouseLeave={e=>e.currentTarget.style.background=t.accentSoft}>
+                    <span style={{ width:22,height:22,borderRadius:"50%",background:t.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0 }}>
+                      {(profile?.first_name||"U")[0].toUpperCase()}
+                    </span>
+                    {profile?.first_name || "Conta"}
+                    <span style={{ fontSize:10,opacity:0.7 }}>▼</span>
+                  </button>
+
+                  {/* Dropdown */}
+                  {showUserMenu && (
+                    <div onClick={e=>e.stopPropagation()}
+                      style={{ position:"absolute",top:"calc(100% + 8px)",right:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:180,boxShadow:t.shadow,zIndex:200,animation:"fadeInUp 0.15s ease" }}>
+                      <div style={{ padding:"8px 12px",borderBottom:`1px solid ${t.border}`,marginBottom:6 }}>
+                        <div style={{ fontSize:12,fontWeight:700,color:t.text }}>{profile?.first_name} {profile?.last_name}</div>
+                        <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
+                      </div>
+                      <button onClick={()=>{ setShowProfile(true); setShowUserMenu(false); }}
+                        style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.text,transition:"background 0.15s" }}
+                        onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        👤 Meu Perfil
+                      </button>
+                      {family && (
+                        <button onClick={()=>{ setShowInvite(true); setShowUserMenu(false); }}
+                          style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.text,transition:"background 0.15s" }}
+                          onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          👥 Família
+                        </button>
+                      )}
+                      <div style={{ height:1,background:t.border,margin:"6px 0" }} />
+                      <button onClick={()=>{ handleLogout(); setShowUserMenu(false); }}
+                        style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.danger,transition:"background 0.15s" }}
+                        onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        🚪 Sair
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
-              {!isDemo && family && (
-                <button onClick={()=>setShowInvite(true)} title="Família"
-                  style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:10,padding:"6px 12px",cursor:"pointer",color:t.accent,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
-                  👥 Família
-                </button>
-              )}
-              <button onClick={()=>setDarkMode(!darkMode)} style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>{darkMode?"☀️":"🌙"}</button>
-              <button onClick={handleLogout} style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 14px",cursor:"pointer",color:t.textMuted,fontSize:13,fontWeight:600 }}>Sair</button>
             </div>
           </div>
 
