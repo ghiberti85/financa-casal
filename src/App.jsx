@@ -586,9 +586,22 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   const yr = viewYr, mo = viewMo;
   const [selectedDay, setSelectedDay] = useState(null);
   const [editItem, setEditItem] = useState(null);
-  // Pure arithmetic — no Date objects involved in grid calculation
-  const firstDay = new Date(yr, mo, 1).getDay();
-  const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+  // Pure arithmetic using Tomohiko Sakamoto algorithm — zero Date objects, zero timezone bugs
+  const firstDay = (() => {
+    // Returns day of week (0=Sun, 1=Mon, ..., 6=Sat) for the 1st of yr/mo
+    // Works correctly in ALL browsers, ALL timezones, ALL times of day
+    const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+    let y = yr;
+    const m = mo + 1; // 1-12
+    if (m < 3) y--;
+    return (y + Math.floor(y/4) - Math.floor(y/100) + Math.floor(y/400) + t[m-1] + 1) % 7;
+  })();
+  const daysInMonth = (() => {
+    // Days in month using pure arithmetic — no Date objects
+    const days = [31,28,31,30,31,30,31,31,30,31,30,31];
+    const isLeap = (yr % 4 === 0 && yr % 100 !== 0) || yr % 400 === 0;
+    return mo === 1 && isLeap ? 29 : days[mo];
+  })();
 
   const expByDay = useMemo(() => {
     const map = {};
