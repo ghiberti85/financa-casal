@@ -3217,8 +3217,7 @@ export default function App() {
   useEffect(() => {
     const handler = (e) => { setTab(e.detail); setMobileMenu(false); };
     window.addEventListener("goto-tab", handler);
-    const closeUserMenu = () => setShowUserMenu(false);
-    window.addEventListener("click", closeUserMenu);
+
     // Handle expired session: log user out cleanly
     const expiredHandler = () => {
       setUser(null); setFamily(null); setProfile(null);
@@ -3228,7 +3227,7 @@ export default function App() {
     return () => {
       window.removeEventListener("goto-tab", handler);
       window.removeEventListener("sb-session-expired", expiredHandler);
-      window.removeEventListener("click", closeUserMenu);
+
     };
   }, []);
 
@@ -3477,6 +3476,12 @@ export default function App() {
     @media(min-width:601px){
       .desktop-hide{display:none!important;}
     }
+    @media(max-width:900px){
+      .nav-label{display:none!important;}
+    }
+    @media(max-width:700px) and (min-width:601px){
+      .nav-logo-text{display:none!important;}
+    }
   `;
 
   if (initializing) return (
@@ -3539,11 +3544,11 @@ export default function App() {
 
         <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
           {/* ── Desktop nav ── */}
-          <div className="mobile-hide" style={{ maxWidth:1100,margin:"0 auto",padding:"0 24px",height:64,display:"flex",alignItems:"center",gap:12 }}>
+          <div className="mobile-hide" style={{ maxWidth:1100,margin:"0 auto",padding:"0 16px",height:64,display:"flex",alignItems:"center",gap:8,overflow:"hidden" }}>
             {/* Logo — compact */}
             <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
               <span style={{ fontSize:20 }}>💎</span>
-              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.02em",whiteSpace:"nowrap" }}>Finanças do Casal</span>
+              <span className="nav-logo-text" style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.02em",whiteSpace:"nowrap" }}>Finanças do Casal</span>
             </div>
 
             {/* Separator */}
@@ -3553,10 +3558,12 @@ export default function App() {
             <div style={{ flex:1,display:"flex",justifyContent:"center",gap:2 }}>
               {tabs.filter(tb=>["budget","recurring","transactions","import"].includes(tb.id)).map(tb=>(
                 <button key={tb.id} onClick={()=>setTab(tb.id)}
-                  style={{ padding:"6px 12px",borderRadius:9,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",background:tab===tb.id?t.accent:"transparent",color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 2px 10px ${t.accentGlow}`:"none" }}
+                  title={tb.label}
+                  style={{ padding:"6px 10px",borderRadius:9,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",flexShrink:1,minWidth:0,background:tab===tb.id?t.accent:"transparent",color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 2px 10px ${t.accentGlow}`:"none" }}
                   onMouseEnter={e=>{ if(tab!==tb.id){ e.currentTarget.style.background=t.surfaceHover; e.currentTarget.style.color=t.text; }}}
                   onMouseLeave={e=>{ if(tab!==tb.id){ e.currentTarget.style.background="transparent"; e.currentTarget.style.color=t.textMuted; }}}>
-                  {tb.icon} {tb.label}
+                  <span>{tb.icon}</span>
+                  <span className="nav-label">{tb.label}</span>
                 </button>
               ))}
             </div>
@@ -3580,7 +3587,7 @@ export default function App() {
               {/* Avatar button — opens user dropdown */}
               {!isDemo && user && (
                 <div style={{ position:"relative" }}>
-                  <button onClick={()=>setShowUserMenu(v=>!v)}
+                  <button onClick={e=>{ e.stopPropagation(); setShowUserMenu(v=>!v); }}
                     style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:9,padding:"5px 10px",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
                     onMouseEnter={e=>e.currentTarget.style.background=t.accent+"22"}
                     onMouseLeave={e=>e.currentTarget.style.background=t.accentSoft}>
@@ -3591,10 +3598,15 @@ export default function App() {
                     <span style={{ fontSize:10,opacity:0.7 }}>▼</span>
                   </button>
 
+                  {/* Backdrop to close menu on outside click */}
+                  {showUserMenu && (
+                    <div onClick={()=>setShowUserMenu(false)}
+                      style={{ position:"fixed",inset:0,zIndex:199 }} />
+                  )}
                   {/* Dropdown */}
                   {showUserMenu && (
                     <div onClick={e=>e.stopPropagation()}
-                      style={{ position:"absolute",top:"calc(100% + 8px)",right:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:180,boxShadow:t.shadow,zIndex:200,animation:"fadeInUp 0.15s ease" }}>
+                      style={{ position:"absolute",top:"calc(100% + 8px)",right:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:190,boxShadow:t.shadow,zIndex:200,animation:"fadeInUp 0.15s ease" }}>
                       <div style={{ padding:"8px 12px",borderBottom:`1px solid ${t.border}`,marginBottom:6 }}>
                         <div style={{ fontSize:12,fontWeight:700,color:t.text }}>{profile?.first_name} {profile?.last_name}</div>
                         <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
