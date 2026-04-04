@@ -790,9 +790,9 @@ function ChartsView({ expenses, incomes, t }) {
   // Reference point: when period=month use selectedMonth/Year, when period=year use Dec of selectedYear
   const refYear = selectedYear;
   const refMonth = period === "month" ? selectedMonth : 11;
-  // For credit chart: always start from today to show future installments correctly
-  const creditRefYear = today.getFullYear();
-  const creditRefMonth = today.getMonth();
+  // Credit chart starts from the selected month/year
+  const creditRefYear = selectedYear;
+  const creditRefMonth = selectedMonth;
 
   // ── Bar chart: 6 months ending at the reference month ──
   const barData = useMemo(() => Array.from({length:6},(_,i) => {
@@ -836,7 +836,7 @@ function ChartsView({ expenses, incomes, t }) {
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, creditRefYear, creditRefMonth]);
+  }, [expenses, selectedYear, selectedMonth]);
 
   const CTip = ({ active, payload, label }) => {
     if (!active||!payload?.length) return null;
@@ -905,7 +905,7 @@ function ChartsView({ expenses, incomes, t }) {
         </div>
       </Card>
 
-      <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[creditRefMonth]}/${creditRefYear}`}>
+      <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={creditData}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
@@ -3786,7 +3786,7 @@ export default function App() {
               <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                 <h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>📊 Últimos 6 meses</h3>
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={Array.from({length:6},(_,i)=>{ const d=new Date(today.getFullYear(),today.getMonth()-5+i,1); const yr=d.getFullYear(),mn=d.getMonth(); const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], Receitas:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), Gastos:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
+                  <BarChart data={Array.from({length:6},(_,i)=>{ const baseYr=today.getFullYear(),baseMo=today.getMonth(); const totalMo=baseMo-5+i; const yr=baseYr+Math.floor(totalMo/12), mn=((totalMo%12)+12)%12; const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], Receitas:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), Gastos:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
                     <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
                     <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
