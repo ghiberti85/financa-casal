@@ -3382,7 +3382,17 @@ export default function App() {
   };
 
   const saveIncome=async(data)=>{
-    const payload = { ...data, family_id: family?.family_id, user_id: user?.id };
+    const { id: _id, ...incData } = data;
+    const payload = {
+      description: incData.description,
+      amount:      incData.amount,
+      date:        incData.date,
+      source:      incData.source,
+      category:    incData.category,
+      user_label:  incData.user_label,
+      family_id:   family?.family_id,
+      user_id:     user?.id,
+    };
     if(!isDemo){try{const s=await supabaseFetch("/incomes",{method:"POST",body:JSON.stringify(payload)});setIncomes(p=>[s[0],...p]);}catch(err){addToast(err.message,"error");return;}}
     else setIncomes(p=>[payload,...p]);
     setModal(null); addToast("Receita registrada!","success");
