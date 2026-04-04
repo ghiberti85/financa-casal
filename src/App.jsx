@@ -573,7 +573,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
 }
 
 // ─── CALENDAR ────────────────────────────────────────────────────────────────
-function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onEditExpense, onEditIncome, familyMembers }) {
+function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onEditExpense, onEditIncome, familyMembers, onDaySelect }) {
   // Store year/month as plain integers — completely avoids ALL timezone bugs
   const [viewYr, setViewYr] = useState(() => {
     const now = new Date();
@@ -647,7 +647,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
           // On day 1, use gridColumn to place it in the correct weekday column
           const gridStyle = day === 1 ? { gridColumn: firstDay + 1 } : {};
           return (
-            <div key={day} onClick={() => setSelectedDay(isSel?null:day)} style={{ ...gridStyle, borderRadius: 14, padding: "8px 4px", minHeight: 60, cursor: "pointer", background: isSel?t.accentSoft:isToday?t.accentSoft:t.surface, border: `1.5px solid ${isSel?t.accent:isToday?t.accent+"66":t.border}`, transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
+            <div key={day} onClick={() => { const next = isSel?null:day; setSelectedDay(next); if(onDaySelect) { if(next) { const dateStr = `${yr}-${String(mo+1).padStart(2,"0")}-${String(next).padStart(2,"0")}`; onDaySelect(dateStr); } else { onDaySelect(null); } } }} style={{ ...gridStyle, borderRadius: 14, padding: "8px 4px", minHeight: 60, cursor: "pointer", background: isSel?t.accentSoft:isToday?t.accentSoft:t.surface, border: `1.5px solid ${isSel?t.accent:isToday?t.accent+"66":t.border}`, transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
               onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background=t.surfaceHover; }}
               onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background=isToday?t.accentSoft:t.surface; }}
             >
@@ -944,8 +944,8 @@ function MemberSelect({ label, t, value, onChange, familyMembers }) {
 }
 
 // ─── EXPENSE FORM ─────────────────────────────────────────────────────────────
-function ExpenseForm({ t, onSave, onClose, familyMembers }) {
-  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:"Você" });
+function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
+  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:"Você" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
   const [saving, setSaving] = useState(false);
@@ -1099,8 +1099,8 @@ function ExpenseForm({ t, onSave, onClose, familyMembers }) {
 }
 
 // ─── INCOME FORM ──────────────────────────────────────────────────────────────
-function IncomeForm({ t, onSave, onClose, familyMembers }) {
-  const [form, setForm] = useState({ description:"Salário", amount:"", date:today.toISOString().slice(0,10), source:"salario", category:"salario", user_label:"Você" });
+function IncomeForm({ t, onSave, onClose, familyMembers, initialDate }) {
+  const [form, setForm] = useState({ description:"Salário", amount:"", date:initialDate || today.toISOString().slice(0,10), source:"salario", category:"salario", user_label:"Você" });
   const [saving, setSaving] = useState(false);
 
   const handle = () => {
@@ -3248,6 +3248,7 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
   const [modal, setModal] = useState(null);
+  const [calendarDate, setCalendarDate] = useState(null); // date selected in CalendarView
   const [showInvite, setShowInvite] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -3267,7 +3268,7 @@ export default function App() {
 
   // Listen for navigation events from ImportView
   useEffect(() => {
-    const handler = (e) => { setTab(e.detail); setMobileMenu(false); };
+    const handler = (e) => { setTab(e.detail); setMobileMenu(false); if(e.detail !== "calendar") setCalendarDate(null); };
     window.addEventListener("goto-tab", handler);
 
     // Handle expired session: log user out cleanly
@@ -3798,7 +3799,7 @@ export default function App() {
               </div>
             </div>
           )}
-          {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} />}
+          {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} />}
           {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} />}
           {tab==="recurring"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
@@ -3840,10 +3841,10 @@ export default function App() {
 
       {/* Expense / Income modals */}
       <Modal open={modal==="expense"} onClose={()=>setModal(null)} title="💸 Registrar Gasto" t={t} darkMode={darkMode}>
-        <ExpenseForm t={t} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} />
+        <ExpenseForm t={t} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} />
       </Modal>
       <Modal open={modal==="income"} onClose={()=>setModal(null)} title="💰 Registrar Receita" t={t} darkMode={darkMode}>
-        <IncomeForm t={t} onSave={saveIncome} onClose={()=>setModal(null)} familyMembers={familyMembers} />
+        <IncomeForm t={t} onSave={saveIncome} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} />
       </Modal>
 
       {/* Invite code modal */}
