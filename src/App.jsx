@@ -789,15 +789,18 @@ function ChartsView({ expenses, incomes, t }) {
 
   // Reference point: when period=month use selectedMonth/Year, when period=year use Dec of selectedYear
   const refYear = selectedYear;
-  const refMonth = period === "month" ? selectedMonth : 11; // December when viewing full year
+  const refMonth = period === "month" ? selectedMonth : 11;
+  // For credit chart: always start from today to show future installments correctly
+  const creditRefYear = today.getFullYear();
+  const creditRefMonth = today.getMonth();
 
   // ── Bar chart: 6 months ending at the reference month ──
   const barData = useMemo(() => Array.from({length:6},(_,i) => {
     const d = new Date(refYear, refMonth - 5 + i, 1);
     const yr=d.getFullYear(), mn=d.getMonth();
     const prefix=`${yr}-${String(mn+1).padStart(2,"0")}`;
-    const inc = incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+i.amount,0);
-    const exp = expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+e.amount,0);
+    const inc = incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+    const exp = expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
     return { name:MONTHS[mn], Receitas:Math.round(inc), Gastos:Math.round(exp), Saldo:Math.round(inc-exp) };
   }), [expenses, incomes, refYear, refMonth]);
 
@@ -815,16 +818,25 @@ function ChartsView({ expenses, incomes, t }) {
   const creditData = useMemo(() => {
     const result = {};
     for (let i=0;i<12;i++) {
-      const d=new Date(refYear, refMonth+i, 1);
+      const d=new Date(creditRefYear, creditRefMonth+i, 1);
       result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0 };
     }
     expenses.forEach(e => {
-      if (e.type!=="credito"||!e.parcelas||e.parcelas<=1) return;
-      const base=new Date(e.date), iv=e.amount/e.parcelas;
-      for (let p=0;p<e.parcelas;p++) { const d=new Date(base.getFullYear(),base.getMonth()+p,1); const k=`${d.getFullYear()}-${d.getMonth()}`; if (result[k]) result[k].value+=iv; }
+      const p = parseInt(e.parcelas) || 1;
+      if (e.type!=="credito" || p <= 1 || !e.date) return;
+      // amount is already the per-installment value
+      const iv = parseFloat(e.amount) || 0;
+      const [dYr, dMoStr] = e.date.slice(0,7).split("-");
+      const baseYr = parseInt(dYr), baseMo = parseInt(dMoStr) - 1;
+      for (let i=0; i<p; i++) {
+        const mo = (baseMo + i) % 12;
+        const yr = baseYr + Math.floor((baseMo + i) / 12);
+        const k = `${yr}-${mo}`;
+        if (result[k]) result[k].value += iv;
+      }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, refYear, refMonth]);
+  }, [expenses, creditRefYear, creditRefMonth]);
 
   const CTip = ({ active, payload, label }) => {
     if (!active||!payload?.length) return null;
@@ -893,7 +905,7 @@ function ChartsView({ expenses, incomes, t }) {
         </div>
       </Card>
 
-      <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${period==="month" ? MONTH_FULL[selectedMonth] : "Jan"}/${selectedYear}`}>
+      <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[creditRefMonth]}/${creditRefYear}`}>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={creditData}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
@@ -2364,11 +2376,25 @@ function SummaryCards({ expenses, incomes, t }) {
   const monthExp=expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
   const monthInc=incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const balance=monthInc-monthExp;
-  // Pending: each credit row IS one installment — sum rows with dates strictly after today
-  const todayStr = today.toISOString().slice(0,10);
-  const creditPending = expenses
-    .filter(e => e.type==="credito" && (parseInt(e.parcelas)||1) > 1 && (e.date||"").slice(0,10) > todayStr)
-    .reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+  // Parcelas futuras: amount = valor de cada parcela, parcelas = total de parcelas
+  // Calcular quantas parcelas ainda faltam (a partir do mês atual inclusive)
+  const creditPending = (() => {
+    const nowYr = today.getFullYear(), nowMo = today.getMonth();
+    return expenses.reduce((sum, e) => {
+      const p = parseInt(e.parcelas) || 1;
+      // Defensive: trim and lowercase to avoid type mismatch
+      if ((e.type||"").trim().toLowerCase() !== "credito" || p <= 1) return sum;
+      const installment = parseFloat(e.amount) || 0;
+      if (!e.date || installment <= 0) return sum;
+      const parts = e.date.slice(0,7).split("-");
+      const startYr = parseInt(parts[0]), startMo = parseInt(parts[1]) - 1;
+      // How many installments have already been charged (months before current month)
+      const elapsed = (nowYr - startYr) * 12 + (nowMo - startMo);
+      // Remaining = installments not yet paid (current month onward)
+      const remaining = Math.max(0, p - elapsed);
+      return sum + installment * remaining;
+    }, 0);
+  })();
   const cards=[
     { label:"Receitas do Mês",value:fmt(monthInc),color:t.success,bg:t.successSoft,border:`${t.success}33`,icon:"💰" },
     { label:"Gastos do Mês",value:fmt(monthExp),color:t.danger,bg:t.dangerSoft,border:`${t.danger}33`,icon:"💸" },
