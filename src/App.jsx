@@ -1024,11 +1024,11 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
       {isCredit ? (
         <>
           {/* Credit: parcelas + installAmount first, then total (readonly) and date */}
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12 }}>
             <Input label="Nº de parcelas" t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",parseInt(e.target.value)||1)} />
             <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden",marginBottom:0 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12,minWidth:0,overflow:"hidden",marginBottom:0 }}>
             <div>
               <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
               <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8 }}>
@@ -1044,7 +1044,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
           )}
         </>
       ) : (
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12,minWidth:0,overflow:"hidden" }}>
           <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
           <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
         </div>
@@ -1116,7 +1116,7 @@ function IncomeForm({ t, onSave, onClose, familyMembers, initialDate }) {
       <Select label="Categoria" t={t} value={form.category} onChange={e=>setForm({...form,category:e.target.value,source:e.target.value})}>
         {INCOME_SOURCES.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
       </Select>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12,minWidth:0,overflow:"hidden" }}>
         <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="0,00" />
         <Input label="Data" t={t} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
       </div>
@@ -1238,13 +1238,13 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
             return `Propagado de ${MONTHS[d.getMonth()]}/${d.getFullYear()} até ${MONTHS[last.getMonth()]}/${last.getFullYear()} · Total: ${fmt(totalVal)}`;
           })() : null;
           return (<>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12 }}>
               <Input label="Nº de parcelas" t={t} type="number" min={1} max={48}
                 value={form.parcelas} onChange={e=>set("parcelas",parseInt(e.target.value)||1)} />
               <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01"
                 value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
             </div>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden",marginBottom:0 }}>
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12,minWidth:0,overflow:"hidden",marginBottom:0 }}>
               <div>
                 <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
                 <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8 }}>
@@ -1260,7 +1260,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
             )}
           </>);
         })() : (
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:12,minWidth:0,overflow:"hidden" }}>
             <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
               onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
             <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
@@ -1480,17 +1480,17 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       )}
 
       {/* Summary cards */}
-      <div style={{ display:"grid", gridTemplateColumns: filter==="all"?"1fr 1fr":"1fr", gap:10, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns: filter==="all"?"repeat(auto-fit, minmax(140px, 1fr))":"1fr", gap:10, marginBottom:20 }}>
         {(filter==="all"||filter==="expense")&&(
           <div style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:14,padding:"14px 18px" }}>
             <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4 }}>GASTOS</div>
-            <div style={{ fontSize:18,fontWeight:800,color:t.danger }}>{fmt(totalExp)}</div>
+            <div style={{ fontSize:18,fontWeight:800,color:t.danger,wordBreak:"break-word" }}>{fmt(totalExp)}</div>
           </div>
         )}
         {(filter==="all"||filter==="income")&&(
           <div style={{ background:t.successSoft,border:`1px solid ${t.success}33`,borderRadius:14,padding:"14px 18px" }}>
             <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4 }}>RECEITAS</div>
-            <div style={{ fontSize:18,fontWeight:800,color:t.success }}>{fmt(totalInc)}</div>
+            <div style={{ fontSize:18,fontWeight:800,color:t.success,wordBreak:"break-word" }}>{fmt(totalInc)}</div>
           </div>
         )}
       </div>
@@ -1789,7 +1789,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
 
       {/* ── Pending reminders ── */}
       {pending.length > 0 && (
-        <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:20,padding:20 }}>
+        <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:20,padding:20,overflow:"hidden" }}>
           <div style={{ fontSize:14,fontWeight:700,color:t.warning,marginBottom:14,display:"flex",alignItems:"center",gap:8 }}>
             🔔 {pending.length} lembrete{pending.length>1?"s":""} aguardando valor — {MONTH_FULL[today.getMonth()]}
           </div>
@@ -1801,7 +1801,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
               const isFixed = rule.amount_type === "fixed";
               const isConfirming = confirmingId === rem.id;
               return (
-                <div key={rem.id} style={{ background:t.glassModal,border:`1px solid ${t.border}`,borderRadius:14,padding:"14px 16px" }}>
+                <div key={rem.id} style={{ background:t.glassModal,border:`1px solid ${t.border}`,borderRadius:14,padding:"14px 16px",overflow:"hidden",boxSizing:"border-box",width:"100%" }}>
                   <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom: isFixed ? 10 : 10 }}>
                     <span style={{ fontSize:20 }}>{cat?.emoji || "📦"}</span>
                     <div style={{ flex:1 }}>
@@ -1814,19 +1814,19 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                     </div>
                   </div>
                   {/* Value input for variable OR confirm for fixed */}
-                  <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                  <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
                     <input
                       type="number" step="0.01" min="0" placeholder={isFixed ? String(rule.amount) : "Quanto foi?"}
                       value={pendingAmt[rem.id] ?? (isFixed ? String(rule.amount) : "")}
                       onChange={e => setPendingAmt(p => ({ ...p, [rem.id]: e.target.value }))}
-                      style={{ flex:1,padding:"9px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
+                      style={{ flex:"1 1 140px",minWidth:0,padding:"9px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
                     />
                     <button onClick={() => confirmReminder(rem, rule)} disabled={isConfirming}
-                      style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
+                      style={{ flex:"0 0 auto",background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
                       {isConfirming ? "..." : "✓ Confirmar"}
                     </button>
                     <button onClick={() => skipReminder(rem)} title="Ignorar este mês"
-                      style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
+                      style={{ flex:"0 0 auto",background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
                       ✕
                     </button>
                   </div>
@@ -2118,7 +2118,7 @@ function RecurringAlertCard({ t, family, isDemo, onGoToRecurring }) {
         <span style={{ fontSize:13,fontWeight:700,color:t.warning }}>🔔 {pending.length} conta{pending.length>1?"s":""} aguardando valor</span>
         <span style={{ fontSize:12,color:t.accent,fontWeight:700 }}>Registrar →</span>
       </div>
-      <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+      <div style={{ display:"flex",flexWrap:"wrap",gap:6,overflow:"hidden" }}>
         {pending.slice(0,4).map(rem => {
           const rule = rem.recurring_expenses;
           const cat  = CATEGORIES.find(c => c.id === rule?.category);
@@ -2326,18 +2326,18 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
                     )}
                     {/* Inline edit */}
                     {isEditing && (
-                      <div style={{ display:"flex",gap:8,marginTop:10,alignItems:"center" }} onClick={e=>e.stopPropagation()}>
+                      <div style={{ display:"flex",gap:8,marginTop:10,alignItems:"center",flexWrap:"wrap" }} onClick={e=>e.stopPropagation()}>
                         <input
                           type="number" step="0.01" min="0" autoFocus
                           value={inputVal} onChange={e=>setInputVal(e.target.value)}
                           onKeyDown={e=>{ if(e.key==="Enter") saveBudget(cat.id,inputVal); if(e.key==="Escape") setEditingCat(null); }}
                           placeholder="Ex: 500,00"
-                          style={{ flex:1,padding:"8px 12px",borderRadius:10,border:`1px solid ${t.accent}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
+                          style={{ flex:"1 1 120px",minWidth:0,padding:"8px 12px",borderRadius:10,border:`1px solid ${t.accent}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
                         />
                         <button onClick={()=>saveBudget(cat.id,inputVal)}
-                          style={{ background:t.accent,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700 }}>✓</button>
+                          style={{ flex:"0 0 auto",background:t.accent,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700 }}>✓</button>
                         <button onClick={()=>setEditingCat(null)}
-                          style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>✕</button>
+                          style={{ flex:"0 0 auto",background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>✕</button>
                         {budget && (
                           <button onClick={()=>deleteBudget(cat.id)}
                             style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.danger,fontSize:12 }}>🗑</button>
@@ -2402,7 +2402,7 @@ function SummaryCards({ expenses, incomes, t }) {
     { label:"Parcelas Futuras",value:fmt(creditPending),color:t.warning,bg:t.warningSoft,border:`${t.warning}33`,icon:"💳" },
   ];
   return (
-    <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:14 }}>
+    <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(155px, 1fr))",gap:14 }}>
       {cards.map(c=>(
         <div key={c.label} style={{ background:c.bg,border:`1px solid ${c.border}`,backdropFilter:"blur(12px)",borderRadius:18,padding:"18px 20px",transition:"transform 0.2s" }}
           onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
@@ -2410,7 +2410,7 @@ function SummaryCards({ expenses, incomes, t }) {
         >
           <div style={{ fontSize:24,marginBottom:10 }}>{c.icon}</div>
           <div style={{ fontSize:11,fontWeight:700,color:t.textMuted,letterSpacing:"0.06em",marginBottom:6 }}>{c.label.toUpperCase()}</div>
-          <div style={{ fontSize:20,fontWeight:800,color:c.color,fontFamily:"'Sora', sans-serif" }}>{c.value}</div>
+          <div style={{ fontSize:18,fontWeight:800,color:c.color,fontFamily:"'Sora', sans-serif",wordBreak:"break-word",lineHeight:1.2 }}>{c.value}</div>
         </div>
       ))}
     </div>
@@ -3706,7 +3706,7 @@ export default function App() {
           <div className="desktop-hide" style={{ padding:"0 16px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <span style={{ fontSize:22 }}>💎</span>
-              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:16,color:t.text }}>Finanças do Casal</span>
+              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:16,color:t.text,overflow:"hidden",textOverflow:"ellipsis",maxWidth:"58vw" }}>Finanças do Casal</span>
             </div>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <button onClick={()=>setDarkMode(!darkMode)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.text,fontSize:18,padding:4 }}>{darkMode?"☀️":"🌙"}</button>
@@ -3825,9 +3825,9 @@ export default function App() {
 
         {/* FAB — hidden on import tab to avoid overlapping the review footer */}
         {tab !== "import" && (
-          <div style={{ position:"fixed",bottom:28,right:24,zIndex:200,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
-            <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Receita</Btn>
-            <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Gasto</Btn>
+          <div style={{ position:"fixed",bottom:24,right:16,zIndex:200,display:"flex",flexDirection:"column",gap:10,alignItems:"flex-end" }}>
+            <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:14,height:44,fontSize:13,padding:"0 20px",boxShadow:`0 4px 16px ${t.success}44` }}>+ Receita</Btn>
+            <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:14,height:44,fontSize:13,padding:"0 20px" }}>+ Gasto</Btn>
           </div>
         )}
 
