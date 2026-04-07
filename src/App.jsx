@@ -1801,7 +1801,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
               const isFixed = rule.amount_type === "fixed";
               const isConfirming = confirmingId === rem.id;
               return (
-                <div key={rem.id} style={{ background:t.glassModal,border:`1px solid ${t.border}`,borderRadius:14,padding:"14px 16px" }}>
+                <div key={rem.id} style={{ background:t.glassModal,border:`1px solid ${t.border}`,borderRadius:14,padding:"14px 16px",overflow:"hidden",boxSizing:"border-box",width:"100%" }}>
                   <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom: isFixed ? 10 : 10 }}>
                     <span style={{ fontSize:20 }}>{cat?.emoji || "📦"}</span>
                     <div style={{ flex:1 }}>
@@ -1814,19 +1814,19 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                     </div>
                   </div>
                   {/* Value input for variable OR confirm for fixed */}
-                  <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                  <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
                     <input
                       type="number" step="0.01" min="0" placeholder={isFixed ? String(rule.amount) : "Quanto foi?"}
                       value={pendingAmt[rem.id] ?? (isFixed ? String(rule.amount) : "")}
                       onChange={e => setPendingAmt(p => ({ ...p, [rem.id]: e.target.value }))}
-                      style={{ flex:1,padding:"9px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
+                      style={{ flex:"1 1 140px",minWidth:0,padding:"9px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
                     />
                     <button onClick={() => confirmReminder(rem, rule)} disabled={isConfirming}
-                      style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
+                      style={{ flex:"0 0 auto",background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
                       {isConfirming ? "..." : "✓ Confirmar"}
                     </button>
                     <button onClick={() => skipReminder(rem)} title="Ignorar este mês"
-                      style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
+                      style={{ flex:"0 0 auto",background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
                       ✕
                     </button>
                   </div>
@@ -3772,7 +3772,7 @@ export default function App() {
           </div>
         </div>
 
-        <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",zIndex:1,animation:"fadeInUp 0.3s ease" }}>
+        <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",animation:"fadeInUp 0.3s ease" }}>
           {tab==="dashboard"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
               <div>
@@ -3825,9 +3825,9 @@ export default function App() {
 
         {/* FAB — hidden on import tab to avoid overlapping the review footer */}
         {tab !== "import" && (
-          <div style={{ position:"fixed",bottom:28,right:24,zIndex:150,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
-            <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,minWidth:148,height:48,fontSize:14,justifyContent:"center" }}>+ Receita</Btn>
-            <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,minWidth:148,height:48,fontSize:14,justifyContent:"center" }}>+ Gasto</Btn>
+          <div style={{ position:"fixed",bottom:28,right:24,zIndex:200,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
+            <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Receita</Btn>
+            <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Gasto</Btn>
           </div>
         )}
 
