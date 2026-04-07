@@ -319,7 +319,7 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
   if (!open) return null;
   return (
     <div onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }} style={{
-      position: "fixed", inset: 0, zIndex: 1000,
+      position: "fixed", inset: 0, zIndex: 500,
       background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
@@ -759,7 +759,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       {/* Edit modal — inside CalendarView */}
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
-          style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+          style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
@@ -1569,7 +1569,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       {/* Edit Modal */}
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
-          style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+          style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
@@ -1819,7 +1819,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                       type="number" step="0.01" min="0" placeholder={isFixed ? String(rule.amount) : "Quanto foi?"}
                       value={pendingAmt[rem.id] ?? (isFixed ? String(rule.amount) : "")}
                       onChange={e => setPendingAmt(p => ({ ...p, [rem.id]: e.target.value }))}
-                      style={{ flex:1,minWidth:0,maxWidth:110,padding:"9px 10px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
+                      style={{ flex:1,padding:"9px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
                     />
                     <button onClick={() => confirmReminder(rem, rule)} disabled={isConfirming}
                       style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
@@ -2013,7 +2013,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
 
   return (
     <div onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}
-      style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:80,paddingBottom:32,paddingLeft:16,paddingRight:16,overflowY:"auto",WebkitOverflowScrolling:"touch" }}>
+      style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:80,paddingBottom:32,paddingLeft:16,paddingRight:16,overflowY:"auto",WebkitOverflowScrolling:"touch" }}>
       <div onClick={e=>e.stopPropagation()}
         style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,boxShadow:t.shadow,animation:"modalIn 0.25s ease",flexShrink:0 }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
@@ -3772,7 +3772,7 @@ export default function App() {
           </div>
         </div>
 
-        <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",zIndex:1,animation:"fadeInUp 0.3s ease" }}>
+        <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",animation:"fadeInUp 0.3s ease" }}>
           {tab==="dashboard"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
               <div>
