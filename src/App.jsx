@@ -197,19 +197,14 @@ const themes = {
 
 const CATEGORIES = [
   { id: "alimentacao", label: "Alimentação", emoji: "🍽️" },
-  { id: "supermercado", label: "Supermercado", emoji: "🛒" },
-  { id: "moradia", label: "Moradia", emoji: "🏠" },
   { id: "transporte", label: "Transporte", emoji: "🚗" },
+  { id: "moradia", label: "Moradia", emoji: "🏠" },
   { id: "saude", label: "Saúde", emoji: "💊" },
-  { id: "farmacia", label: "Farmácia", emoji: "💉" },
-  { id: "filho", label: "Filho", emoji: "👶" },
-  { id: "educacao", label: "Educação", emoji: "📚" },
-  { id: "beleza", label: "Beleza", emoji: "💅" },
-  { id: "vestuario", label: "Vestuário", emoji: "👕" },
   { id: "lazer", label: "Lazer", emoji: "🎬" },
-  { id: "assinaturas", label: "Assinaturas", emoji: "📱" },
-  { id: "presentes", label: "Presentes", emoji: "🎁" },
+  { id: "vestuario", label: "Vestuário", emoji: "👕" },
+  { id: "educacao", label: "Educação", emoji: "📚" },
   { id: "tecnologia", label: "Tecnologia", emoji: "💻" },
+  { id: "supermercado", label: "Supermercado", emoji: "🛒" },
   { id: "outros", label: "Outros", emoji: "📦" },
 ];
 
@@ -610,30 +605,9 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 
   const expByDay = useMemo(() => {
     const map = {};
-    const prefix = `${yr}-${String(mo+1).padStart(2,"0")}`;
     expenses.forEach((e) => {
-      const baseDate = e.date?.slice(0,10);
-      if (!baseDate) return;
-      const p = parseInt(e.parcelas) || 1;
-      if (e.type === "credito" && p > 1) {
-        const [bYr, bMoStr] = baseDate.slice(0,7).split("-");
-        const bYrN = parseInt(bYr), bMoN = parseInt(bMoStr) - 1;
-        for (let i = 0; i < p; i++) {
-          const pMo = (bMoN + i) % 12;
-          const pYr = bYrN + Math.floor((bMoN + i) / 12);
-          if (`${pYr}-${String(pMo+1).padStart(2,"0")}` === prefix) {
-            const day = parseInt(baseDate.slice(8));
-            if (!map[day]) map[day] = [];
-            map[day].push({ ...e, _installNum: i+1, _installTotal: p });
-          }
-        }
-      } else {
-        if (baseDate.startsWith(prefix)) {
-          const day = parseInt(baseDate.slice(8));
-          if (!map[day]) map[day] = [];
-          map[day].push(e);
-        }
-      }
+      const d = e.date?.slice(0,10);
+      if (d?.startsWith(`${yr}-${String(mo+1).padStart(2,"0")}`)) { const day = parseInt(d.slice(8)); if (!map[day]) map[day]=[]; map[day].push(e); }
     });
     return map;
   }, [expenses, yr, mo]);
@@ -664,17 +638,6 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 8 }}>
         {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
       </div>
-      <div style={{ display:"flex",gap:16,marginBottom:10,justifyContent:"flex-end" }}>
-        <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.danger,display:"inline-block" }}/>Gastos
-        </div>
-        <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.accent,display:"inline-block" }}/>Parcelas
-        </div>
-        <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.success,display:"inline-block" }}/>Receitas
-        </div>
-      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
         {dayCells.map((day, i) => {
           const hasExp = expByDay[day]?.length > 0, hasInc = incByDay[day]?.length > 0;
@@ -690,8 +653,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
             >
               <span style={{ fontSize: 14, fontWeight: isToday?800:600, color: isSel||isToday?t.accent:t.text }}>{day}</span>
               <div style={{ display: "flex", gap: 3 }}>
-                {(expByDay[day]||[]).some(e=>!e._installNum||e._installNum===1)&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.danger }}/>}
-                {(expByDay[day]||[]).some(e=>e._installNum>1)&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.accent }}/>}
+                {hasExp&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.danger }}/>}
                 {hasInc&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.success }}/>}
               </div>
               {totalDay>0&&<span style={{ fontSize:9,color:t.danger,fontWeight:700 }}>{fmtShort(totalDay)}</span>}
@@ -748,7 +710,13 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                 const typeLabel = exp.type==="pix"?"PIX":exp.type==="debito"?"Débito":"Crédito";
                 let subtitleExtra = "";
                 if(exp.type==="credito" && p>1){
-                  const nth = exp._installNum || 1;
+                  const startKey = exp.description?.toLowerCase().trim();
+                  const allExpSame = (expenses||[]).filter(e=>e.description?.toLowerCase().trim()===startKey&&e.type==="credito"&&parseInt(e.parcelas)===p).sort((a,b)=>a.date?.localeCompare(b.date));
+                  const startDate = allExpSame[0]?.date || exp.date;
+                  const startD = new Date((startDate||exp.date).slice(0,10)+"T12:00:00");
+                  const thisD  = new Date((exp.date||"").slice(0,10)+"T12:00:00");
+                  const diffM  = (thisD.getFullYear()-startD.getFullYear())*12+(thisD.getMonth()-startD.getMonth());
+                  const nth = Math.max(1,Math.min(p,diffM+1));
                   subtitleExtra = ` · Crédito ${nth} de ${p}`;
                 } else {
                   subtitleExtra = ` · ${typeLabel}`;
@@ -808,12 +776,10 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 }
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
-function ChartsView({ expenses, incomes, t, onEditExpense, onEditIncome, familyMembers }) {
+function ChartsView({ expenses, incomes, t }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
-  const period = "month";
-  const [selectedCreditMonth, setSelectedCreditMonth] = useState(null);
-  const [editItem, setEditItem] = useState(null);
+  const period = "month"; // always month mode now
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -853,7 +819,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onEditIncome, familyM
     const result = {};
     for (let i=0;i<12;i++) {
       const d=new Date(creditRefYear, creditRefMonth+i, 1);
-      result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0, items:[], yr:d.getFullYear(), mo:d.getMonth() };
+      result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0 };
     }
     expenses.forEach(e => {
       const p = parseInt(e.parcelas) || 1;
@@ -866,7 +832,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onEditIncome, familyM
         const mo = (baseMo + i) % 12;
         const yr = baseYr + Math.floor((baseMo + i) / 12);
         const k = `${yr}-${mo}`;
-        if (result[k]) { result[k].value += iv; result[k].items.push({ ...e, _installNum: i+1, _installTotal: p }); }
+        if (result[k]) result[k].value += iv;
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
@@ -940,96 +906,16 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onEditIncome, familyM
       </Card>
 
       <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
-        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>
-          Toque em um ponto para ver e editar as parcelas daquele mês.
-        </p>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={creditData}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
             <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ stroke:t.accent,strokeWidth:1,strokeDasharray:"4 4" }} />
-            <Line
-              type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5}
-              name="Parcelas" activeDot={false}
-              dot={(props) => {
-                const { cx, cy, payload } = props;
-                const k = `${payload.yr}-${payload.mo}`;
-                const isSel = selectedCreditMonth === k;
-                return (
-                  <g key={k}
-                    onClick={() => setSelectedCreditMonth(prev => prev === k ? null : k)}
-                    style={{ cursor:"pointer" }}>
-                    <circle cx={cx} cy={cy} r={20} fill="transparent" />
-                    <circle cx={cx} cy={cy} r={isSel?9:5}
-                      fill={isSel?"#fff":t.accent} stroke={t.accent} strokeWidth={isSel?3:0} />
-                  </g>
-                );
-              }}
-            />
+            <Line type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5} dot={{ fill:t.accent,r:4 }} activeDot={{ r:6 }} name="Parcelas" />
           </LineChart>
         </ResponsiveContainer>
-
-        {selectedCreditMonth && (() => {
-          const md = creditData.find(d => `${d.yr}-${d.mo}` === selectedCreditMonth);
-          if (!md?.items?.length) return null;
-          return (
-            <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>
-                  💳 Parcelas em {md.name}
-                </h4>
-                <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-                  <span style={{ fontSize:15,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif" }}>{fmt(md.value)}</span>
-                  <button onClick={()=>setSelectedCreditMonth(null)}
-                    style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
-                </div>
-              </div>
-              <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                {md.items.map((e,i) => {
-                  const cat = CATEGORIES.find(c=>c.id===e.category);
-                  return (
-                    <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.dangerSoft,border:`1px solid ${t.danger}22` }}>
-                      <span style={{ fontSize:20,flexShrink:0 }}>{cat?.emoji||"💳"}</span>
-                      <div style={{ flex:1,minWidth:0 }}>
-                        <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.description}</div>
-                        <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
-                          {e.user_label} · Parcela {e._installNum} de {e._installTotal} · dia {e.date?.slice(8,10)}
-                        </div>
-                      </div>
-                      <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
-                        <span style={{ fontSize:14,fontWeight:700,color:t.danger }}>{fmt(parseFloat(e.amount)||0)}</span>
-                        {onEditExpense && (
-                          <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
-                            style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
-                            onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
-                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
       </Card>
-
-      {/* Modal de edição do gráfico de parcelas */}
-      {editItem && (
-        <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
-          style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
-          <div onClick={e=>e.stopPropagation()}
-            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
-              <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
-            </div>
-            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]}
-              onSave={async(payload)=>{ if(onEditExpense) await onEditExpense(payload); setEditItem(null); }} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1149,10 +1035,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
                 {totalValue > 0 ? fmt(totalValue) : "—"}
               </div>
             </div>
-            <div>
-              <Input label="📅 Data da 1ª cobrança" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
-              <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
-            </div>
+            <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
           {creditInfo && (
             <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
@@ -1368,10 +1251,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
                   {totalVal > 0 ? fmt(totalVal) : "—"}
                 </div>
               </div>
-              <div>
-                <Input label="📅 Data da 1ª cobrança" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
-                <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
-              </div>
+              <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
             </div>
             {creditInfo && (
               <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
@@ -1835,7 +1715,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
     const day = rule.day_of_month || 1;
     const dateStr = `${curYear}-${String(curMonth).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     try {
-      // Create expense
+      // Create expense — ignore-duplicates evita erro se já foi lançado manualmente
       const expRows = await supabaseFetch("/expenses", {
         method: "POST",
         body: JSON.stringify({
@@ -1849,7 +1729,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
           parcelas: 1,
           user_label: rule.user_label,
         }),
-        headers: { "Prefer": "return=representation" },
+        headers: { "Prefer": "return=representation,resolution=ignore-duplicates" },
       });
       const exp = expRows?.[0];
       // Update reminder
@@ -1860,7 +1740,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
       });
       setReminders(p => p.map(r => r.id === reminder.id ? { ...r, status: "confirmed", expense_id: exp?.id, amount: amt } : r));
       if (exp) setExpenses(p => [exp, ...p]);
-      addToast(`${rule.description} — ${fmt(amt)} lançado!`, "success");
+      addToast(exp ? `${rule.description} — ${fmt(amt)} lançado!` : `${rule.description} — já registrado, lembrete confirmado ✓`, "success");
     } catch (e) { addToast("Erro: " + e.message, "error"); }
     finally { setConfirmingId(null); }
   };
@@ -1943,7 +1823,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                     />
                     <button onClick={() => confirmReminder(rem, rule)} disabled={isConfirming}
                       style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
-                      {isConfirming ? "..." : "✓ Confirmar"}
+                      {isConfirming ? "..." : "✓"}
                     </button>
                     <button onClick={() => skipReminder(rem)} title="Ignorar este mês"
                       style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
@@ -2432,8 +2312,8 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
                         {/* Edit/Set button */}
                         {!isDemo && !isEditing && (
                           <button onClick={() => { setEditingCat(cat.id); setInputVal(budget ? String(budget.amount) : ""); }}
-                            style={{ background:budget?t.surfaceHover:t.accentSoft,border:`1px solid ${budget?t.border:t.accent+"33"}`,borderRadius:8,padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:700,color:budget?t.textMuted:t.accent,whiteSpace:"nowrap" }}>
-                            {budget ? "✏️ Editar" : "+ Definir"}
+                            style={{ background:budget?t.surfaceHover:t.accentSoft,border:`1px solid ${budget?t.border:t.accent+"33"}`,borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:13,fontWeight:700,color:budget?t.textMuted:t.accent,flexShrink:0 }}>
+                            {budget ? "✏️" : "+"}
                           </button>
                         )}
                       </div>
@@ -3920,7 +3800,7 @@ export default function App() {
             </div>
           )}
           {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} />}
-          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} />}
+          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} />}
           {tab==="recurring"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
               <div style={{ marginBottom:20 }}>
