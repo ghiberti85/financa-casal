@@ -197,14 +197,19 @@ const themes = {
 
 const CATEGORIES = [
   { id: "alimentacao", label: "Alimentação", emoji: "🍽️" },
-  { id: "transporte", label: "Transporte", emoji: "🚗" },
-  { id: "moradia", label: "Moradia", emoji: "🏠" },
-  { id: "saude", label: "Saúde", emoji: "💊" },
-  { id: "lazer", label: "Lazer", emoji: "🎬" },
-  { id: "vestuario", label: "Vestuário", emoji: "👕" },
-  { id: "educacao", label: "Educação", emoji: "📚" },
-  { id: "tecnologia", label: "Tecnologia", emoji: "💻" },
   { id: "supermercado", label: "Supermercado", emoji: "🛒" },
+  { id: "moradia", label: "Moradia", emoji: "🏠" },
+  { id: "transporte", label: "Transporte", emoji: "🚗" },
+  { id: "saude", label: "Saúde", emoji: "💊" },
+  { id: "farmacia", label: "Farmácia", emoji: "💉" },
+  { id: "filho", label: "Filho", emoji: "👶" },
+  { id: "educacao", label: "Educação", emoji: "📚" },
+  { id: "beleza", label: "Beleza", emoji: "💅" },
+  { id: "vestuario", label: "Vestuário", emoji: "👕" },
+  { id: "lazer", label: "Lazer", emoji: "🎬" },
+  { id: "assinaturas", label: "Assinaturas", emoji: "📱" },
+  { id: "presentes", label: "Presentes", emoji: "🎁" },
+  { id: "tecnologia", label: "Tecnologia", emoji: "💻" },
   { id: "outros", label: "Outros", emoji: "📦" },
 ];
 
@@ -319,7 +324,7 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
   if (!open) return null;
   return (
     <div onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }} style={{
-      position: "fixed", inset: 0, zIndex: 500,
+      position: "fixed", inset: 0, zIndex: 1000,
       background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
@@ -605,9 +610,34 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 
   const expByDay = useMemo(() => {
     const map = {};
+    const prefix = `${yr}-${String(mo+1).padStart(2,"0")}`;
     expenses.forEach((e) => {
-      const d = e.date?.slice(0,10);
-      if (d?.startsWith(`${yr}-${String(mo+1).padStart(2,"0")}`)) { const day = parseInt(d.slice(8)); if (!map[day]) map[day]=[]; map[day].push(e); }
+      const baseDate = e.date?.slice(0,10);
+      if (!baseDate) return;
+      const p = parseInt(e.parcelas) || 1;
+      if (e.type === "credito" && p > 1) {
+        // Propagar cada parcela: parcela i cai no mês baseDate + i meses
+        const [bYr, bMoStr] = baseDate.slice(0,7).split("-");
+        const bYrN = parseInt(bYr), bMoN = parseInt(bMoStr) - 1;
+        for (let i = 0; i < p; i++) {
+          const pMo = (bMoN + i) % 12;
+          const pYr = bYrN + Math.floor((bMoN + i) / 12);
+          const pPrefix = `${pYr}-${String(pMo+1).padStart(2,"0")}`;
+          if (pPrefix === prefix) {
+            const day = parseInt(baseDate.slice(8));
+            if (!map[day]) map[day] = [];
+            // Clonar o gasto com info de qual parcela é
+            map[day].push({ ...e, _installNum: i+1, _installTotal: p });
+          }
+        }
+      } else {
+        // Gasto normal: só aparece no próprio dia
+        if (baseDate.startsWith(prefix)) {
+          const day = parseInt(baseDate.slice(8));
+          if (!map[day]) map[day] = [];
+          map[day].push(e);
+        }
+      }
     });
     return map;
   }, [expenses, yr, mo]);
@@ -654,6 +684,8 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
               <span style={{ fontSize: 14, fontWeight: isToday?800:600, color: isSel||isToday?t.accent:t.text }}>{day}</span>
               <div style={{ display: "flex", gap: 3 }}>
                 {hasExp&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.danger }}/>}
+                {/* ponto roxo = há parcela futura de crédito neste dia */}
+                {(expByDay[day]||[]).some(e=>e._installNum>1)&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.accent }}/>}
                 {hasInc&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.success }}/>}
               </div>
               {totalDay>0&&<span style={{ fontSize:9,color:t.danger,fontWeight:700 }}>{fmtShort(totalDay)}</span>}
@@ -710,13 +742,8 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                 const typeLabel = exp.type==="pix"?"PIX":exp.type==="debito"?"Débito":"Crédito";
                 let subtitleExtra = "";
                 if(exp.type==="credito" && p>1){
-                  const startKey = exp.description?.toLowerCase().trim();
-                  const allExpSame = (expenses||[]).filter(e=>e.description?.toLowerCase().trim()===startKey&&e.type==="credito"&&parseInt(e.parcelas)===p).sort((a,b)=>a.date?.localeCompare(b.date));
-                  const startDate = allExpSame[0]?.date || exp.date;
-                  const startD = new Date((startDate||exp.date).slice(0,10)+"T12:00:00");
-                  const thisD  = new Date((exp.date||"").slice(0,10)+"T12:00:00");
-                  const diffM  = (thisD.getFullYear()-startD.getFullYear())*12+(thisD.getMonth()-startD.getMonth());
-                  const nth = Math.max(1,Math.min(p,diffM+1));
+                  // _installNum injetado pelo expByDay propagado — indica qual parcela cai neste mês
+                  const nth = exp._installNum || 1;
                   subtitleExtra = ` · Crédito ${nth} de ${p}`;
                 } else {
                   subtitleExtra = ` · ${typeLabel}`;
@@ -759,7 +786,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       {/* Edit modal — inside CalendarView */}
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
-          style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+          style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
@@ -780,6 +807,7 @@ function ChartsView({ expenses, incomes, t }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month"; // always month mode now
+  const [selectedCreditMonth, setSelectedCreditMonth] = useState(null); // key "yr-mo" do mês clicado no gráfico
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -819,12 +847,14 @@ function ChartsView({ expenses, incomes, t }) {
     const result = {};
     for (let i=0;i<12;i++) {
       const d=new Date(creditRefYear, creditRefMonth+i, 1);
-      result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0 };
+      result[`${d.getFullYear()}-${d.getMonth()}`]={
+        name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`,
+        value:0, items:[], yr:d.getFullYear(), mo:d.getMonth()
+      };
     }
     expenses.forEach(e => {
       const p = parseInt(e.parcelas) || 1;
       if (e.type!=="credito" || p <= 1 || !e.date) return;
-      // amount is already the per-installment value
       const iv = parseFloat(e.amount) || 0;
       const [dYr, dMoStr] = e.date.slice(0,7).split("-");
       const baseYr = parseInt(dYr), baseMo = parseInt(dMoStr) - 1;
@@ -832,7 +862,10 @@ function ChartsView({ expenses, incomes, t }) {
         const mo = (baseMo + i) % 12;
         const yr = baseYr + Math.floor((baseMo + i) / 12);
         const k = `${yr}-${mo}`;
-        if (result[k]) result[k].value += iv;
+        if (result[k]) {
+          result[k].value += iv;
+          result[k].items.push({ ...e, _installNum: i+1, _installTotal: p });
+        }
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
@@ -906,15 +939,64 @@ function ChartsView({ expenses, incomes, t }) {
       </Card>
 
       <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
+        <p style={{ fontSize:12,color:t.textMuted,marginBottom:16,marginTop:-12 }}>Clique em um mês para ver o detalhamento das parcelas.</p>
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={creditData}>
+          <LineChart data={creditData} onClick={e => {
+            if (e?.activePayload?.length) {
+              const d = e.activePayload[0].payload;
+              const k = `${d.yr}-${d.mo}`;
+              setSelectedCreditMonth(prev => prev === k ? null : k);
+            }
+          }}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
             <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ stroke:t.accent,strokeWidth:1,strokeDasharray:"4 4" }} />
-            <Line type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5} dot={{ fill:t.accent,r:4 }} activeDot={{ r:6 }} name="Parcelas" />
+            <Line type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5}
+              dot={(props) => {
+                const isSelected = selectedCreditMonth === `${props.payload.yr}-${props.payload.mo}`;
+                return <circle key={props.key} cx={props.cx} cy={props.cy} r={isSelected?8:4} fill={isSelected?"#fff":t.accent} stroke={t.accent} strokeWidth={isSelected?3:0} />;
+              }}
+              activeDot={{ r:7, fill:t.accent, stroke:"#fff", strokeWidth:2 }} name="Parcelas" />
           </LineChart>
         </ResponsiveContainer>
+
+        {/* Detalhamento do mês clicado */}
+        {selectedCreditMonth && (() => {
+          const monthData = creditData.find(d => `${d.yr}-${d.mo}` === selectedCreditMonth);
+          if (!monthData || !monthData.items?.length) return null;
+          return (
+            <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>
+                  💳 Parcelas em {monthData.name}
+                </h4>
+                <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                  <span style={{ fontSize:15,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif" }}>{fmt(monthData.value)}</span>
+                  <button onClick={()=>setSelectedCreditMonth(null)}
+                    style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:18,lineHeight:1,padding:"2px 6px" }}>×</button>
+                </div>
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                {monthData.items.map((e,i) => {
+                  const cat = CATEGORIES.find(c=>c.id===e.category);
+                  return (
+                    <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.dangerSoft,border:`1px solid ${t.danger}22` }}>
+                      <span style={{ fontSize:20,flexShrink:0 }}>{cat?.emoji||"💳"}</span>
+                      <div style={{ flex:1,minWidth:0 }}>
+                        <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.description}</div>
+                        <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
+                          {e.user_label} · Parcela {e._installNum} de {e._installTotal} · dia {e.date?.slice(8,10)}
+                        </div>
+                      </div>
+                      <span style={{ fontSize:14,fontWeight:700,color:t.danger,flexShrink:0 }}>{fmt(parseFloat(e.amount)||0)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </Card>
     </div>
   );
@@ -1035,7 +1117,12 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
                 {totalValue > 0 ? fmt(totalValue) : "—"}
               </div>
             </div>
-            <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+            <div>
+              <Input label="📅 Data da 1ª cobrança no cartão" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+              <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>
+                ⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.
+              </div>
+            </div>
           </div>
           {creditInfo && (
             <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
@@ -1251,7 +1338,12 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
                   {totalVal > 0 ? fmt(totalVal) : "—"}
                 </div>
               </div>
-              <Input label="Data da 1ª parcela" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+              <div>
+                <Input label="📅 Data da 1ª cobrança no cartão" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+                <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>
+                  ⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.
+                </div>
+              </div>
             </div>
             {creditInfo && (
               <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
@@ -1569,7 +1661,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       {/* Edit Modal */}
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
-          style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+          style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
@@ -2013,7 +2105,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
 
   return (
     <div onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}
-      style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:80,paddingBottom:32,paddingLeft:16,paddingRight:16,overflowY:"auto",WebkitOverflowScrolling:"touch" }}>
+      style={{ position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:80,paddingBottom:32,paddingLeft:16,paddingRight:16,overflowY:"auto",WebkitOverflowScrolling:"touch" }}>
       <div onClick={e=>e.stopPropagation()}
         style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,boxShadow:t.shadow,animation:"modalIn 0.25s ease",flexShrink:0 }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
@@ -3772,7 +3864,7 @@ export default function App() {
           </div>
         </div>
 
-        <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",animation:"fadeInUp 0.3s ease" }}>
+        <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",zIndex:1,animation:"fadeInUp 0.3s ease" }}>
           {tab==="dashboard"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
               <div>
