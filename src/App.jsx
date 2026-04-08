@@ -808,11 +808,12 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 }
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
-function ChartsView({ expenses, incomes, t }) {
+function ChartsView({ expenses, incomes, t, onEditExpense, onEditIncome, familyMembers }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
   const [selectedCreditMonth, setSelectedCreditMonth] = useState(null);
+  const [editItem, setEditItem] = useState(null);
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -940,7 +941,7 @@ function ChartsView({ expenses, incomes, t }) {
 
       <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
         <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>
-          Toque em um ponto do gráfico para ver as parcelas daquele mês.
+          Toque em um ponto para ver e editar as parcelas daquele mês.
         </p>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={creditData}>
@@ -950,8 +951,7 @@ function ChartsView({ expenses, incomes, t }) {
             <Tooltip content={<CTip/>} cursor={{ stroke:t.accent,strokeWidth:1,strokeDasharray:"4 4" }} />
             <Line
               type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5}
-              name="Parcelas"
-              activeDot={false}
+              name="Parcelas" activeDot={false}
               dot={(props) => {
                 const { cx, cy, payload } = props;
                 const k = `${payload.yr}-${payload.mo}`;
@@ -960,14 +960,9 @@ function ChartsView({ expenses, incomes, t }) {
                   <g key={k}
                     onClick={() => setSelectedCreditMonth(prev => prev === k ? null : k)}
                     style={{ cursor:"pointer" }}>
-                    {/* Área de clique invisível maior — facilita toque no mobile */}
                     <circle cx={cx} cy={cy} r={20} fill="transparent" />
-                    {/* Dot visual */}
-                    <circle cx={cx} cy={cy}
-                      r={isSel ? 9 : 5}
-                      fill={isSel ? "#fff" : t.accent}
-                      stroke={t.accent}
-                      strokeWidth={isSel ? 3 : 0} />
+                    <circle cx={cx} cy={cy} r={isSel?9:5}
+                      fill={isSel?"#fff":t.accent} stroke={t.accent} strokeWidth={isSel?3:0} />
                   </g>
                 );
               }}
@@ -1002,7 +997,15 @@ function ChartsView({ expenses, incomes, t }) {
                           {e.user_label} · Parcela {e._installNum} de {e._installTotal} · dia {e.date?.slice(8,10)}
                         </div>
                       </div>
-                      <span style={{ fontSize:14,fontWeight:700,color:t.danger,flexShrink:0 }}>{fmt(parseFloat(e.amount)||0)}</span>
+                      <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
+                        <span style={{ fontSize:14,fontWeight:700,color:t.danger }}>{fmt(parseFloat(e.amount)||0)}</span>
+                        {onEditExpense && (
+                          <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
+                            style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
+                            onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
+                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1011,6 +1014,22 @@ function ChartsView({ expenses, incomes, t }) {
           );
         })()}
       </Card>
+
+      {/* Modal de edição do gráfico de parcelas */}
+      {editItem && (
+        <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
+          style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
+              <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
+            </div>
+            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]}
+              onSave={async(payload)=>{ if(onEditExpense) await onEditExpense(payload); setEditItem(null); }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1131,7 +1150,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
               </div>
             </div>
             <div>
-              <Input label="📅 Data da 1ª cobrança no cartão" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+              <Input label="📅 Data da 1ª cobrança" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
               <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
             </div>
           </div>
@@ -1350,7 +1369,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
                 </div>
               </div>
               <div>
-                <Input label="📅 Data da 1ª cobrança no cartão" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+                <Input label="📅 Data da 1ª cobrança" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
                 <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
               </div>
             </div>
@@ -3901,7 +3920,7 @@ export default function App() {
             </div>
           )}
           {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} />}
-          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} />}
+          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} />}
           {tab==="recurring"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
               <div style={{ marginBottom:20 }}>
