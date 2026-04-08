@@ -664,16 +664,15 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 8 }}>
         {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
       </div>
-      {/* Legenda */}
-      <div style={{ display:"flex",gap:16,marginBottom:12,justifyContent:"flex-end" }}>
+      <div style={{ display:"flex",gap:16,marginBottom:10,justifyContent:"flex-end" }}>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
           <span style={{ width:7,height:7,borderRadius:"50%",background:t.danger,display:"inline-block" }}/>Gastos
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.success,display:"inline-block" }}/>Receitas
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.accent,display:"inline-block" }}/>Parcelas
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.accent,display:"inline-block" }}/>Parcelas futuras
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.success,display:"inline-block" }}/>Receitas
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
@@ -812,7 +811,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 function ChartsView({ expenses, incomes, t }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
-  const period = "month"; // always month mode now
+  const period = "month";
   const [selectedCreditMonth, setSelectedCreditMonth] = useState(null);
 
   const availableYears = useMemo(() => {
@@ -940,30 +939,39 @@ function ChartsView({ expenses, incomes, t }) {
       </Card>
 
       <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
-        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Clique em um ponto do gráfico para ver o detalhamento das parcelas daquele mês.</p>
+        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>
+          Toque em um ponto do gráfico para ver as parcelas daquele mês.
+        </p>
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={creditData} onClick={(chartData) => {
-            if (chartData?.activePayload?.length) {
-              const pt = chartData.activePayload[0].payload;
-              const k = `${pt.yr}-${pt.mo}`;
-              setSelectedCreditMonth(prev => prev === k ? null : k);
-            }
-          }} style={{ cursor:"pointer" }}>
+          <LineChart data={creditData}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
             <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ stroke:t.accent,strokeWidth:1,strokeDasharray:"4 4" }} />
-            <Line type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5}
+            <Line
+              type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5}
+              name="Parcelas"
+              activeDot={false}
               dot={(props) => {
                 const { cx, cy, payload } = props;
                 const k = `${payload.yr}-${payload.mo}`;
                 const isSel = selectedCreditMonth === k;
-                return <circle key={k} cx={cx} cy={cy} r={isSel?8:5}
-                  fill={isSel?"#fff":t.accent} stroke={t.accent} strokeWidth={isSel?3:0}
-                  style={{ cursor:"pointer" }} />;
+                return (
+                  <g key={k}
+                    onClick={() => setSelectedCreditMonth(prev => prev === k ? null : k)}
+                    style={{ cursor:"pointer" }}>
+                    {/* Área de clique invisível maior — facilita toque no mobile */}
+                    <circle cx={cx} cy={cy} r={20} fill="transparent" />
+                    {/* Dot visual */}
+                    <circle cx={cx} cy={cy}
+                      r={isSel ? 9 : 5}
+                      fill={isSel ? "#fff" : t.accent}
+                      stroke={t.accent}
+                      strokeWidth={isSel ? 3 : 0} />
+                  </g>
+                );
               }}
-              activeDot={{ r:8, fill:t.accent, stroke:"#fff", strokeWidth:2 }}
-              name="Parcelas" />
+            />
           </LineChart>
         </ResponsiveContainer>
 
