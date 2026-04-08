@@ -1291,6 +1291,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
 function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("month"); // "month" | "3m" | "6m" | "9m" | "1y"
   const [monthFilter, setMonthFilter] = useState(today.getMonth());
   const [editItem, setEditItem] = useState(null);
   const [showDupsOnly, setShowDupsOnly] = useState(false);
@@ -1323,12 +1324,23 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const setFilterAndClear      = (v) => { setFilter(v); setSelectedIds(new Set()); if(v!=="expense"){setPaymentFilter("all");setCategoryFilter("all");} };
 
   const all = useMemo(() => {
-    const prefix = yearFilter + "-" + String(monthFilter+1).padStart(2,"0");
+    if (periodFilter === "month") {
+      const prefix = yearFilter + "-" + String(monthFilter+1).padStart(2,"0");
+      return [
+        ...expenses.filter(e=>e.date?.startsWith(prefix)).map(e=>({...e,_type:"expense"})),
+        ...incomes.filter(i=>i.date?.startsWith(prefix)).map(i=>({...i,_type:"income"}))
+      ].sort((a,b)=>b.date?.localeCompare(a.date));
+    }
+    // Período fixo: N meses atrás até hoje
+    const months = periodFilter==="3m"?3:periodFilter==="6m"?6:periodFilter==="9m"?9:12;
+    const from = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
+    const fromStr = `${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,"0")}-01`;
+    const toStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-31`;
     return [
-      ...expenses.filter(e=>e.date?.startsWith(prefix)).map(e=>({...e,_type:"expense"})),
-      ...incomes.filter(i=>i.date?.startsWith(prefix)).map(i=>({...i,_type:"income"}))
+      ...expenses.filter(e=>e.date>=fromStr&&e.date<=toStr).map(e=>({...e,_type:"expense"})),
+      ...incomes.filter(i=>i.date>=fromStr&&i.date<=toStr).map(i=>({...i,_type:"income"}))
     ].sort((a,b)=>b.date?.localeCompare(a.date));
-  }, [expenses, incomes, monthFilter, yearFilter]);
+  }, [expenses, incomes, monthFilter, yearFilter, periodFilter]);
 
   // ── Duplicate detection: same date + description (normalized) + amount + category ──
   const dupIds = useMemo(() => {
@@ -1388,13 +1400,25 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   return (
     <div>
       <div style={{ display:"flex",gap:10,marginBottom:20,flexWrap:"wrap" }}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar..." style={{ flex:1,minWidth:160,padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none" }} />
-        <select value={monthFilter} onChange={e=>setMonthFilterAndClear(Number(e.target.value))} style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none" }}>
-          {MONTH_FULL.map((mn,i)=><option key={i} value={i}>{mn}</option>)}
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar..." style={{ flex:1,minWidth:140,padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none" }} />
+        {/* Seletor de período */}
+        <select value={periodFilter} onChange={e=>{ setPeriodFilter(e.target.value); setSelectedIds(new Set()); }}
+          style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${periodFilter!=="month"?t.accent:t.border}`,background:periodFilter!=="month"?t.accentSoft:t.inputBg,color:periodFilter!=="month"?t.accent:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:600 }}>
+          <option value="month">📅 Mês</option>
+          <option value="3m">📅 3 meses</option>
+          <option value="6m">📅 6 meses</option>
+          <option value="9m">📅 9 meses</option>
+          <option value="1y">📅 1 ano</option>
         </select>
-        <select value={yearFilter} onChange={e=>setYearFilterAndClear(Number(e.target.value))} style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:700 }}>
-          {availableYears.map(y=><option key={y} value={y}>{y}</option>)}
-        </select>
+        {/* Mês e ano só aparecem no modo "Mês" */}
+        {periodFilter === "month" && <>
+          <select value={monthFilter} onChange={e=>setMonthFilterAndClear(Number(e.target.value))} style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none" }}>
+            {MONTH_FULL.map((mn,i)=><option key={i} value={i}>{mn}</option>)}
+          </select>
+          <select value={yearFilter} onChange={e=>setYearFilterAndClear(Number(e.target.value))} style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:700 }}>
+            {availableYears.map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+        </>}
       </div>
 
       {/* Duplicate alert banner */}
@@ -1715,32 +1739,43 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
     const day = rule.day_of_month || 1;
     const dateStr = `${curYear}-${String(curMonth).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     try {
-      // Create expense — ignore-duplicates evita erro se já foi lançado manualmente
-      const expRows = await supabaseFetch("/expenses", {
-        method: "POST",
-        body: JSON.stringify({
-          family_id: family.family_id,
-          user_id: user?.id,
-          description: rule.description,
-          amount: amt,
-          date: dateStr,
-          category: rule.category,
-          type: rule.type,
-          parcelas: 1,
-          user_label: rule.user_label,
-        }),
-        headers: { "Prefer": "return=representation,resolution=ignore-duplicates" },
-      });
-      const exp = expRows?.[0];
-      // Update reminder
+      // Verificar se já existe expense para essa descrição neste mês
+      const monthPrefix = `${curYear}-${String(curMonth).padStart(2,"0")}`;
+      const existing = expenses.find(e =>
+        e.description?.toLowerCase().trim() === rule.description?.toLowerCase().trim() &&
+        e.date?.startsWith(monthPrefix)
+      );
+      let exp = existing || null;
+      if (!existing) {
+        // Criar expense — resolution=ignore-duplicates evita erro se houver race condition
+        const expRows = await supabaseFetch("/expenses", {
+          method: "POST",
+          body: JSON.stringify({
+            family_id: family.family_id,
+            user_id: user?.id,
+            description: rule.description,
+            amount: amt,
+            date: dateStr,
+            category: rule.category,
+            type: rule.type,
+            parcelas: 1,
+            user_label: rule.user_label,
+          }),
+          headers: { "Prefer": "return=representation,resolution=ignore-duplicates" },
+        });
+        exp = expRows?.[0] || null;
+        if (exp) setExpenses(p => [exp, ...p]);
+      }
+      // Confirmar reminder (independente de criar ou não)
       await supabaseFetch(`/recurring_reminders?id=eq.${reminder.id}`, {
         method: "PATCH",
         body: JSON.stringify({ status: "confirmed", expense_id: exp?.id, amount: amt }),
         headers: { "Prefer": "return=minimal" },
       });
       setReminders(p => p.map(r => r.id === reminder.id ? { ...r, status: "confirmed", expense_id: exp?.id, amount: amt } : r));
-      if (exp) setExpenses(p => [exp, ...p]);
-      addToast(exp ? `${rule.description} — ${fmt(amt)} lançado!` : `${rule.description} — já registrado, lembrete confirmado ✓`, "success");
+      addToast(existing
+        ? `${rule.description} — já registrado, lembrete confirmado ✓`
+        : `${rule.description} — ${fmt(amt)} lançado!`, "success");
     } catch (e) { addToast("Erro: " + e.message, "error"); }
     finally { setConfirmingId(null); }
   };
@@ -1779,7 +1814,17 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
     } catch (e) { addToast("Erro: " + e.message, "error"); }
   };
 
-  const pending  = reminders.filter(r => r.status === "pending");
+  const monthPrefix = `${curYear}-${String(curMonth).padStart(2,"0")}`;
+  // Pending: exclui reminders cujo gasto já existe no mês (lançado manualmente)
+  const pending = reminders.filter(r => {
+    if (r.status !== "pending") return false;
+    const rule = rules.find(rl => rl.id === r.recurring_id);
+    if (!rule) return true;
+    return !expenses.some(e =>
+      e.description?.toLowerCase().trim() === rule.description?.toLowerCase().trim() &&
+      e.date?.startsWith(monthPrefix)
+    );
+  });
   const confirmed = reminders.filter(r => r.status === "confirmed");
 
   if (loading) return <div style={{ textAlign:"center",padding:"48px 0",color:t.textMuted,fontSize:14 }}>Carregando...</div>;
@@ -1823,7 +1868,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                     />
                     <button onClick={() => confirmReminder(rem, rule)} disabled={isConfirming}
                       style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
-                      {isConfirming ? "..." : "✓"}
+                      {isConfirming ? "..." : "✓ Confirmar"}
                     </button>
                     <button onClick={() => skipReminder(rem)} title="Ignorar este mês"
                       style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
@@ -2312,8 +2357,8 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
                         {/* Edit/Set button */}
                         {!isDemo && !isEditing && (
                           <button onClick={() => { setEditingCat(cat.id); setInputVal(budget ? String(budget.amount) : ""); }}
-                            style={{ background:budget?t.surfaceHover:t.accentSoft,border:`1px solid ${budget?t.border:t.accent+"33"}`,borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:13,fontWeight:700,color:budget?t.textMuted:t.accent,flexShrink:0 }}>
-                            {budget ? "✏️" : "+"}
+                            style={{ background:budget?t.surfaceHover:t.accentSoft,border:`1px solid ${budget?t.border:t.accent+"33"}`,borderRadius:8,padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:700,color:budget?t.textMuted:t.accent,whiteSpace:"nowrap" }}>
+                            {budget ? "✏️ Editar" : "+ Definir"}
                           </button>
                         )}
                       </div>
