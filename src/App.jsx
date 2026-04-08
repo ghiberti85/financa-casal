@@ -616,22 +616,18 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       if (!baseDate) return;
       const p = parseInt(e.parcelas) || 1;
       if (e.type === "credito" && p > 1) {
-        // Propagar cada parcela: parcela i cai no mês baseDate + i meses
         const [bYr, bMoStr] = baseDate.slice(0,7).split("-");
         const bYrN = parseInt(bYr), bMoN = parseInt(bMoStr) - 1;
         for (let i = 0; i < p; i++) {
           const pMo = (bMoN + i) % 12;
           const pYr = bYrN + Math.floor((bMoN + i) / 12);
-          const pPrefix = `${pYr}-${String(pMo+1).padStart(2,"0")}`;
-          if (pPrefix === prefix) {
+          if (`${pYr}-${String(pMo+1).padStart(2,"0")}` === prefix) {
             const day = parseInt(baseDate.slice(8));
             if (!map[day]) map[day] = [];
-            // Clonar o gasto com info de qual parcela é
             map[day].push({ ...e, _installNum: i+1, _installTotal: p });
           }
         }
       } else {
-        // Gasto normal: só aparece no próprio dia
         if (baseDate.startsWith(prefix)) {
           const day = parseInt(baseDate.slice(8));
           if (!map[day]) map[day] = [];
@@ -668,6 +664,18 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 8 }}>
         {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
       </div>
+      {/* Legenda */}
+      <div style={{ display:"flex",gap:16,marginBottom:12,justifyContent:"flex-end" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.danger,display:"inline-block" }}/>Gastos
+        </div>
+        <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.success,display:"inline-block" }}/>Receitas
+        </div>
+        <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.accent,display:"inline-block" }}/>Parcelas futuras
+        </div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
         {dayCells.map((day, i) => {
           const hasExp = expByDay[day]?.length > 0, hasInc = incByDay[day]?.length > 0;
@@ -683,8 +691,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
             >
               <span style={{ fontSize: 14, fontWeight: isToday?800:600, color: isSel||isToday?t.accent:t.text }}>{day}</span>
               <div style={{ display: "flex", gap: 3 }}>
-                {hasExp&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.danger }}/>}
-                {/* ponto roxo = há parcela futura de crédito neste dia */}
+                {(expByDay[day]||[]).some(e=>!e._installNum||e._installNum===1)&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.danger }}/>}
                 {(expByDay[day]||[]).some(e=>e._installNum>1)&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.accent }}/>}
                 {hasInc&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.success }}/>}
               </div>
@@ -742,7 +749,6 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                 const typeLabel = exp.type==="pix"?"PIX":exp.type==="debito"?"Débito":"Crédito";
                 let subtitleExtra = "";
                 if(exp.type==="credito" && p>1){
-                  // _installNum injetado pelo expByDay propagado — indica qual parcela cai neste mês
                   const nth = exp._installNum || 1;
                   subtitleExtra = ` · Crédito ${nth} de ${p}`;
                 } else {
@@ -807,7 +813,7 @@ function ChartsView({ expenses, incomes, t }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month"; // always month mode now
-  const [selectedCreditMonth, setSelectedCreditMonth] = useState(null); // key "yr-mo" do mês clicado no gráfico
+  const [selectedCreditMonth, setSelectedCreditMonth] = useState(null);
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -847,14 +853,12 @@ function ChartsView({ expenses, incomes, t }) {
     const result = {};
     for (let i=0;i<12;i++) {
       const d=new Date(creditRefYear, creditRefMonth+i, 1);
-      result[`${d.getFullYear()}-${d.getMonth()}`]={
-        name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`,
-        value:0, items:[], yr:d.getFullYear(), mo:d.getMonth()
-      };
+      result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0, items:[], yr:d.getFullYear(), mo:d.getMonth() };
     }
     expenses.forEach(e => {
       const p = parseInt(e.parcelas) || 1;
       if (e.type!=="credito" || p <= 1 || !e.date) return;
+      // amount is already the per-installment value
       const iv = parseFloat(e.amount) || 0;
       const [dYr, dMoStr] = e.date.slice(0,7).split("-");
       const baseYr = parseInt(dYr), baseMo = parseInt(dMoStr) - 1;
@@ -862,10 +866,7 @@ function ChartsView({ expenses, incomes, t }) {
         const mo = (baseMo + i) % 12;
         const yr = baseYr + Math.floor((baseMo + i) / 12);
         const k = `${yr}-${mo}`;
-        if (result[k]) {
-          result[k].value += iv;
-          result[k].items.push({ ...e, _installNum: i+1, _installTotal: p });
-        }
+        if (result[k]) { result[k].value += iv; result[k].items.push({ ...e, _installNum: i+1, _installTotal: p }); }
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
@@ -939,46 +940,50 @@ function ChartsView({ expenses, incomes, t }) {
       </Card>
 
       <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
-        <p style={{ fontSize:12,color:t.textMuted,marginBottom:16,marginTop:-12 }}>Clique em um mês para ver o detalhamento das parcelas.</p>
+        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Clique em um ponto do gráfico para ver o detalhamento das parcelas daquele mês.</p>
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={creditData} onClick={e => {
-            if (e?.activePayload?.length) {
-              const d = e.activePayload[0].payload;
-              const k = `${d.yr}-${d.mo}`;
+          <LineChart data={creditData} onClick={(chartData) => {
+            if (chartData?.activePayload?.length) {
+              const pt = chartData.activePayload[0].payload;
+              const k = `${pt.yr}-${pt.mo}`;
               setSelectedCreditMonth(prev => prev === k ? null : k);
             }
-          }}>
+          }} style={{ cursor:"pointer" }}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
             <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ stroke:t.accent,strokeWidth:1,strokeDasharray:"4 4" }} />
             <Line type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5}
               dot={(props) => {
-                const isSelected = selectedCreditMonth === `${props.payload.yr}-${props.payload.mo}`;
-                return <circle key={props.key} cx={props.cx} cy={props.cy} r={isSelected?8:4} fill={isSelected?"#fff":t.accent} stroke={t.accent} strokeWidth={isSelected?3:0} />;
+                const { cx, cy, payload } = props;
+                const k = `${payload.yr}-${payload.mo}`;
+                const isSel = selectedCreditMonth === k;
+                return <circle key={k} cx={cx} cy={cy} r={isSel?8:5}
+                  fill={isSel?"#fff":t.accent} stroke={t.accent} strokeWidth={isSel?3:0}
+                  style={{ cursor:"pointer" }} />;
               }}
-              activeDot={{ r:7, fill:t.accent, stroke:"#fff", strokeWidth:2 }} name="Parcelas" />
+              activeDot={{ r:8, fill:t.accent, stroke:"#fff", strokeWidth:2 }}
+              name="Parcelas" />
           </LineChart>
         </ResponsiveContainer>
 
-        {/* Detalhamento do mês clicado */}
         {selectedCreditMonth && (() => {
-          const monthData = creditData.find(d => `${d.yr}-${d.mo}` === selectedCreditMonth);
-          if (!monthData || !monthData.items?.length) return null;
+          const md = creditData.find(d => `${d.yr}-${d.mo}` === selectedCreditMonth);
+          if (!md?.items?.length) return null;
           return (
             <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
                 <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>
-                  💳 Parcelas em {monthData.name}
+                  💳 Parcelas em {md.name}
                 </h4>
                 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-                  <span style={{ fontSize:15,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif" }}>{fmt(monthData.value)}</span>
+                  <span style={{ fontSize:15,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif" }}>{fmt(md.value)}</span>
                   <button onClick={()=>setSelectedCreditMonth(null)}
-                    style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:18,lineHeight:1,padding:"2px 6px" }}>×</button>
+                    style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
                 </div>
               </div>
               <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                {monthData.items.map((e,i) => {
+                {md.items.map((e,i) => {
                   const cat = CATEGORIES.find(c=>c.id===e.category);
                   return (
                     <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.dangerSoft,border:`1px solid ${t.danger}22` }}>
@@ -1119,9 +1124,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
             </div>
             <div>
               <Input label="📅 Data da 1ª cobrança no cartão" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
-              <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>
-                ⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.
-              </div>
+              <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
             </div>
           </div>
           {creditInfo && (
@@ -1340,9 +1343,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
               </div>
               <div>
                 <Input label="📅 Data da 1ª cobrança no cartão" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
-                <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>
-                  ⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.
-                </div>
+                <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
               </div>
             </div>
             {creditInfo && (
