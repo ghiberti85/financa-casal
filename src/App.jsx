@@ -3709,6 +3709,7 @@ export default function App() {
     @media(max-width:600px){
       .mobile-hide{display:none!important;}
       .mobile-nav-label{display:none!important;}
+      .fab-container{bottom:calc(60px + env(safe-area-inset-bottom))!important;}
     }
     @media(min-width:601px){
       .desktop-hide{display:none!important;}
@@ -3876,51 +3877,30 @@ export default function App() {
             </div>
           </div>
 
-          {/* ── Mobile nav ── */}
-          <div className="desktop-hide" style={{ padding:"0 16px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+          {/* ── Mobile nav — title + utility buttons only, tabs are in the bottom bar ── */}
+          <div className="desktop-hide" style={{ padding:"0 16px",height:56,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              <span style={{ fontSize:22 }}>💎</span>
-              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:16,color:t.text }}>Finanças do Casal</span>
+              <span style={{ fontSize:20 }}>💎</span>
+              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:15,color:t.text }}>Finanças do Casal</span>
             </div>
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              <button onClick={()=>setDarkMode(!darkMode)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.text,fontSize:18,padding:4 }}>{darkMode?"☀️":"🌙"}</button>
-              <button onClick={()=>setMobileMenu(v=>!v)}
-                style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,width:38,height:38,cursor:"pointer",color:t.text,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,padding:"8px 9px" }}>
-                <span style={{ width:18,height:2,background:t.text,borderRadius:2 }} />
-                <span style={{ width:18,height:2,background:t.text,borderRadius:2 }} />
-                <span style={{ width:18,height:2,background:t.text,borderRadius:2 }} />
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile dropdown: Lançamentos + Importar + Perfil + Família + Sair */}
-          {mobileMenu && (
-            <div className="desktop-hide" style={{ background:t.glassModal,borderTop:`1px solid ${t.border}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8 }}>
-              {[{id:"budget",icon:"🎯",label:"Orçamento"},{id:"recurring",icon:"🔁",label:"Recorrentes"},{id:"transactions",icon:"📋",label:"Lançamentos"},{id:"import",icon:"📥",label:"Importar"}].map(tb=>(
-                <button key={tb.id} onClick={()=>{ setTab(tb.id); setMobileMenu(false); }}
-                  style={{ padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.text }}>
-                  {tb.icon} {tb.label}
-                </button>
-              ))}
-              <div style={{ height:1,background:t.border,margin:"4px 0" }} />
+            <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+              <button onClick={()=>setDarkMode(!darkMode)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.text,fontSize:17,padding:"4px 6px",lineHeight:1 }}>{darkMode?"☀️":"🌙"}</button>
               {!isDemo && user && (
-                <button onClick={()=>{ setShowProfile(true); setMobileMenu(false); }}
-                  style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.text }}>
-                  👤 {profile?.first_name || "Perfil"}
+                <button onClick={()=>setShowProfile(true)}
+                  title="Meu Perfil"
+                  style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:9,width:34,height:34,cursor:"pointer",color:t.accent,fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                  {(profile?.first_name||"U")[0].toUpperCase()}
                 </button>
               )}
               {!isDemo && family && (
-                <button onClick={()=>{ setShowInvite(true); setMobileMenu(false); }}
-                  style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.accent}33`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:t.accentSoft,color:t.accent }}>
-                  👥 Família
+                <button onClick={()=>setShowInvite(true)}
+                  title="Família"
+                  style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                  👥
                 </button>
               )}
-              <button onClick={()=>{ handleLogout(); setMobileMenu(false); }}
-                style={{ padding:"12px 16px",borderRadius:12,border:`1px solid ${t.border}`,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:"transparent",color:t.textMuted }}>
-                🚪 Sair
-              </button>
             </div>
-          )}
+          </div>
         </nav>
 
         {/* Desktop bottom tab bar: Dashboard, Calendário, Gráficos */}
@@ -3934,16 +3914,31 @@ export default function App() {
             ))}
           </div>
         </div>
-        {/* Mobile tab bar: Dashboard, Calendário, Gráficos */}
-        <div className="desktop-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 16px" }}>
-          <div style={{ display:"flex",gap:4,padding:"12px 0 0",overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
-            {tabs.filter(tb=>["dashboard","calendar","charts"].includes(tb.id)).map(tb=>(
-              <button key={tb.id} onClick={()=>setTab(tb.id)}
-                style={{ padding:"9px 16px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flexShrink:0,transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
-                {tb.icon} {tb.label}
+        {/* ── Mobile fixed bottom tab bar (all 7 tabs) ── */}
+        <div className="desktop-hide" style={{
+          position:"fixed", bottom:0, left:0, right:0, zIndex:200,
+          background:`${t.bg}f2`, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
+          borderTop:`1px solid ${t.border}`,
+          display:"flex", alignItems:"stretch",
+          paddingBottom:"env(safe-area-inset-bottom)",
+        }}>
+          {tabs.map(tb => {
+            const isActive = tab === tb.id;
+            const shortLabel = tb.id==="dashboard"?"Início":tb.id==="calendar"?"Agenda":tb.id==="transactions"?"Lançam.":tb.id==="recurring"?"Recorr.":tb.label;
+            return (
+              <button key={tb.id} onClick={()=>setTab(tb.id)} style={{
+                flex:1, border:"none", cursor:"pointer", background:"transparent",
+                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                padding:"7px 2px 5px", gap:2, minWidth:0,
+                color: isActive ? t.accent : t.textMuted,
+                transition:"color 0.18s",
+              }}>
+                <span style={{ fontSize:19, lineHeight:1 }}>{tb.icon}</span>
+                <span style={{ fontSize:9, fontWeight: isActive ? 700 : 500, lineHeight:1.3, whiteSpace:"nowrap" }}>{shortLabel}</span>
+                {isActive && <span style={{ width:16, height:2, borderRadius:2, background:t.accent, marginTop:1 }} />}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
         <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",animation:"fadeInUp 0.3s ease" }}>
@@ -3999,7 +3994,7 @@ export default function App() {
 
         {/* FAB — hidden on import tab to avoid overlapping the review footer */}
         {tab !== "import" && (
-          <div style={{ position:"fixed",bottom:28,right:24,zIndex:150,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
+          <div className="fab-container" style={{ position:"fixed",bottom:28,right:24,zIndex:150,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
             <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Receita</Btn>
             <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Gasto</Btn>
           </div>
