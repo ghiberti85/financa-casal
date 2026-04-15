@@ -3780,7 +3780,7 @@ export default function App() {
         <div style={{ position:"fixed",width:500,height:500,borderRadius:"50%",background:`radial-gradient(circle, ${t.accentGlow} 0%, transparent 70%)`,top:-150,right:-150,pointerEvents:"none",zIndex:0 }} />
         <div style={{ position:"fixed",width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle, ${t.successSoft} 0%, transparent 70%)`,bottom:50,left:-50,pointerEvents:"none",zIndex:0 }} />
 
-        <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
+        <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
           {/* ── Desktop nav ── */}
           <div className="mobile-hide" style={{ maxWidth:1100,margin:"0 auto",padding:"0 16px",height:64,display:"flex",alignItems:"center",gap:8 }}>
             {/* Logo — compact */}
