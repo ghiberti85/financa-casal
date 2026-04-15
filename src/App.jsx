@@ -1835,15 +1835,15 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
     generate();
   }, [rules, reminders, family, isDemo, curMonth, curYear]);
 
-  // ── Confirm a reminder (create expense) ─────────────────────────────────────
-  const confirmReminder = async (reminder, rule) => {
-    const amt = parseFloat(pendingAmt[reminder.id] ?? reminder.amount ?? "");
+  // ── Confirm a rule for this month (create expense + upsert reminder) ─────────
+  const confirmRule = async (rule) => {
+    const rem = reminders.find(r => r.recurring_id === rule.id);
+    const amt = parseFloat(pendingAmt[rule.id] ?? rem?.amount ?? (rule.amount_type === "fixed" ? rule.amount : ""));
     if (!amt || amt <= 0) { addToast("Informe um valor válido", "error"); return; }
-    setConfirmingId(reminder.id);
+    setConfirmingId(rule.id);
     const day = rule.day_of_month || 1;
     const dateStr = `${curYear}-${String(curMonth).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     try {
-      // Verificar se já existe expense para essa descrição neste mês
       const mPrefix = `${curYear}-${String(curMonth).padStart(2,"0")}`;
       const existing = expenses.find(e =>
         e.description?.toLowerCase().trim() === rule.description?.toLowerCase().trim() &&
@@ -1869,25 +1869,44 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
         exp = expRows?.[0] || null;
         if (exp) setExpenses(p => [exp, ...p]);
       }
-      await supabaseFetch(`/recurring_reminders?id=eq.${reminder.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "confirmed", expense_id: exp?.id, amount: amt }),
-        headers: { "Prefer": "return=minimal" },
-      });
-      setReminders(p => p.map(r => r.id === reminder.id ? { ...r, status: "confirmed", expense_id: exp?.id, amount: amt } : r));
-      addToast(existing ? `${rule.description} — já registrado, lembrete confirmado ✓` : `${rule.description} — ${fmt(amt)} lançado!`, "success");
+      if (rem) {
+        await supabaseFetch(`/recurring_reminders?id=eq.${rem.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "confirmed", expense_id: exp?.id, amount: amt }),
+          headers: { "Prefer": "return=minimal" },
+        });
+        setReminders(p => p.map(r => r.id === rem.id ? { ...r, status: "confirmed", expense_id: exp?.id, amount: amt } : r));
+      } else {
+        const created = await supabaseFetch("/recurring_reminders", {
+          method: "POST",
+          body: JSON.stringify({ family_id: family.family_id, recurring_id: rule.id, month: curMonth, year: curYear, amount: amt, status: "confirmed", expense_id: exp?.id }),
+          headers: { "Prefer": "return=representation" },
+        });
+        if (created?.[0]) setReminders(p => [...p, created[0]]);
+      }
+      addToast(existing ? `${rule.description} — já registrado ✓` : `${rule.description} — ${fmt(amt)} lançado!`, "success");
     } catch (e) { addToast("Erro: " + e.message, "error"); }
     finally { setConfirmingId(null); }
   };
 
-  const skipReminder = async (reminder) => {
+  const skipRule = async (rule) => {
+    const rem = reminders.find(r => r.recurring_id === rule.id);
     try {
-      await supabaseFetch(`/recurring_reminders?id=eq.${reminder.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "skipped" }),
-        headers: { "Prefer": "return=minimal" },
-      });
-      setReminders(p => p.map(r => r.id === reminder.id ? { ...r, status: "skipped" } : r));
+      if (rem) {
+        await supabaseFetch(`/recurring_reminders?id=eq.${rem.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "skipped" }),
+          headers: { "Prefer": "return=minimal" },
+        });
+        setReminders(p => p.map(r => r.id === rem.id ? { ...r, status: "skipped" } : r));
+      } else {
+        const created = await supabaseFetch("/recurring_reminders", {
+          method: "POST",
+          body: JSON.stringify({ family_id: family.family_id, recurring_id: rule.id, month: curMonth, year: curYear, amount: rule.amount_type === "fixed" ? rule.amount : null, status: "skipped" }),
+          headers: { "Prefer": "return=representation" },
+        });
+        if (created?.[0]) setReminders(p => [...p, created[0]]);
+      }
       addToast("Lembrete ignorado para este mês", "info");
     } catch (e) { addToast("Erro: " + e.message, "error"); }
   };
@@ -1915,10 +1934,13 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
   };
 
   const curMonthPrefix = `${curYear}-${String(curMonth).padStart(2,"0")}`;
-  const pending = reminders.filter(r => {
-    if (r.status !== "pending") return false;
-    const rule = rules.find(rl => rl.id === r.recurring_id);
-    if (!rule) return true;
+  // Derive pending from rules directly — never depends on reminder rows existing
+  const pending = rules.filter(rule => {
+    if (!rule.active) return false;
+    if (rule.frequency === "yearly" && rule.month_of_year !== curMonth) return false;
+    if (rule.end_date && rule.end_date < `${curMonthPrefix}-01`) return false;
+    const rem = reminders.find(r => r.recurring_id === rule.id);
+    if (rem && rem.status !== "pending") return false; // already confirmed or skipped
     return !expenses.some(e =>
       e.description?.toLowerCase().trim() === rule.description?.toLowerCase().trim() &&
       e.date?.startsWith(curMonthPrefix)
@@ -1938,15 +1960,13 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
             🔔 {pending.length} lembrete{pending.length>1?"s":""} aguardando valor — {MONTH_FULL[today.getMonth()]}
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-            {pending.map(rem => {
-              const rule = rules.find(r => r.id === rem.recurring_id);
-              if (!rule) return null;
+            {pending.map(rule => {
               const cat = CATEGORIES.find(c => c.id === rule.category);
               const isFixed = rule.amount_type === "fixed";
-              const isConfirming = confirmingId === rem.id;
+              const isConfirming = confirmingId === rule.id;
               return (
-                <div key={rem.id} style={{ background:t.glassModal,border:`1px solid ${t.border}`,borderRadius:14,padding:"14px 16px" }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom: isFixed ? 10 : 10 }}>
+                <div key={rule.id} style={{ background:t.glassModal,border:`1px solid ${t.border}`,borderRadius:14,padding:"14px 16px" }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:10 }}>
                     <span style={{ fontSize:20 }}>{cat?.emoji || "📦"}</span>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13,fontWeight:700,color:t.text }}>{rule.description}</div>
@@ -1957,19 +1977,18 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                       </div>
                     </div>
                   </div>
-                  {/* Value input for variable OR confirm for fixed */}
                   <div style={{ display:"flex",gap:8,alignItems:"center" }}>
                     <input
                       type="number" step="0.01" min="0" placeholder={isFixed ? String(rule.amount) : "Quanto foi?"}
-                      value={pendingAmt[rem.id] ?? (isFixed ? String(rule.amount) : "")}
-                      onChange={e => setPendingAmt(p => ({ ...p, [rem.id]: e.target.value }))}
+                      value={pendingAmt[rule.id] ?? (isFixed ? String(rule.amount) : "")}
+                      onChange={e => setPendingAmt(p => ({ ...p, [rule.id]: e.target.value }))}
                       style={{ flex:1,padding:"9px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none",boxSizing:"border-box" }}
                     />
-                    <button onClick={() => confirmReminder(rem, rule)} disabled={isConfirming}
+                    <button onClick={() => confirmRule(rule)} disabled={isConfirming}
                       style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
                       {isConfirming ? "..." : "✓"}
                     </button>
-                    <button onClick={() => skipReminder(rem)} title="Ignorar este mês"
+                    <button onClick={() => skipRule(rule)} title="Ignorar este mês"
                       style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
                       ✕
                     </button>
