@@ -1137,7 +1137,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
               </div>
             </div>
             <div>
-              <Input label="📅 Data da 1ª cobrança" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+              <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
               <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
             </div>
           </div>
@@ -1356,7 +1356,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
                 </div>
               </div>
               <div>
-                <Input label="📅 Data da 1ª cobrança" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+                <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
                 <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
               </div>
             </div>
@@ -2249,9 +2249,22 @@ function RecurringAlertCard({ t, family, isDemo, onGoToRecurring }) {
     if (isDemo || !family) return;
     const curMonth = today.getMonth() + 1;
     const curYear  = today.getFullYear();
+    const curPrefix = `${curYear}-${String(curMonth).padStart(2,"0")}`;
     Promise.all([
-      supabaseFetch(`/recurring_reminders?family_id=eq.${family.family_id}&month=eq.${curMonth}&year=eq.${curYear}&status=eq.pending&select=*,recurring_expenses(*)`),
-    ]).then(([rems]) => setPending(rems || [])).catch(() => {});
+      supabaseFetch(`/recurring_expenses?family_id=eq.${family.family_id}&active=eq.true&select=*`),
+      supabaseFetch(`/recurring_reminders?family_id=eq.${family.family_id}&month=eq.${curMonth}&year=eq.${curYear}&select=*`),
+    ]).then(([rules, rems]) => {
+      if (!rules) return;
+      const remMap = {};
+      (rems || []).forEach(r => { remMap[r.recurring_id] = r; });
+      const pendingRules = rules.filter(rule => {
+        if (rule.frequency === "yearly" && rule.month_of_year !== curMonth) return false;
+        if (rule.end_date && rule.end_date < `${curPrefix}-01`) return false;
+        const rem = remMap[rule.id];
+        return !rem || rem.status === "pending";
+      });
+      setPending(pendingRules);
+    }).catch(() => {});
   }, [family, isDemo]);
 
   if (!pending.length) return null;
@@ -2263,12 +2276,11 @@ function RecurringAlertCard({ t, family, isDemo, onGoToRecurring }) {
         <span style={{ fontSize:12,color:t.accent,fontWeight:700 }}>Registrar →</span>
       </div>
       <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-        {pending.slice(0,4).map(rem => {
-          const rule = rem.recurring_expenses;
-          const cat  = CATEGORIES.find(c => c.id === rule?.category);
+        {pending.slice(0,4).map(rule => {
+          const cat = CATEGORIES.find(c => c.id === rule.category);
           return (
-            <span key={rem.id} style={{ fontSize:11,background:t.surface,border:`1px solid ${t.border}`,borderRadius:8,padding:"3px 8px",color:t.text }}>
-              {cat?.emoji} {rule?.description}
+            <span key={rule.id} style={{ fontSize:11,background:t.surface,border:`1px solid ${t.border}`,borderRadius:8,padding:"3px 8px",color:t.text }}>
+              {cat?.emoji} {rule.description}
             </span>
           );
         })}
