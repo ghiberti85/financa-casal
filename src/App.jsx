@@ -1934,17 +1934,16 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
   };
 
   const curMonthPrefix = `${curYear}-${String(curMonth).padStart(2,"0")}`;
-  // Derive pending from rules directly — never depends on reminder rows existing
+  // Derive pending from rules directly — never depends on reminder rows existing.
+  // We do NOT exclude rules that already have a matching expense: the user still
+  // needs to explicitly confirm (✓) or skip (✕) each item so the reminder is
+  // recorded. confirmRule() handles the "expense already exists" case gracefully.
   const pending = rules.filter(rule => {
     if (!rule.active) return false;
     if (rule.frequency === "yearly" && rule.month_of_year !== curMonth) return false;
     if (rule.end_date && rule.end_date < `${curMonthPrefix}-01`) return false;
     const rem = reminders.find(r => r.recurring_id === rule.id);
-    if (rem && rem.status !== "pending") return false; // already confirmed or skipped
-    return !expenses.some(e =>
-      e.description?.toLowerCase().trim() === rule.description?.toLowerCase().trim() &&
-      e.date?.startsWith(curMonthPrefix)
-    );
+    return !rem || rem.status === "pending"; // hide only if confirmed or skipped
   });
   const confirmed = reminders.filter(r => r.status === "confirmed");
 
