@@ -814,6 +814,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, familyMembers }) {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
   const [selectedCreditMonth, setSelectedCreditMonth] = useState(null);
+  const [selectedPieCategory, setSelectedPieCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
 
   const availableYears = useMemo(() => {
@@ -846,7 +847,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, familyMembers }) {
       : expenses.filter(e=>e.date?.startsWith(`${selectedYear}`));
     const map = {};
     filtered.forEach(e=>{ map[e.category]=(map[e.category]||0)+e.amount; });
-    return Object.entries(map).map(([id,value]) => { const cat=CATEGORIES.find(c=>c.id===id); return { name:cat?.label||id, value:Math.round(value), emoji:cat?.emoji||"📦" }; }).sort((a,b)=>b.value-a.value);
+    return Object.entries(map).map(([id,value]) => { const cat=CATEGORIES.find(c=>c.id===id); return { id, name:cat?.label||id, value:Math.round(value), emoji:cat?.emoji||"📦" }; }).sort((a,b)=>b.value-a.value);
   }, [expenses, period, selectedMonth, selectedYear]);
 
   // ── Credit: 12 months starting from the reference month ──
@@ -917,27 +918,82 @@ function ChartsView({ expenses, incomes, t, onEditExpense, familyMembers }) {
       </Card>
 
       <Card title={`🥧 Gastos por categoria — ${period==="month" ? MONTH_FULL[selectedMonth] : "Ano"} ${selectedYear}`}>
+        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma fatia ou categoria para ver os lançamentos.</p>
         <div style={{ display:"flex",flexWrap:"wrap",gap:24,alignItems:"center" }}>
           <ResponsiveContainer width="100%" height={220} style={{ minWidth:200 }}>
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value">
-                {pieData.map((_,i)=><Cell key={i} fill={t.chartColors[i%t.chartColors.length]} />)}
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value"
+                onClick={(data) => setSelectedPieCategory(prev => prev===data.id ? null : data.id)}
+                style={{ cursor:"pointer" }}>
+                {pieData.map((d,i)=>(
+                  <Cell key={i} fill={t.chartColors[i%t.chartColors.length]}
+                    opacity={selectedPieCategory && selectedPieCategory!==d.id ? 0.35 : 1} />
+                ))}
               </Pie>
               <Tooltip content={<PTip/>} />
             </PieChart>
           </ResponsiveContainer>
           <div style={{ flex:1,minWidth:180,alignSelf:"flex-start" }}>
-            <div style={{ display:"grid",gridTemplateColumns: pieData.length > 4 ? "1fr 1fr" : "1fr",gap:"4px 16px" }}>
-              {pieData.map((d,i)=>(
-                <div key={d.name} style={{ display:"flex",alignItems:"center",gap:6,padding:"4px 0",minWidth:0 }}>
-                  <div style={{ width:9,height:9,borderRadius:2,background:t.chartColors[i%t.chartColors.length],flexShrink:0 }} />
-                  <span style={{ fontSize:11,color:t.textSecondary,flex:1,textAlign:"left",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{d.emoji} {d.name}</span>
-                  <span style={{ fontSize:11,fontWeight:700,color:t.text,flexShrink:0,marginLeft:4 }}>{fmt(d.value)}</span>
-                </div>
-              ))}
+            <div style={{ display:"grid",gridTemplateColumns: pieData.length > 4 ? "1fr 1fr" : "1fr",gap:"4px 8px" }}>
+              {pieData.map((d,i)=>{
+                const isActive = selectedPieCategory===d.id;
+                const color = t.chartColors[i%t.chartColors.length];
+                return (
+                  <div key={d.name} onClick={()=>setSelectedPieCategory(prev=>prev===d.id?null:d.id)}
+                    style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 8px",minWidth:0,cursor:"pointer",borderRadius:8,background:isActive?color+"22":"transparent",border:`1px solid ${isActive?color+"55":"transparent"}`,transition:"all 0.15s" }}>
+                    <div style={{ width:9,height:9,borderRadius:2,background:color,flexShrink:0 }} />
+                    <span style={{ fontSize:11,color:isActive?color:t.textSecondary,flex:1,textAlign:"left",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:isActive?700:400 }}>{d.emoji} {d.name}</span>
+                    <span style={{ fontSize:11,fontWeight:700,color:isActive?color:t.text,flexShrink:0,marginLeft:4 }}>{fmt(d.value)}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
+        {selectedPieCategory && (() => {
+          const prefix = period==="month"
+            ? `${selectedYear}-${String(selectedMonth+1).padStart(2,"0")}`
+            : `${selectedYear}`;
+          const catExpenses = expenses
+            .filter(e => e.category===selectedPieCategory && e.date?.startsWith(prefix))
+            .sort((a,b)=> (b.date||"").localeCompare(a.date||""));
+          const catObj = CATEGORIES.find(c=>c.id===selectedPieCategory);
+          const total = catExpenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+          const colorIdx = pieData.findIndex(d=>d.id===selectedPieCategory);
+          const color = t.chartColors[colorIdx>=0 ? colorIdx%t.chartColors.length : 0];
+          if (!catExpenses.length) return <div style={{ marginTop:16,textAlign:"center",fontSize:13,color:t.textMuted }}>Nenhum lançamento encontrado.</div>;
+          return (
+            <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8 }}>
+                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>
+                  {catObj?.emoji} {catObj?.label} — {period==="month"?MONTH_FULL[selectedMonth]:selectedYear}
+                </h4>
+                <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                  <span style={{ fontSize:15,fontWeight:800,color,fontFamily:"'Sora',sans-serif" }}>{fmt(total)}</span>
+                  <button onClick={()=>setSelectedPieCategory(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
+                </div>
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+                {catExpenses.map((e,i)=>{
+                  const typeLabel = e.type==="pix"?"PIX":e.type==="debito"?"Débito":"Crédito";
+                  return (
+                    <div key={e.id||i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.surface,border:`1px solid ${color}22` }}>
+                      <span style={{ fontSize:18,flexShrink:0 }}>{catObj?.emoji||"📦"}</span>
+                      <div style={{ flex:1,minWidth:0 }}>
+                        <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.description}</div>
+                        <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
+                          {e.user_label} · {typeLabel} · {e.date?.slice(8,10)}/{e.date?.slice(5,7)}
+                          {e.type==="credito"&&parseInt(e.parcelas)>1&&` · ${e.parcelas}x`}
+                        </div>
+                      </div>
+                      <span style={{ fontSize:14,fontWeight:700,color,flexShrink:0 }}>{fmt(parseFloat(e.amount)||0)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </Card>
 
       <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
@@ -2014,10 +2070,16 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                 <div key={rem.id} style={{ display:"flex",alignItems:"center",gap:10 }}>
                   <span style={{ fontSize:16 }}>{cat?.emoji || "📦"}</span>
                   <span style={{ fontSize:13,color:t.text,flex:1 }}>{rule.description}</span>
-                  <span style={{ fontSize:13,fontWeight:700,color:t.success }}>{fmt(rem.amount)}</span>
+                  <span style={{ fontSize:13,fontWeight:700,color:t.success }}>{fmt(parseFloat(rem.amount)||0)}</span>
                 </div>
               );
             })}
+          </div>
+          <div style={{ marginTop:12,paddingTop:10,borderTop:`1px solid ${t.success}44`,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+            <span style={{ fontSize:13,fontWeight:700,color:t.success }}>Total lançado</span>
+            <span style={{ fontSize:16,fontWeight:800,color:t.success,fontFamily:"'Sora',sans-serif" }}>
+              {fmt(confirmed.reduce((s,r)=>s+(parseFloat(r.amount)||0),0))}
+            </span>
           </div>
         </div>
       )}
