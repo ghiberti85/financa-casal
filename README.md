@@ -1,6 +1,6 @@
 # 💎 Finanças do Casal
 
-> Gestão financeira compartilhada para casais — controle seus gastos, receitas e parcelas de forma colaborativa e em tempo real.
+> Gestão financeira compartilhada para casais — controle gastos, receitas, orçamentos e parcelas de forma colaborativa e em tempo real.
 
 **[🌐 Acessar aplicação](https://financa-casal.vercel.app)**
 
@@ -22,14 +22,14 @@
 
 ## Sobre o projeto
 
-O **Finanças do Casal** é uma aplicação web progressiva (PWA) desenvolvida para que casais possam gerenciar suas finanças de forma colaborativa. Cada membro da família pode registrar gastos e receitas, visualizar o histórico em calendário, acompanhar gráficos mensais e importar extratos bancários automaticamente.
+O **Finanças do Casal** é uma aplicação web progressiva (PWA) desenvolvida para que casais possam gerenciar suas finanças de forma colaborativa. Cada membro da família pode registrar gastos e receitas, acompanhar orçamentos por categoria, gerenciar gastos recorrentes mensais, visualizar o histórico em calendário, consultar gráficos e importar extratos bancários automaticamente.
 
 A aplicação foi construída com foco em:
 
-- **Experiência mobile-first** com design responsivo e glassmorphism
-- **Tempo real** — alterações de um membro refletem imediatamente para o outro
-- **Segurança** — Row Level Security (RLS) no Supabase garante que cada família acessa apenas seus próprios dados
-- **Importação inteligente** de planilhas CSV/XLSX/PDF via IA (Claude)
+- **PWA mobile-first** — instalável no iPhone/Android com navegação em barra inferior fixa, suporte à notch e home indicator do iOS
+- **Colaboração em tempo real** — alterações de um membro refletem imediatamente para o outro
+- **Segurança** — Row Level Security (RLS) no Supabase garante isolamento total entre famílias
+- **Importação inteligente** de planilhas CSV/XLSX/PDF via IA (Claude Sonnet)
 
 ---
 
@@ -38,40 +38,67 @@ A aplicação foi construída com foco em:
 ### 🔐 Autenticação e Perfis
 - Cadastro e login com e-mail e senha
 - Persistência de sessão via `localStorage` — sem necessidade de logar novamente ao recarregar
+- Skeleton loading durante restauração de sessão
 - Perfil com nome, sobrenome e telefone com DDI internacional (14 países)
-- Skeleton loading durante restauração de sessão — sem flash de tela de login
 
 ### 👨‍👩‍👦 Sistema de Família
 - Criar família ou entrar em família existente via **código de convite de 6 letras**
 - Gerenciamento de membros com dois papéis: **Membro** e **Administrador**
-- Apenas administradores podem convidar novos membros e regenerar o código
+- Apenas administradores podem regenerar o código de convite
 - Proteção contra remoção do último administrador
 
 ### 🏠 Dashboard
 - Cards de resumo: Receitas do Mês, Gastos do Mês, Saldo e Parcelas Futuras
 - Gráfico de barras: Receitas × Gastos dos últimos 6 meses
+- **Card de alertas de orçamento** — aparece automaticamente quando alguma categoria ultrapassa 80% do limite definido
+- **Card de lembretes de recorrentes** — lista os gastos fixos que ainda não foram confirmados no mês, com acesso direto à aba Recorrentes
 - Saudação personalizada com nome do usuário logado
 
 ### 📅 Calendário
-- Visualização mensal com indicadores visuais por dia (ponto vermelho = gasto, ponto verde = receita)
+- Visualização mensal com indicadores visuais por dia:
+  - 🔴 ponto vermelho = gasto avulso
+  - 🟣 ponto roxo = parcela de crédito
+  - 🟢 ponto verde = receita
 - Valores resumidos diretamente na célula do dia
 - Painel de detalhes ao clicar em um dia com lista completa de lançamentos
 - Editar e excluir gastos/receitas diretamente do calendário
 
 ### 📊 Gráficos
-- **Receitas × Gastos × Saldo** — barras por mês, filtrável por mês ou ano
-- **Gastos por categoria** — gráfico de rosca (donut) com legenda em duas colunas mostrando todas as categorias
-- **Parcelas de crédito** — linha do tempo das parcelas futuras por mês
-- Filtros de período: mês específico ou visão anual
+- **Receitas × Gastos × Saldo** — barras por mês, filtrável por mês/ano
+- **Gastos por categoria** — gráfico de rosca (donut) interativo:
+  - Toque em uma fatia ou item da legenda para selecionar a categoria
+  - Fatias não selecionadas ficam em 35% de opacidade
+  - Lista detalhada de lançamentos da categoria aparece abaixo do gráfico (descrição, quem pagou, tipo, data, valor)
+  - Total da categoria destacado no cabeçalho da lista
+- **Parcelas de crédito** — linha do tempo das parcelas futuras (12 meses):
+  - Toque em um ponto para ver e editar as parcelas daquele mês
+  - Edição de parcelas diretamente no gráfico
+
+### 🎯 Orçamento Mensal
+- Definir limite de gasto por categoria (ex: Alimentação: R$ 2.000)
+- Barra de progresso por categoria com percentual de uso
+- Cores indicativas: verde (< 80%), amarelo (80–100%), vermelho (> 100%)
+- Card de alerta no Dashboard quando qualquer categoria ultrapassa 80%
+- Histórico por mês — navegação entre meses passados
+
+### 🔁 Gastos Recorrentes
+- Cadastrar regras de gastos fixos mensais, semanais ou anuais (aluguel, contas, assinaturas)
+- Cada regra possui: descrição, categoria, tipo de pagamento, dia de vencimento, tipo de valor (fixo ou variável)
+- **Sistema de lembretes mensais** — todo mês são gerados lembretes para cada regra ativa:
+  - Pendentes: campo de valor + botão confirmar ✓ + botão pular ✕
+  - Confirmar cria o lançamento na aba Lançamentos automaticamente
+  - Detecta se o lançamento já foi importado e apenas vincula o lembrete
+- **Card de confirmados** com lista de pagamentos do mês e **total lançado**
+- Card de alertas no Dashboard com os lembretes pendentes do mês
 
 ### 📋 Lançamentos
-- Listagem de gastos e receitas com filtros por mês, ano, tipo (Todos/Gastos/Receitas), tipo de pagamento e categoria
-- **Seleção individual** com checkbox em cada item para deleção em massa
+- Listagem de gastos e receitas com filtros por: mês, ano, tipo (Todos/Gastos/Receitas), tipo de pagamento e categoria
+- **Seleção individual** com checkbox para deleção em massa
 - Botão "Selecionar tudo" com contador de itens selecionados
-- **Detecção automática de duplicatas** — itens com mesmo nome, categoria e valor no mesmo dia são sinalizados com badge `🔁 duplicata` e sugeridos para remoção
-- Banner de alerta com contagem de duplicatas e botão para remover todas de uma vez
+- **Detecção automática de duplicatas** — itens sinalizados com badge `🔁 duplicata`
+- Banner de alerta com contagem de duplicatas e remoção em massa
 - Editar qualquer lançamento com modal completo
-- Subtítulo informativo em cada item: `Quem pagou · Data · Tipo · Parcela X de N · Categoria`
+- Subtítulo informativo: `Quem pagou · Data · Tipo · Parcela X de N · Categoria`
 
 ### ➕ Registro de Gastos
 **Ordem dos campos:** Descrição → Quem pagou → Tipo de pagamento → Categoria
@@ -80,9 +107,10 @@ A aplicação foi construída com foco em:
 - **Crédito parcelado:**
   - Nº de parcelas + Valor da Parcela
   - Valor Total calculado automaticamente (somente leitura)
-  - Data da 1ª parcela
+  - Data da 1ª parcela (com aviso sobre data da fatura)
   - Banner informativo: `💳 Propagado de Jan/2026 até Jun/2026 · Total: R$ 600,00`
-  - O valor armazenado é **o da parcela** — cada mês exibe o custo real daquele mês
+  - O valor armazenado é **o da parcela** — cada mês exibe o custo real
+- Opção de tornar o gasto **recorrente** diretamente no formulário
 
 ### ➕ Registro de Receitas
 - Descrição, Quem recebeu, Categoria, Valor e Data
@@ -108,6 +136,14 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 - Modal com os mesmos campos do cadastro, pré-preenchido com os valores atuais
 - Para crédito parcelado: exibe o valor da parcela e calcula o total automaticamente
 - Após salvar, re-busca o registro do banco para garantir sincronização perfeita
+
+### 📱 PWA / Mobile
+- Instalável na tela inicial do iPhone e Android
+- **Barra de navegação inferior fixa** com todos os 7 tabs: Início, Agenda, Gráficos, Orçamento, Recorr., Lançam., Importar
+- `env(safe-area-inset-bottom)` — botões não ficam atrás do indicador home do iPhone
+- `env(safe-area-inset-top)` — conteúdo não conflita com a status bar do iOS no modo standalone
+- Barra superior simplificada no mobile: logo, modo escuro, perfil e família
+- Botões FAB (+ Gasto / + Receita) reposicionados acima da barra inferior no mobile
 
 ---
 
@@ -138,7 +174,7 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                   Browser                        │
+│                   Browser / PWA                  │
 │  React SPA (Vite)  ──── localStorage (token)    │
 │       │                                          │
 │  supabaseFetch()   ──── Supabase REST API       │
@@ -162,7 +198,9 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 
 **Decisões de arquitetura:**
 - **Single file component** — toda a aplicação está em `src/App.jsx` para facilitar iteração rápida
-- **Sem SDK do Supabase** — usa fetch direto com headers manuais para maior controle e bundle menor
+- **Sem SDK do Supabase** — usa `fetch` direto com headers manuais para maior controle e bundle menor
+- **Sem TypeScript** — projeto pessoal, velocidade de iteração prioritária
+- **Sem Tailwind** — inline styles com objeto de tema `t` para suporte a dark/light mode
 - **Estado local** com React `useState` / `useMemo` — sem Redux ou Zustand
 - **RLS no banco** — segurança no nível do banco, não apenas no frontend
 
@@ -173,13 +211,29 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 ### Tabelas
 
 ```sql
-families        -- id, name, invite_code, created_at
-family_members  -- id, family_id, user_id, role, joined_at
-expenses        -- id, family_id, user_id, description, amount, date,
-                --   category, type, parcelas, user_label, created_at
-incomes         -- id, family_id, user_id, description, amount, date,
-                --   source, category, user_label, created_at
-profiles        -- id, first_name, last_name, phone, updated_at
+families            -- id, name, invite_code, created_at
+family_members      -- id, family_id, user_id, role, joined_at
+                    --   role: 'admin' | 'member'
+
+expenses            -- id, family_id, user_id, description, amount, date,
+                    --   category, type, parcelas, user_label, created_at
+                    --   type: 'pix' | 'debit' | 'credit'
+                    --   amount: SEMPRE o valor da parcela, nunca o total
+
+incomes             -- id, family_id, user_id, description, amount, date,
+                    --   source, category, user_label, created_at
+
+profiles            -- id, first_name, last_name, phone, updated_at
+
+budgets             -- id, family_id, category, amount, month (YYYY-MM)
+
+recurring_expenses  -- id, family_id, user_id, description, amount, category,
+                    --   type, frequency, day_of_month, month_of_year,
+                    --   amount_type, active, end_date, created_at
+
+recurring_reminders -- id, family_id, recurring_id, month, year,
+                    --   amount, status, expense_id, created_at
+                    --   status: 'pending' | 'confirmed' | 'skipped'
 ```
 
 ### Convenção de valores para crédito parcelado
@@ -219,7 +273,7 @@ Todas as tabelas têm RLS ativo. As políticas de SELECT, INSERT, UPDATE e DELET
 ### Pré-requisitos
 
 - Node.js 18+
-- npm ou yarn
+- npm
 - Conta no [Supabase](https://supabase.com) (gratuito)
 
 ### Instalação
@@ -246,8 +300,8 @@ Acesse `http://localhost:5173`
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
 2. Execute o script SQL em `supabase/schema.sql` no SQL Editor
-3. Execute o script `supabase/rpc_functions.sql` para criar as funções
-4. Em **Authentication → Providers → Email**, desative "Confirm email" (o trigger `auto_confirm_user` já faz isso automaticamente)
+3. Execute o script `supabase/rpc_functions.sql` para criar as funções RPC
+4. Em **Authentication → Providers → Email**, desative "Confirm email"
 5. Copie a **Project URL** e a **anon key** para o `.env.local`
 
 ---
@@ -274,6 +328,16 @@ Secret value: sk-ant-...
 
 O projeto está configurado para deploy automático na Vercel via GitHub.
 
+### Deploy automático
+
+Qualquer push para a branch `main` dispara um deploy automático na Vercel. O processo leva aproximadamente 1–2 minutos e pode ser acompanhado em **vercel.com/dashboard**.
+
+```bash
+git add src/App.jsx
+git commit -m "feat: descrição da mudança"
+git push
+```
+
 ### Deploy manual (primeira vez)
 
 ```bash
@@ -281,17 +345,6 @@ npm install -g vercel
 vercel login
 vercel --prod
 ```
-
-### Deploy automático (após configuração do Git)
-
-```bash
-# Qualquer push para a branch main dispara um deploy automático
-git add src/App.jsx
-git commit -m "feat: descrição da mudança"
-git push
-```
-
-O deploy leva aproximadamente 1 minuto e pode ser acompanhado em **vercel.com/dashboard**.
 
 ### Variáveis de ambiente na Vercel
 
@@ -305,39 +358,50 @@ Configure as mesmas variáveis do `.env.local` em:
 ```
 financa-casal/
 ├── src/
-│   └── App.jsx          # Aplicação completa (componentes, lógica, estilos)
+│   └── App.jsx          # Aplicação completa (~4000 linhas)
 ├── public/
 │   ├── favicon.svg      # Ícone diamante roxo
 │   └── og-image.svg     # Imagem Open Graph (1200×630)
 ├── index.html           # HTML com SEO, Open Graph e PWA meta tags
 ├── vite.config.js       # Configuração do Vite
+├── CONTEXT.md           # Contexto técnico para desenvolvimento com IA
+├── CLAUDE.md            # Instruções e padrões para o Claude Code
 ├── package.json
-├── .gitignore
 └── README.md
 ```
 
-### Componentes principais em `App.jsx`
+### Componentes em `App.jsx`
 
 | Componente | Descrição |
 |---|---|
-| `App` | Root — gerencia autenticação, estado global e roteamento por abas |
-| `LoginPage` | Tela de login/cadastro com fluxo de perfil e família |
-| `SummaryCards` | Cards de resumo financeiro do mês atual |
-| `CalendarView` | Calendário mensal com detalhes por dia |
-| `ChartsView` | Gráficos de receitas, gastos e parcelas |
-| `TransactionsList` | Lista de lançamentos com filtros, seleção e duplicatas |
-| `ImportView` | Upload e preview de planilhas com detecção de duplicatas |
-| `ExpenseForm` | Formulário de novo gasto (PIX/Débito/Crédito parcelado) |
-| `IncomeForm` | Formulário de nova receita |
+| `App` | Root — autenticação, estado global e roteamento por abas |
+| `LoginPage` | Login/cadastro com fluxo de perfil e família (3 etapas) |
+| `SummaryCards` | Cards: Receitas, Gastos, Saldo, Parcelas Futuras |
+| `CalendarView` | Calendário mensal com indicadores e painel de detalhes |
+| `ChartsView` | Receitas×Gastos, donut por categoria (clicável) e linha de parcelas |
+| `BudgetView` | Orçamento por categoria com barras de progresso |
+| `BudgetAlertCard` | Alerta no Dashboard quando categoria > 80% do orçamento |
+| `RecurringView` | Lembretes mensais, confirmação de pagamentos e lista de regras |
+| `RecurringForm` | Cadastro/edição de regra recorrente |
+| `RecurringAlertCard` | Alerta no Dashboard com pagamentos recorrentes pendentes |
+| `TransactionsList` | Lançamentos com filtros, seleção em massa e duplicatas |
+| `ImportView` | Upload CSV/XLSX/PDF, preview e detecção de duplicatas |
+| `ExpenseForm` | Gasto: PIX/Débito/Crédito parcelado + opção recorrente |
+| `IncomeForm` | Receita: descrição, quem recebeu, categoria, valor, data |
 | `EditModal` | Edição de gasto ou receita existente |
-| `MemberSelect` | Seletor dinâmico de membros da família |
+| `FamilyModal` | Código de convite, membros e gerenciamento de papéis |
+| `ProfileModal` | Edição de perfil com telefone e DDI |
+| `MemberSelect` | Dropdown de membros da família |
+| `Modal` | Wrapper de modal reutilizável com backdrop e animação |
+| `Btn` | Botão com variantes: primary, ghost, danger, success |
+| `Toast` | Sistema de notificações temporárias (success/error/info) |
 
 ---
 
 ## Roadmap
 
+- [ ] Metas financeiras mensais com barra de progresso
 - [ ] Notificações push para vencimento de parcelas
-- [ ] Metas financeiras mensais com progresso visual
 - [ ] Exportação de relatórios em PDF
 - [ ] Suporte a múltiplas moedas
 - [ ] App mobile nativo (React Native)
