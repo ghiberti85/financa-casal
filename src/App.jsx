@@ -986,7 +986,15 @@ function ChartsView({ expenses, incomes, t, onEditExpense, familyMembers }) {
                           {e.type==="credito"&&parseInt(e.parcelas)>1&&` · ${e.parcelas}x`}
                         </div>
                       </div>
-                      <span style={{ fontSize:14,fontWeight:700,color,flexShrink:0 }}>{fmt(parseFloat(e.amount)||0)}</span>
+                      <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
+                        <span style={{ fontSize:14,fontWeight:700,color }}>{fmt(parseFloat(e.amount)||0)}</span>
+                        {onEditExpense && (
+                          <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
+                            style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
+                            onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
+                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
