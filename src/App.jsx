@@ -578,7 +578,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
 }
 
 // ─── CALENDAR ────────────────────────────────────────────────────────────────
-function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onEditExpense, onEditIncome, familyMembers, onDaySelect }) {
+function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onEditExpense, onEditIncome, familyMembers, onDaySelect, family, isDemo }) {
   // Store year/month as plain integers — completely avoids ALL timezone bugs
   const [viewYr, setViewYr] = useState(() => {
     const now = new Date();
@@ -591,6 +591,43 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   const yr = viewYr, mo = viewMo;
   const [selectedDay, setSelectedDay] = useState(null);
   const [editItem, setEditItem] = useState(null);
+  const [recurringRules, setRecurringRules] = useState([]);
+
+  useEffect(() => {
+    if (isDemo || !family?.family_id) return;
+    supabaseFetch(`/recurring_expenses?family_id=eq.${family.family_id}&active=eq.true&select=*`)
+      .then(data => setRecurringRules(data || []))
+      .catch(() => {});
+  }, [family?.family_id, isDemo]);
+
+  // For the viewed month, compute which recurring rules are pending (no matching expense yet)
+  const recurByDay = useMemo(() => {
+    const map = {};
+    const prefix = `${yr}-${String(mo+1).padStart(2,"0")}`;
+    const nowPrefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+    // Only show recurring overlay from current month onward (past months already show as expenses)
+    if (prefix < nowPrefix) return map;
+    recurringRules.forEach(rule => {
+      if (!rule.active) return;
+      // Skip if end_date is before this month
+      if (rule.end_date && rule.end_date < `${prefix}-01`) return;
+      // Yearly rules: only show in their specific month
+      if (rule.frequency === "yearly") {
+        if (rule.month_of_year !== mo + 1) return;
+      }
+      const day = parseInt(rule.day_of_month) || 1;
+      // Check if already paid this month (expense with same description exists)
+      const alreadyPaid = expenses.some(e =>
+        e.description === rule.description &&
+        e.date?.startsWith(prefix)
+      );
+      if (!alreadyPaid) {
+        if (!map[day]) map[day] = [];
+        map[day].push(rule);
+      }
+    });
+    return map;
+  }, [recurringRules, expenses, yr, mo]);
   // Pure arithmetic using Tomohiko Sakamoto algorithm — zero Date objects, zero timezone bugs
   const firstDay = (() => {
     // Returns day of week (0=Sun, 1=Mon, ..., 6=Sat) for the 1st of yr/mo
@@ -665,7 +702,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 8 }}>
         {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
       </div>
-      <div style={{ display:"flex",gap:16,marginBottom:10,justifyContent:"flex-end" }}>
+      <div style={{ display:"flex",gap:16,marginBottom:10,justifyContent:"flex-end",flexWrap:"wrap" }}>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
           <span style={{ width:7,height:7,borderRadius:"50%",background:t.danger,display:"inline-block" }}/>Gastos
         </div>
@@ -674,6 +711,9 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
           <span style={{ width:7,height:7,borderRadius:"50%",background:t.success,display:"inline-block" }}/>Receitas
+        </div>
+        <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
+          <span style={{ width:7,height:7,borderRadius:"50%",background:"#f59e0b",display:"inline-block" }}/>Recorrentes
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
@@ -690,10 +730,11 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
               onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background=isToday?t.accentSoft:t.surface; }}
             >
               <span style={{ fontSize: 14, fontWeight: isToday?800:600, color: isSel||isToday?t.accent:t.text }}>{day}</span>
-              <div style={{ display: "flex", gap: 3 }}>
+              <div style={{ display: "flex", gap: 3, flexWrap:"wrap", justifyContent:"center" }}>
                 {(expByDay[day]||[]).some(e=>!e._installNum||e._installNum===1)&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.danger }}/>}
                 {(expByDay[day]||[]).some(e=>e._installNum>1)&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.accent }}/>}
                 {hasInc&&<span style={{ width:6,height:6,borderRadius:"50%",background:t.success }}/>}
+                {(recurByDay[day]||[]).length>0&&<span style={{ width:6,height:6,borderRadius:"50%",background:"#f59e0b" }}/>}
               </div>
               {totalDay>0&&<span style={{ fontSize:9,color:t.danger,fontWeight:700 }}>{fmtShort(totalDay)}</span>}
               {(incByDay[day]||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)>0&&<span style={{ fontSize:9,color:t.success,fontWeight:700 }}>{fmtShort((incByDay[day]||[]).reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</span>}
@@ -710,8 +751,27 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
               {sExp.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(sExp.reduce((s,e)=>s+(parseFloat(e.amount)||0),0))}</span>}
             </div>
           </div>
-          {sExp.length===0&&sInc.length===0 ? <p style={{ color:t.textMuted,fontSize:14,margin:0,textAlign:"center" }}>Nenhum lançamento neste dia</p> : (
+          {sExp.length===0&&sInc.length===0&&(recurByDay[selectedDay]||[]).length===0 ? <p style={{ color:t.textMuted,fontSize:14,margin:0,textAlign:"center" }}>Nenhum lançamento neste dia</p> : (
             <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              {(recurByDay[selectedDay]||[]).map((rule) => {
+                const cat = CATEGORIES.find(c=>c.id===rule.category);
+                return (
+                  <div key={rule.id} style={{
+                    display:"flex",alignItems:"center",justifyContent:"space-between",
+                    padding:"12px 16px",borderRadius:14,
+                    background:"#f59e0b18", border:"1px solid #f59e0b44",
+                  }}>
+                    <div style={{ display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1 }}>
+                      <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||"🔁"}</span>
+                      <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
+                        <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rule.description}</div>
+                        <div style={{ fontSize:11,color:"#f59e0b",marginTop:1 }}>🔁 Recorrente · {cat?.label||"Outros"}{rule.amount?` · ${fmt(rule.amount)}`:""}</div>
+                      </div>
+                    </div>
+                    <span style={{ fontWeight:700,fontSize:14,color:"#f59e0b",flexShrink:0 }}>{rule.amount?fmt(parseFloat(rule.amount)||0):"—"}</span>
+                  </div>
+                );
+              })}
               {sInc.map((inc) => {
                 const incCat = INCOME_SOURCES.find(s=>s.id===(inc.source||inc.category));
                 return (
@@ -809,7 +869,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 }
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
-function ChartsView({ expenses, incomes, t, onEditExpense, familyMembers }) {
+function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
@@ -994,6 +1054,12 @@ function ChartsView({ expenses, incomes, t, onEditExpense, familyMembers }) {
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                             onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
                         )}
+                        {onDeleteExpense && (
+                          <button onClick={()=>onDeleteExpense(e.id)} title="Remover"
+                            style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
+                            onMouseEnter={ev=>ev.currentTarget.style.color=t.danger}
+                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>🗑</button>
+                        )}
                       </div>
                     </div>
                   );
@@ -1057,6 +1123,12 @@ function ChartsView({ expenses, incomes, t, onEditExpense, familyMembers }) {
                             style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                             onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
+                        )}
+                        {onDeleteExpense && (
+                          <button onClick={()=>onDeleteExpense(e.id)} title="Remover"
+                            style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
+                            onMouseEnter={ev=>ev.currentTarget.style.color=t.danger}
+                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>🗑</button>
                         )}
                       </div>
                     </div>
@@ -4038,8 +4110,8 @@ export default function App() {
               </div>
             </div>
           )}
-          {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} />}
-          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} familyMembers={familyMembers} />}
+          {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
+          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} />}
           {tab==="recurring"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
               <div style={{ marginBottom:20 }}>
