@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
@@ -361,6 +361,69 @@ function Input({ label, t, ...props }) {
         onFocus={(e) => { e.target.style.borderColor = t.accent; }}
         onBlur={(e) => { e.target.style.borderColor = t.border; }}
       />
+    </div>
+  );
+}
+
+// DateInput: typed DD/MM/AAAA on all platforms; calendar icon opens native picker as fallback
+function DateInput({ label, t, value, onChange, placeholder, style: inputStyle }) {
+  const toDisplay = (iso) => {
+    if (!iso || iso.length < 10) return iso || "";
+    const [y, m, d] = iso.split("-");
+    return y && m && d ? `${d}/${m}/${y}` : iso;
+  };
+  const toISO = (digits) => {
+    if (digits.length === 8)
+      return `${digits.slice(4)}-${digits.slice(2,4)}-${digits.slice(0,2)}`;
+    return "";
+  };
+  const [display, setDisplay] = useState(() => toDisplay(value));
+  const hiddenRef = useRef(null);
+
+  useEffect(() => { setDisplay(toDisplay(value)); }, [value]);
+
+  const handleTextChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+    let fmt = digits;
+    if (digits.length > 2) fmt = digits.slice(0,2) + "/" + digits.slice(2);
+    if (digits.length > 4) fmt = digits.slice(0,2) + "/" + digits.slice(2,4) + "/" + digits.slice(4);
+    setDisplay(fmt);
+    if (digits.length === 8) onChange({ target: { value: toISO(digits) } });
+    else if (digits.length === 0) onChange({ target: { value: "" } });
+  };
+
+  const openPicker = () => {
+    const el = hiddenRef.current;
+    if (!el) return;
+    if (el.showPicker) { try { el.showPicker(); } catch(_) { el.click(); } } else { el.click(); }
+  };
+
+  const baseInputStyle = {
+    width:"100%", maxWidth:"100%", padding:"11px 44px 11px 14px", borderRadius:12,
+    fontSize:14, fontFamily:"'DM Sans', sans-serif", background:t.inputBg,
+    border:`1px solid ${t.border}`, color:t.text, outline:"none",
+    transition:"border-color 0.2s", boxSizing:"border-box", minWidth:0,
+    ...(inputStyle||{}),
+  };
+
+  return (
+    <div style={{ marginBottom:16, minWidth:0 }}>
+      {label && <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>{label}</label>}
+      <div style={{ position:"relative" }}>
+        <input type="text" inputMode="numeric" placeholder={placeholder||"DD/MM/AAAA"}
+          value={display} onChange={handleTextChange}
+          style={baseInputStyle}
+          onFocus={e=>e.target.style.borderColor=t.accent}
+          onBlur={e=>e.target.style.borderColor=t.border}
+        />
+        <button type="button" onClick={openPicker} title="Abrir calendário"
+          style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:16,padding:"4px",lineHeight:1 }}>
+          📅
+        </button>
+        <input ref={hiddenRef} type="date" value={value||""} tabIndex={-1}
+          onChange={e=>onChange(e)}
+          style={{ position:"absolute",opacity:0,pointerEvents:"none",width:"1px",height:"1px",top:0,left:0 }} />
+      </div>
     </div>
   );
 }
@@ -1273,7 +1336,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
               </div>
             </div>
             <div>
-              <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+              <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
               <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
             </div>
           </div>
@@ -1286,7 +1349,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
       ) : (
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
           <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-          <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+          <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
         </div>
       )}
       {form.category && (
@@ -1322,7 +1385,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
                 ))}
               </div>
             </div>
-            <Input label="Data de término (opcional)" t={t} type="date" value={recurringForm.end_date} onChange={e=>setR("end_date",e.target.value)} style={{ height:44,padding:"11px 14px" }} />
+            <DateInput label="Data de término (opcional)" t={t} value={recurringForm.end_date} onChange={e=>setR("end_date",e.target.value)} />
           </div>
         )}
       </div>
@@ -1358,7 +1421,7 @@ function IncomeForm({ t, onSave, onClose, familyMembers, initialDate }) {
       </Select>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
         <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="0,00" />
-        <Input label="Data" t={t} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
+        <DateInput label="Data" t={t} value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
         <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
@@ -1492,7 +1555,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
                 </div>
               </div>
               <div>
-                <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+                <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
                 <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
               </div>
             </div>
@@ -1506,7 +1569,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
             <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
               onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-            <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+            <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
         )}
       </>) : (<>
@@ -1517,7 +1580,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
         </Select>
         <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
           onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-        <Input label="Data" t={t} type="date" value={form.date} onChange={e=>set("date",e.target.value)} />
+        <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
       </>)}
 
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
@@ -2388,7 +2451,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
           </div>
         )}
 
-        <Input label="Data de término (opcional)" t={t} type="date" value={form.end_date} onChange={e=>set("end_date",e.target.value)} style={{ height:44,padding:"11px 14px" }} />
+        <DateInput label="Data de término (opcional)" t={t} value={form.end_date} onChange={e=>set("end_date",e.target.value)} />
 
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:4 }}>
           <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
