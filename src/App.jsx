@@ -4606,7 +4606,7 @@ export default function App() {
       .desktop-sidebar{display:none!important;}
       .desktop-topbar{display:none!important;}
       .desktop-fab{display:none!important;}
-      .main-content-wrap{margin-left:0!important;}
+      .main-content-wrap{margin-left:0!important;padding-top:calc(56px + env(safe-area-inset-top))!important;}
     }
     @media(min-width:601px){
       .mobile-topbar{display:none!important;}
@@ -4725,7 +4725,7 @@ export default function App() {
         </aside>
 
         {/* ══ MOBILE TOP HEADER ══ */}
-        <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:56,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
+        <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:"calc(56px + env(safe-area-inset-top))",zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
           <div style={{ display:"flex",alignItems:"center",gap:8 }}>
             <span style={{ fontSize:20 }}>💎</span>
             <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.01em" }}>Finanças do Casal</span>
