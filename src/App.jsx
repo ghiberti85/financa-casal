@@ -1375,9 +1375,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
 
   const isCredit = form.type === "credito";
   const parcelas = parseInt(form.parcelas) || 1;
-  const totalValue = isCredit && parcelas > 1
-    ? (parseFloat(form.installAmount) || 0) * parcelas
-    : parseFloat(form.amount) || 0;
+  const totalValue = parseFloat(form.amount) || 0;
 
   const creditInfo = isCredit && parcelas > 1 && form.date ? (() => {
     const d = new Date(form.date + "T12:00:00");
@@ -1402,22 +1400,16 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
       </Select>
       {isCredit ? (
         <>
-          {/* Credit: parcelas + installAmount first, then total (readonly) and date */}
+          {/* Credit: parcelas + date row, then installAmount ↔ total row */}
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
             <Input label="Nº de parcelas" t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",parseInt(e.target.value)||1)} />
-            <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
+            <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden",marginBottom:0 }}>
-            <div>
-              <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
-              <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8 }}>
-                {totalValue > 0 ? fmt(totalValue) : "—"}
-              </div>
-            </div>
-            <div>
-              <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
-              <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
-            </div>
+          <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
+            <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
+            <div style={{ paddingTop:18,color:t.textMuted,fontSize:16,textAlign:"center",userSelect:"none" }}>↔</div>
+            <Input label="Valor Total (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
           </div>
           {creditInfo && (
             <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
@@ -1623,20 +1615,15 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
               <Input label="Nº de parcelas" t={t} type="number" min={1} max={48}
                 value={form.parcelas} onChange={e=>set("parcelas",parseInt(e.target.value)||1)} />
+              <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+            </div>
+            <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
               <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01"
                 value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
-            </div>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden",marginBottom:0 }}>
-              <div>
-                <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>Valor Total (R$)</label>
-                <div style={{ padding:"11px 14px",borderRadius:12,fontSize:14,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,opacity:0.8 }}>
-                  {totalVal > 0 ? fmt(totalVal) : "—"}
-                </div>
-              </div>
-              <div>
-                <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
-                <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:8,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
-              </div>
+              <div style={{ paddingTop:18,color:t.textMuted,fontSize:16,textAlign:"center",userSelect:"none" }}>↔</div>
+              <Input label="Valor Total (R$)" t={t} type="number" step="0.01"
+                value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
             </div>
             {creditInfo && (
               <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
