@@ -1345,13 +1345,13 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
       else next.installAmount = "";
     }
     if (k === "parcelas") {
-      const n = parseInt(v) || 1;
-      if (parseFloat(form.installAmount) > 0) {
-        next.amount = n > 1 ? (parseFloat(form.installAmount) * n).toFixed(2) : form.installAmount;
-      } else if (parseFloat(form.amount) > 0 && n > 1) {
-        next.installAmount = (parseFloat(form.amount) / n).toFixed(2);
-      } else {
+      const n = parseInt(v) || 0;
+      if (n > 1) {
+        if (parseFloat(form.installAmount) > 0) next.amount = (parseFloat(form.installAmount) * n).toFixed(2);
+        else if (parseFloat(form.amount) > 0) next.installAmount = (parseFloat(form.amount) / n).toFixed(2);
+      } else if (n === 1) {
         next.installAmount = "";
+        if (!next.amount) next.amount = form.installAmount;
       }
     }
     setForm(next);
@@ -1402,14 +1402,17 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
         <>
           {/* Credit: parcelas + date row, then installAmount ↔ total row */}
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-            <Input label="Nº de parcelas" t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",parseInt(e.target.value)||1)} />
+            <div>
+              <Input label="Nº de parcelas" t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",e.target.value)} placeholder="Ex: 12" />
+              {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>Informe um valor maior que zero.</div>}
+            </div>
             <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
           <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
-            <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
+            <Input label="Parcela (R$)" t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
             <div style={{ paddingTop:18,color:t.textMuted,fontSize:16,textAlign:"center",userSelect:"none" }}>↔</div>
-            <Input label="Valor Total (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+            <Input label="Total (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
           </div>
           {creditInfo && (
             <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
@@ -1542,12 +1545,16 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
         next.installAmount = (parseFloat(v) / n).toFixed(2);
       }
       if (k === "parcelas") {
-        const newN = parseInt(v) || 1;
+        const newN = parseInt(v) || 0;
         const inst = parseFloat(p.installAmount) || 0;
         const total = parseFloat(p.amount) || 0;
-        if (inst > 0 && newN > 1) next.amount = (inst * newN).toFixed(2);
-        else if (total > 0 && newN > 1) next.installAmount = (total / newN).toFixed(2);
-        else if (newN <= 1) { next.installAmount = ""; next.amount = p.installAmount || p.amount; }
+        if (newN > 1) {
+          if (inst > 0) next.amount = (inst * newN).toFixed(2);
+          else if (total > 0) next.installAmount = (total / newN).toFixed(2);
+        } else if (newN === 1) {
+          next.installAmount = "";
+          if (!next.amount) next.amount = p.installAmount || p.amount;
+        }
       }
       return next;
     });
@@ -1613,16 +1620,19 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
           })() : null;
           return (<>
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-              <Input label="Nº de parcelas" t={t} type="number" min={1} max={48}
-                value={form.parcelas} onChange={e=>set("parcelas",parseInt(e.target.value)||1)} />
+              <div>
+                <Input label="Nº de parcelas" t={t} type="number" min={1} max={48}
+                  value={form.parcelas} onChange={e=>set("parcelas",e.target.value)} placeholder="Ex: 12" />
+                {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>Informe um valor maior que zero.</div>}
+              </div>
               <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
             </div>
             <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
             <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
-              <Input label="Valor da Parcela (R$)" t={t} type="number" step="0.01"
+              <Input label="Parcela (R$)" t={t} type="number" step="0.01"
                 value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
               <div style={{ paddingTop:18,color:t.textMuted,fontSize:16,textAlign:"center",userSelect:"none" }}>↔</div>
-              <Input label="Valor Total (R$)" t={t} type="number" step="0.01"
+              <Input label="Total (R$)" t={t} type="number" step="0.01"
                 value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
             </div>
             {creditInfo && (
