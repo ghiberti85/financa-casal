@@ -4606,7 +4606,7 @@ export default function App() {
       .desktop-sidebar{display:none!important;}
       .desktop-topbar{display:none!important;}
       .desktop-fab{display:none!important;}
-      .main-content-wrap{margin-left:0!important;padding-top:calc(56px + env(safe-area-inset-top))!important;}
+      .main-content-wrap{margin-left:0!important;}
     }
     @media(min-width:601px){
       .mobile-topbar{display:none!important;}
@@ -4713,11 +4713,19 @@ export default function App() {
               )}
             </div>
           )}
-          {isDemo&&<div style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"3px 6px",borderRadius:6,fontWeight:700,textAlign:"center",marginTop:8,width:44 }}>DEMO</div>}
+          {isDemo&&(
+            <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:6,marginTop:8 }}>
+              <div style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"3px 6px",borderRadius:6,fontWeight:700,textAlign:"center",width:44 }}>DEMO</div>
+              <button onClick={handleLogout} title="Sair do Demo"
+                style={{ width:38,height:38,borderRadius:12,border:`1px solid ${t.dangerSoft}`,background:"transparent",cursor:"pointer",color:t.danger,fontSize:17,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                🚪
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* ══ MOBILE TOP HEADER ══ */}
-        <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:"calc(56px + env(safe-area-inset-top))",zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
+        <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:56,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
           <div style={{ display:"flex",alignItems:"center",gap:8 }}>
             <span style={{ fontSize:20 }}>💎</span>
             <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.01em" }}>Finanças do Casal</span>
@@ -4758,6 +4766,7 @@ export default function App() {
               <div style={{ height:1,background:t.border,margin:"8px 20px" }} />
               <button onClick={()=>setDarkMode(!darkMode)} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
               {!isDemo&&<button onClick={()=>{handleLogout();setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.danger,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>🚪 Sair</button>}
+              {isDemo&&<button onClick={()=>{handleLogout();setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.danger,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>🚪 Sair do modo Demo</button>}
             </div>
           </>
         )}
