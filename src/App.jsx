@@ -1789,6 +1789,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [memberFilter, setMemberFilter] = useState("all");
   const [billingMode, setBillingMode] = useState("purchase"); // 'purchase' | 'billing'
 
   const toggleSelect = (id) => setSelectedIds(p => {
@@ -1810,10 +1811,19 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
 
   const [yearFilter, setYearFilter] = useState(today.getFullYear());
 
+  // Derive unique member labels from the full dataset
+  const memberOptions = useMemo(() => {
+    const labels = new Set();
+    [...expenses, ...incomes].forEach(item => { if (item.user_label) labels.add(item.user_label); });
+    return Array.from(labels).sort();
+  }, [expenses, incomes]);
+
   // Clear selection when filter context changes
   const setMonthFilterAndClear = (v) => { setMonthFilter(v); setSelectedIds(new Set()); };
   const setYearFilterAndClear  = (v) => { setYearFilter(v);  setSelectedIds(new Set()); };
   const setFilterAndClear      = (v) => { setFilter(v); setSelectedIds(new Set()); if(v!=="expense"){setPaymentFilter("all");setCategoryFilter("all");} };
+  const hasActiveDetailFilters = paymentFilter !== "all" || categoryFilter !== "all" || memberFilter !== "all";
+  const clearDetailFilters     = () => { setPaymentFilter("all"); setCategoryFilter("all"); setMemberFilter("all"); };
 
   const all = useMemo(() => {
     const matchesExpPeriod = (e) => {
@@ -1886,14 +1896,15 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     if (showDupsOnly && !dupIds.has(item.id)) return false;
     if (paymentFilter!=="all" && item._type==="expense" && item.type!==paymentFilter) return false;
     if (categoryFilter!=="all" && item._type==="expense" && item.category!==categoryFilter) return false;
+    if (memberFilter!=="all" && item.user_label!==memberFilter) return false;
     return true;
-  }), [all, filter, search, showDupsOnly, dupIds, paymentFilter, categoryFilter]);
+  }), [all, filter, search, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
 
   const selectAll = () => setSelectedIds(new Set(filtered.map(r => r.id)));
   const isAllSelected = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id));
 
-  const totalExp = all.filter(i=>i._type==="expense").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
-  const totalInc = all.filter(i=>i._type==="income").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const totalExp = filtered.filter(i=>i._type==="expense").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const totalInc = filtered.filter(i=>i._type==="income").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
 
   const filteredExpIds = filtered.filter(i=>i._type==="expense").map(i=>i.id);
   const filteredIncIds = filtered.filter(i=>i._type==="income").map(i=>i.id);
@@ -1913,10 +1924,11 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
 
   return (
     <div>
-      <div style={{ display:"flex",gap:10,marginBottom:20,flexWrap:"wrap" }}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar..." style={{ flex:1,minWidth:140,padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none" }} />
+      {/* ── Camada 1: Busca + Período ── */}
+      <div style={{ display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center" }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar lançamento..." style={{ flex:1,minWidth:160,padding:"9px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none" }} />
         <select value={periodFilter} onChange={e=>{ setPeriodFilter(e.target.value); setSelectedIds(new Set()); }}
-          style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${periodFilter!=="month"?t.accent:t.border}`,background:periodFilter!=="month"?t.accentSoft:t.inputBg,color:periodFilter!=="month"?t.accent:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:600 }}>
+          style={{ padding:"9px 12px",borderRadius:12,border:`1px solid ${periodFilter!=="month"?t.accent:t.border}`,background:periodFilter!=="month"?t.accentSoft:t.inputBg,color:periodFilter!=="month"?t.accent:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:600 }}>
           <option value="month">📅 Mês</option>
           <option value="3m">📅 3 meses</option>
           <option value="6m">📅 6 meses</option>
@@ -1924,25 +1936,82 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           <option value="1y">📅 1 ano</option>
         </select>
         {periodFilter === "month" && <>
-          <select value={monthFilter} onChange={e=>setMonthFilterAndClear(Number(e.target.value))} style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none" }}>
+          <select value={monthFilter} onChange={e=>setMonthFilterAndClear(Number(e.target.value))} style={{ padding:"9px 12px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none" }}>
             {MONTH_FULL.map((mn,i)=><option key={i} value={i}>{mn}</option>)}
           </select>
-          <select value={yearFilter} onChange={e=>setYearFilterAndClear(Number(e.target.value))} style={{ padding:"10px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:700 }}>
+          <select value={yearFilter} onChange={e=>setYearFilterAndClear(Number(e.target.value))} style={{ padding:"9px 12px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:700 }}>
             {availableYears.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
         </>}
       </div>
 
-      {/* Billing mode toggle */}
-      <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+      {/* ── Camada 2: Tipo (Todos/Gastos/Receitas) + modo fatura + ações ── */}
+      <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap" }}>
+        {[["all","Todos"],["expense","Gastos"],["income","Receitas"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setFilterAndClear(v)}
+            style={{ padding:"7px 16px",borderRadius:20,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,transition:"all 0.2s",
+                     background:filter===v?t.accent:t.surfaceHover, color:filter===v?"#fff":t.textMuted }}>
+            {l}
+          </button>
+        ))}
+        <div style={{ width:1,height:18,background:t.border,margin:"0 4px",flexShrink:0 }} />
         {[["purchase","📅 Por compra"],["billing","💳 Por fatura"]].map(([mode,label])=>(
           <button key={mode} onClick={()=>{ setBillingMode(mode); setSelectedIds(new Set()); }}
-            style={{ padding:"7px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,transition:"all 0.2s",
-                     background:billingMode===mode?t.accent:t.surfaceHover,
-                     color:billingMode===mode?"#fff":t.textMuted }}>
+            style={{ padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,transition:"all 0.2s",
+                     background:billingMode===mode?t.accent:t.surfaceHover, color:billingMode===mode?"#fff":t.textMuted }}>
             {label}
           </button>
         ))}
+        <div style={{ flex:1 }} />
+        {selectedIds.size > 0 && (
+          <button onClick={handleDeleteSelected}
+            style={{ padding:"7px 14px",borderRadius:10,border:`1px solid ${t.danger}66`,background:t.danger,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5,boxShadow:`0 2px 8px ${t.danger}44` }}
+            onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
+            onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+            🗑 Apagar {selectedIds.size} selecionado{selectedIds.size!==1?"s":""}
+          </button>
+        )}
+      </div>
+
+      {/* ── Camada 3: Filtros detalhados + selecionar todos ── */}
+      <div style={{ display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:6,padding:"7px 10px",borderRadius:10,background:t.surfaceHover,cursor:"pointer",flexShrink:0 }}
+          onClick={()=>isAllSelected?clearAll():selectAll()}>
+          <input type="checkbox" checked={isAllSelected} onChange={()=>isAllSelected?clearAll():selectAll()}
+            onClick={e=>e.stopPropagation()} style={{ width:14,height:14,cursor:"pointer",accentColor:t.accent }} />
+          <span style={{ fontSize:12,fontWeight:600,color:t.textMuted,whiteSpace:"nowrap" }}>
+            {selectedIds.size > 0 ? `${selectedIds.size} selecionado${selectedIds.size!==1?"s":""}` : "Selecionar"}
+          </span>
+        </div>
+        {filter !== "income" && (
+          <select value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)}
+            style={{ padding:"7px 11px",borderRadius:10,border:`1px solid ${paymentFilter!=="all"?t.accent:t.border}`,background:paymentFilter!=="all"?t.accentSoft:t.inputBg,color:paymentFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
+            <option value="all">💳 Tipo: Todos</option>
+            <option value="pix">💸 PIX</option>
+            <option value="debito">🏦 Débito</option>
+            <option value="credito">💳 Crédito</option>
+          </select>
+        )}
+        {filter !== "income" && (
+          <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}
+            style={{ padding:"7px 11px",borderRadius:10,border:`1px solid ${categoryFilter!=="all"?t.accent:t.border}`,background:categoryFilter!=="all"?t.accentSoft:t.inputBg,color:categoryFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
+            <option value="all">🏷️ Categoria: Todas</option>
+            {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+          </select>
+        )}
+        {memberOptions.length > 1 && (
+          <select value={memberFilter} onChange={e=>setMemberFilter(e.target.value)}
+            style={{ padding:"7px 11px",borderRadius:10,border:`1px solid ${memberFilter!=="all"?t.accent:t.border}`,background:memberFilter!=="all"?t.accentSoft:t.inputBg,color:memberFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
+            <option value="all">👤 Pessoa: Todos</option>
+            {memberOptions.map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+        )}
+        {hasActiveDetailFilters && (
+          <button onClick={clearDetailFilters}
+            style={{ padding:"7px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMuted,fontSize:12,fontWeight:600,cursor:"pointer" }}>
+            ✕ Limpar filtros
+          </button>
+        )}
       </div>
 
       {/* Duplicate alert banner */}
@@ -1978,67 +2047,20 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
         </div>
       )}
 
-      <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap" }}>
-        <div style={{ display:"flex",gap:6,alignItems:"center",flexWrap:"wrap" }}>
-          {/* Select all checkbox */}
-          <div style={{ display:"flex",alignItems:"center",gap:6,padding:"7px 10px",borderRadius:10,background:t.surfaceHover,cursor:"pointer" }}
-            onClick={()=>isAllSelected?clearAll():selectAll()}>
-            <input type="checkbox" checked={isAllSelected} onChange={()=>isAllSelected?clearAll():selectAll()}
-              onClick={e=>e.stopPropagation()}
-              style={{ width:14,height:14,cursor:"pointer",accentColor:t.accent }} />
-            <span style={{ fontSize:12,fontWeight:600,color:t.textMuted,whiteSpace:"nowrap" }}>
-              {selectedIds.size > 0 ? selectedIds.size + " selecionado" + (selectedIds.size !== 1 ? "s" : "") : "Selecionar"}
-            </span>
-          </div>
-          {[["all","Todos"],["expense","Gastos"],["income","Receitas"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setFilterAndClear(v)} style={{ padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,background:filter===v?t.accent:t.surfaceHover,color:filter===v?"#fff":t.textMuted,transition:"all 0.2s" }}>{l}</button>
-          ))}
-        </div>
-        <div style={{ flex:1 }} />
-        {selectedIds.size > 0 && (
-          <button onClick={handleDeleteSelected}
-            style={{ padding:"7px 14px",borderRadius:10,border:`1px solid ${t.danger}66`,background:t.danger,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5,transition:"all 0.2s",boxShadow:`0 2px 8px ${t.danger}44` }}
-            onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
-            onMouseLeave={e=>e.currentTarget.style.opacity="1"}
-          >🗑 Apagar {selectedIds.size} selecionado{selectedIds.size!==1?"s":""}</button>
-        )}
-      </div>
-      {/* Payment type + category filters — only for expense view */}
-      {filter !== "income" && (
-        <div style={{ display:"flex",gap:8,marginBottom:16,flexWrap:"wrap" }}>
-          <select value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)}
-            style={{ padding:"8px 12px",borderRadius:10,border:`1px solid ${paymentFilter!=="all"?t.accent:t.border}`,background:paymentFilter!=="all"?t.accentSoft:t.inputBg,color:paymentFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
-            <option value="all">💳 Tipo: Todos</option>
-            <option value="pix">💸 PIX</option>
-            <option value="debito">🏦 Débito</option>
-            <option value="credito">💳 Crédito</option>
-          </select>
-          <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}
-            style={{ padding:"8px 12px",borderRadius:10,border:`1px solid ${categoryFilter!=="all"?t.accent:t.border}`,background:categoryFilter!=="all"?t.accentSoft:t.inputBg,color:categoryFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
-            <option value="all">🏷️ Categoria: Todas</option>
-            {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-          </select>
-          {(paymentFilter!=="all"||categoryFilter!=="all") && (
-            <button onClick={()=>{setPaymentFilter("all");setCategoryFilter("all");}}
-              style={{ padding:"8px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMuted,fontSize:12,fontWeight:600,cursor:"pointer" }}>
-              ✕ Limpar filtros
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Summary cards */}
-      <div style={{ display:"grid", gridTemplateColumns: filter==="all"?"1fr 1fr":"1fr", gap:10, marginBottom:20 }}>
-        {(filter==="all"||filter==="expense")&&(
+      {/* Summary cards — totals respect every active filter */}
+      <div style={{ display:"grid", gridTemplateColumns: filter==="income"?"1fr":filter==="expense"?"1fr":"1fr 1fr", gap:10, marginBottom:20 }}>
+        {filter !== "income" && (
           <div style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:14,padding:"14px 18px" }}>
-            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4 }}>GASTOS</div>
-            <div style={{ fontSize:18,fontWeight:800,color:t.danger }}>{fmt(totalExp)}</div>
+            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>GASTOS</div>
+            <div style={{ fontSize:20,fontWeight:800,color:t.danger }}>{fmt(totalExp)}</div>
+            <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{filtered.filter(i=>i._type==="expense").length} lançamento{filtered.filter(i=>i._type==="expense").length!==1?"s":""}</div>
           </div>
         )}
-        {(filter==="all"||filter==="income")&&(
+        {filter !== "expense" && (
           <div style={{ background:t.successSoft,border:`1px solid ${t.success}33`,borderRadius:14,padding:"14px 18px" }}>
-            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4 }}>RECEITAS</div>
-            <div style={{ fontSize:18,fontWeight:800,color:t.success }}>{fmt(totalInc)}</div>
+            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>RECEITAS</div>
+            <div style={{ fontSize:20,fontWeight:800,color:t.success }}>{fmt(totalInc)}</div>
+            <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{filtered.filter(i=>i._type==="income").length} lançamento{filtered.filter(i=>i._type==="income").length!==1?"s":""}</div>
           </div>
         )}
       </div>
