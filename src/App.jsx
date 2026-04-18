@@ -565,6 +565,11 @@ function LoginLogo({ t }) {
 }
 
 // ─── LOGIN + PROFILE + FAMILY SETUP ─────────────────────────────────────────
+const DEMO_EMAIL    = "demo@financacasal.app";
+const DEMO_PASSWORD = "demo1234";
+const DEMO_FAMILY   = { family_id:"demo-family", family_name:"Família Demonstração", role:"admin", invite_code:"DEMO01" };
+const DEMO_USER     = { id:"demo", email: DEMO_EMAIL };
+
 function LoginPage({ t, darkMode, onLogin, addToast }) {
   const [step, setStep] = useState("auth"); // auth | profile | family_setup
   const [mode, setMode] = useState("login");
@@ -577,12 +582,13 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
-  const isDemo = SUPABASE_URL.includes("YOUR_PROJECT");
+
+  const enterDemo = () => onLogin(DEMO_USER, null, DEMO_FAMILY);
 
   const handleAuth = async () => {
-    if (isDemo) {
-      addToast("Modo demonstração ativo! 🎉", "success");
-      onLogin({ id: "demo", email: "demo@financacasal.app" }, null, null);
+    // Intercepta credenciais demo — sem tocar no Supabase
+    if (email.trim().toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD) {
+      enterDemo();
       return;
     }
     if (!email || !password) { addToast("Preencha e-mail e senha", "error"); return; }
@@ -670,16 +676,25 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
   if (step === "auth") return wrap(<>
     <LoginLogo t={t} />
     <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:28,marginTop:-16 }}>Gerencie juntos, cresçam juntos</p>
-    {isDemo && <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}33`,borderRadius:12,padding:"12px 16px",marginBottom:20,fontSize:13,color:t.warning,display:"flex",gap:8 }}><span>⚠️</span><span><strong>Modo Demo:</strong> Clique em entrar para explorar.</span></div>}
     <Input label="E-mail" t={t} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@email.com" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
     <Input label="Senha" t={t} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
     <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading}>
-      {loading?"Aguarde...":isDemo?"🚀 Entrar no modo demo":mode==="login"?"🔐 Entrar":"✨ Criar conta"}
+      {loading ? "Aguarde..." : mode==="login" ? "🔐 Entrar" : "✨ Criar conta"}
     </Btn>
     <p style={{ textAlign:"center",marginTop:18,fontSize:14,color:t.textMuted }}>
       {mode==="login"?"Não tem conta? ":"Já tem conta? "}
       <span onClick={()=>setMode(mode==="login"?"signup":"login")} style={{ color:t.accent,cursor:"pointer",fontWeight:600 }}>{mode==="login"?"Criar agora":"Entrar"}</span>
     </p>
+    <div style={{ display:"flex",alignItems:"center",gap:12,margin:"20px 0 4px" }}>
+      <div style={{ flex:1,height:1,background:t.border }} />
+      <span style={{ fontSize:12,color:t.textMuted }}>ou</span>
+      <div style={{ flex:1,height:1,background:t.border }} />
+    </div>
+    <button onClick={enterDemo}
+      style={{ width:"100%",padding:"11px",borderRadius:12,border:`1px solid ${t.border}`,
+        background:"transparent",color:t.textMuted,fontSize:14,fontWeight:600,cursor:"pointer" }}>
+      👀 Ver demonstração
+    </button>
   </>);
 
   // ── Step profile (new signup) ──
@@ -4292,7 +4307,7 @@ export default function App() {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const t = themes[darkMode ? "dark" : "light"];
-  const isDemo = SUPABASE_URL.includes("YOUR_PROJECT");
+  const isDemo = SUPABASE_URL.includes("YOUR_PROJECT") || user?.id === "demo";
 
   const addToast = useCallback((message, type="info") => {
     const id=Date.now();
@@ -4366,8 +4381,17 @@ export default function App() {
   const handleLogin=async(u, token, fam)=>{
     setUser(u);
     setFamily(fam);
-    if(isDemo){
-      addToast("Dados de exemplo carregados!","info");
+    if(u.id === "demo"){
+      const d = makeDemoData();
+      setExpenses(d.expenses);
+      setIncomes(d.incomes);
+      setProfile({ first_name:"Demo", last_name:"" });
+      setFamilyMembers([
+        { user_id:"demo",  user_label:"Você",   role:"admin"  },
+        { user_id:"demo2", user_label:"Esposa", role:"member" },
+      ]);
+      setInitializing(false);
+      addToast("Modo demonstração ativo 🎉","success");
       return;
     }
     // Load user profile
