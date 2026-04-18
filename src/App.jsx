@@ -365,65 +365,144 @@ function Input({ label, t, ...props }) {
   );
 }
 
-// DateInput: typed DD/MM/AAAA on all platforms; calendar icon opens native picker as fallback
-function DateInput({ label, t, value, onChange, placeholder, style: inputStyle }) {
+// ─── CALENDAR PICKER MODAL ───────────────────────────────────────────────────
+function CalendarPickerModal({ value, onChange, onClose, t }) {
+  const parseISO = (iso) => {
+    if (iso && iso.length >= 10) {
+      const [y, m, d] = iso.split("-").map(Number);
+      if (y && m && d) return { yr: y, mo: m - 1, day: d };
+    }
+    return { yr: today.getFullYear(), mo: today.getMonth(), day: null };
+  };
+  const init = parseISO(value);
+  const [viewYr, setViewYr] = useState(init.yr);
+  const [viewMo, setViewMo] = useState(init.mo);
+
+  const selParsed = parseISO(value);
+  const isSelected = (d) =>
+    selParsed.day === d && selParsed.mo === viewMo && selParsed.yr === viewYr;
+  const isToday = (d) =>
+    today.getFullYear() === viewYr && today.getMonth() === viewMo && today.getDate() === d;
+
+  // Pure arithmetic — no Date objects, no timezone issues
+  const firstDayOfWeek = (() => {
+    const tbl = [0,3,2,5,0,3,5,1,4,6,2,4];
+    let y = viewYr; const m = viewMo + 1;
+    if (m < 3) y--;
+    return (y + Math.floor(y/4) - Math.floor(y/100) + Math.floor(y/400) + tbl[m-1] + 1) % 7;
+  })();
+  const daysInMonth = (() => {
+    const days = [31,28,31,30,31,30,31,31,30,31,30,31];
+    const isLeap = (viewYr % 4 === 0 && viewYr % 100 !== 0) || viewYr % 400 === 0;
+    return viewMo === 1 && isLeap ? 29 : days[viewMo];
+  })();
+
+  const prevMonth = () => {
+    if (viewMo === 0) { setViewYr(y => y - 1); setViewMo(11); }
+    else setViewMo(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMo === 11) { setViewYr(y => y + 1); setViewMo(0); }
+    else setViewMo(m => m + 1);
+  };
+
+  const pickDay = (d) => {
+    const iso = `${viewYr}-${String(viewMo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    onChange({ target: { value: iso } });
+    onClose();
+  };
+
+  const days = [];
+  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+
+  return (
+    <div onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}
+      style={{ position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+      <div onClick={e=>e.stopPropagation()}
+        style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"20px 16px 24px",width:"100%",maxWidth:340,boxShadow:t.shadow,animation:"modalIn 0.2s ease" }}>
+        {/* Header */}
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
+          <button onClick={prevMonth}
+            style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:34,height:34,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>‹</button>
+          <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:700,fontSize:15,color:t.text }}>{MONTH_FULL[viewMo]} {viewYr}</span>
+          <div style={{ display:"flex",gap:6 }}>
+            <button onClick={nextMonth}
+              style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:34,height:34,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>›</button>
+            <button onClick={onClose}
+              style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"4px 6px",borderRadius:8 }}>×</button>
+          </div>
+        </div>
+        {/* Day-of-week headers */}
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:6 }}>
+          {["D","S","T","Q","Q","S","S"].map((d,i)=>(
+            <div key={i} style={{ textAlign:"center",fontSize:11,fontWeight:700,color:t.textMuted,padding:"4px 0" }}>{d}</div>
+          ))}
+        </div>
+        {/* Days grid */}
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4 }}>
+          {days.map((d, i) => {
+            const sel = isSelected(d);
+            const tod = isToday(d);
+            const gridStyle = d === 1 ? { gridColumn: firstDayOfWeek + 1 } : {};
+            return (
+              <button key={d} onClick={()=>pickDay(d)}
+                style={{ ...gridStyle,borderRadius:10,height:38,border:"none",cursor:"pointer",fontWeight:sel||tod?700:500,fontSize:13,
+                  background: sel ? t.accent : tod ? t.accentSoft : "transparent",
+                  color: sel ? "#fff" : tod ? t.accent : t.text,
+                  transition:"background 0.15s",fontFamily:"'DM Sans',sans-serif" }}
+                onMouseEnter={e=>{ if(!sel) e.currentTarget.style.background=t.surfaceHover; }}
+                onMouseLeave={e=>{ if(!sel) e.currentTarget.style.background=tod?t.accentSoft:"transparent"; }}>
+                {d}
+              </button>
+            );
+          })}
+        </div>
+        {/* Today shortcut */}
+        <div style={{ marginTop:16,textAlign:"center" }}>
+          <button onClick={()=>{
+            setViewYr(today.getFullYear());
+            setViewMo(today.getMonth());
+            // pickDay uses viewYr/viewMo from state — use direct values here
+            const iso = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+            onChange({ target: { value: iso } });
+            onClose();
+          }}
+            style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 18px",fontSize:12,color:t.accent,cursor:"pointer",fontWeight:600 }}
+            onMouseEnter={e=>e.currentTarget.style.background=t.accentSoft}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            Hoje
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── DATE INPUT ───────────────────────────────────────────────────────────────
+function DateInput({ label, t, value, onChange, placeholder }) {
+  const [open, setOpen] = useState(false);
+
   const toDisplay = (iso) => {
     if (!iso || iso.length < 10) return iso || "";
     const [y, m, d] = iso.split("-");
     return y && m && d ? `${d}/${m}/${y}` : iso;
   };
-  const toISO = (digits) => {
-    if (digits.length === 8)
-      return `${digits.slice(4)}-${digits.slice(2,4)}-${digits.slice(0,2)}`;
-    return "";
-  };
-  const [display, setDisplay] = useState(() => toDisplay(value));
-  const hiddenRef = useRef(null);
-
-  useEffect(() => { setDisplay(toDisplay(value)); }, [value]);
-
-  const handleTextChange = (e) => {
-    const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
-    let fmt = digits;
-    if (digits.length > 2) fmt = digits.slice(0,2) + "/" + digits.slice(2);
-    if (digits.length > 4) fmt = digits.slice(0,2) + "/" + digits.slice(2,4) + "/" + digits.slice(4);
-    setDisplay(fmt);
-    if (digits.length === 8) onChange({ target: { value: toISO(digits) } });
-    else if (digits.length === 0) onChange({ target: { value: "" } });
-  };
-
-  const openPicker = () => {
-    const el = hiddenRef.current;
-    if (!el) return;
-    if (el.showPicker) { try { el.showPicker(); } catch(_) { el.click(); } } else { el.click(); }
-  };
-
-  const baseInputStyle = {
-    width:"100%", maxWidth:"100%", padding:"11px 44px 11px 14px", borderRadius:12,
-    fontSize:14, fontFamily:"'DM Sans', sans-serif", background:t.inputBg,
-    border:`1px solid ${t.border}`, color:t.text, outline:"none",
-    transition:"border-color 0.2s", boxSizing:"border-box", minWidth:0,
-    ...(inputStyle||{}),
-  };
 
   return (
     <div style={{ marginBottom:16, minWidth:0 }}>
       {label && <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em",textAlign:"left" }}>{label}</label>}
-      <div style={{ position:"relative" }}>
-        <input type="text" inputMode="numeric" placeholder={placeholder||"DD/MM/AAAA"}
-          value={display} onChange={handleTextChange}
-          style={baseInputStyle}
-          onFocus={e=>e.target.style.borderColor=t.accent}
-          onBlur={e=>e.target.style.borderColor=t.border}
+      <div style={{ position:"relative", cursor:"pointer" }} onClick={()=>setOpen(true)}>
+        <input type="text" readOnly placeholder={placeholder||"DD/MM/AAAA"}
+          value={toDisplay(value)}
+          style={{ width:"100%",maxWidth:"100%",padding:"11px 44px 11px 14px",borderRadius:12,fontSize:14,fontFamily:"'DM Sans', sans-serif",background:t.inputBg,border:`1px solid ${t.border}`,color:value?t.text:t.textMuted,outline:"none",boxSizing:"border-box",minWidth:0,cursor:"pointer",caretColor:"transparent" }}
         />
-        <button type="button" onClick={openPicker} title="Abrir calendário"
-          style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:16,padding:"4px",lineHeight:1 }}>
-          📅
-        </button>
-        <input ref={hiddenRef} type="date" value={value||""} tabIndex={-1}
-          onChange={e=>onChange(e)}
-          style={{ position:"absolute",opacity:0,pointerEvents:"none",width:"1px",height:"1px",top:0,left:0 }} />
+        <span style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:16,pointerEvents:"none",color:t.textMuted }}>📅</span>
       </div>
+      {open && (
+        <CalendarPickerModal value={value} t={t}
+          onChange={e=>{ onChange(e); setOpen(false); }}
+          onClose={()=>setOpen(false)} />
+      )}
     </div>
   );
 }
