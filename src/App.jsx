@@ -1026,22 +1026,10 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
-  const [billingMode, setBillingMode] = useState("purchase"); // 'purchase' | 'billing'
   const [selectedCreditMonth, setSelectedCreditMonth] = useState(null);
   const [selectedBillingMonth, setSelectedBillingMonth] = useState(null);
   const [selectedPieCategory, setSelectedPieCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
-
-  // Helper: returns the effective {month,year} for an expense based on billingMode
-  // PIX and Débito always use purchase date; Crédito uses billing month when billingMode='billing'
-  const getDisplayMonth = (expense) => {
-    if (expense.type !== "credito" || billingMode === "purchase") {
-      const d = new Date(expense.date + "T12:00:00");
-      return { month: d.getMonth() + 1, year: d.getFullYear() };
-    }
-    const card = cards.find(c => c.id === expense.card_id);
-    return getBillingMonth(expense.date, card?.closing_day ?? 28);
-  };
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -1056,37 +1044,27 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const creditRefYear = selectedYear;
   const creditRefMonth = selectedMonth;
 
-  // ── Bar chart: 6 months ending at the reference month ──
+  // ── Bar chart: 6 months ending at the reference month (always by purchase date) ──
   const barData = useMemo(() => Array.from({length:6},(_,i) => {
     const d = new Date(refYear, refMonth - 5 + i, 1);
     const yr=d.getFullYear(), mn=d.getMonth();
-    const targetMo = mn + 1, targetYr = yr;
     const prefix=`${yr}-${String(mn+1).padStart(2,"0")}`;
     const inc = incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
-    const exp = expenses.filter(e => {
-      const dm = getDisplayMonth(e);
-      return dm.month === targetMo && dm.year === targetYr;
-    }).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+    const exp = expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
     return { name:MONTHS[mn], Receitas:Math.round(inc), Gastos:Math.round(exp), Saldo:Math.round(inc-exp) };
-  }), [expenses, incomes, refYear, refMonth, billingMode, cards]);
+  }), [expenses, incomes, refYear, refMonth]);
 
-  // ── Pie: filtered by selected period ──
+  // ── Pie: filtered by selected period (always by purchase date) ──
   const pieData = useMemo(() => {
     const filtered = period==="month"
-      ? expenses.filter(e => {
-          const dm = getDisplayMonth(e);
-          return dm.month === selectedMonth+1 && dm.year === selectedYear;
-        })
-      : expenses.filter(e => {
-          const dm = getDisplayMonth(e);
-          return dm.year === selectedYear;
-        });
+      ? expenses.filter(e=>e.date?.startsWith(`${selectedYear}-${String(selectedMonth+1).padStart(2,"0")}`))
+      : expenses.filter(e=>e.date?.startsWith(`${selectedYear}`));
     const map = {};
     filtered.forEach(e=>{ map[e.category]=(map[e.category]||0)+e.amount; });
     return Object.entries(map).map(([id,value]) => { const cat=CATEGORIES.find(c=>c.id===id); return { id, name:cat?.label||id, value:Math.round(value), emoji:cat?.emoji||"📦" }; }).sort((a,b)=>b.value-a.value);
-  }, [expenses, period, selectedMonth, selectedYear, billingMode, cards]);
+  }, [expenses, period, selectedMonth, selectedYear]);
 
-  // ── Credit: 12 months starting from the reference month ──
+  // ── Credit installments: 12 months from reference (always by purchase date) ──
   const creditData = useMemo(() => {
     const result = {};
     for (let i=0;i<12;i++) {
@@ -1097,15 +1075,8 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       const p = parseInt(e.parcelas) || 1;
       if (e.type!=="credito" || p <= 1 || !e.date) return;
       const iv = parseFloat(e.amount) || 0;
-      let baseYr, baseMo;
-      if (billingMode === "billing") {
-        const card = cards.find(c => c.id === e.card_id);
-        const bm = getBillingMonth(e.date, card?.closing_day ?? 28);
-        baseYr = bm.year; baseMo = bm.month - 1;
-      } else {
-        const [dYr, dMoStr] = e.date.slice(0,7).split("-");
-        baseYr = parseInt(dYr); baseMo = parseInt(dMoStr) - 1;
-      }
+      const [dYr, dMoStr] = e.date.slice(0,7).split("-");
+      const baseYr = parseInt(dYr), baseMo = parseInt(dMoStr) - 1;
       for (let i=0; i<p; i++) {
         const mo = (baseMo + i) % 12;
         const yr = baseYr + Math.floor((baseMo + i) / 12);
@@ -1114,7 +1085,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, selectedYear, selectedMonth, billingMode, cards]);
+  }, [expenses, selectedYear, selectedMonth]);
 
   // ── Billing chart: all credit expenses grouped by billing month (12 months from today) ──
   const billingChartData = useMemo(() => {
@@ -1167,17 +1138,6 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           {availableYears.map(yr=><option key={yr} value={yr}>{yr}</option>)}
         </select>
       </div>
-      <div style={{ display:"flex",gap:8 }}>
-        {[["purchase","📅 Por compra"],["billing","💳 Por fatura"]].map(([mode,label])=>(
-          <button key={mode} onClick={()=>{ setBillingMode(mode); setSelectedBillingMonth(null); setSelectedCreditMonth(null); setSelectedPieCategory(null); }}
-            style={{ padding:"8px 18px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,transition:"all 0.2s",
-                     background:billingMode===mode?t.accent:t.surfaceHover,
-                     color:billingMode===mode?"#fff":t.textMuted }}>
-            {label}
-          </button>
-        ))}
-      </div>
-
       <Card title={`📊 Receitas × Gastos — 6 meses até ${period==="month" ? MONTH_FULL[selectedMonth] : "Dez"}/${selectedYear}`}>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={barData} barGap={4} barCategoryGap="25%">
@@ -1356,8 +1316,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         })()}
       </Card>
 
-      {billingMode === "billing" && (
-        <Card title="💳 Gráfico de Faturas — próximos 12 meses">
+      <Card title="💳 Gráfico de Faturas — próximos 12 meses">
           <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma barra para ver os lançamentos daquela fatura.</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={billingChartData} barCategoryGap="30%"
@@ -1417,7 +1376,6 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
             );
           })()}
         </Card>
-      )}
 
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
