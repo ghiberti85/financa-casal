@@ -238,6 +238,17 @@ function autoCategory(description) {
   return "outros";
 }
 
+// ─── BILLING MONTH UTILITY ───────────────────────────────────────────────────
+// Compra em 20/abr (≤ fechamento 28) → fatura Abril (vence 06/mai)
+// Compra em 29/abr (> fechamento 28) → fatura Maio  (vence 06/jun)
+// PIX e Débito: NUNCA passam por esta função — usar sempre e.date original
+function getBillingMonth(dateStr, closingDay = 28) {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDate(), month = d.getMonth() + 1, year = d.getFullYear();
+  if (day <= closingDay) return { month, year };
+  return month === 12 ? { month: 1, year: year + 1 } : { month: month + 1, year };
+}
+
 // ─── DEMO DATA ────────────────────────────────────────────────────────────────
 const today = new Date();
 const y = today.getFullYear();
@@ -1011,7 +1022,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 }
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
-function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers }) {
+function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers, cards = [] }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
@@ -1290,7 +1301,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
               <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
-            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]}
+            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]} cards={cards}
               onSave={async(payload)=>{ if(onEditExpense) await onEditExpense(payload); setEditItem(null); }} />
           </div>
         </div>
@@ -1323,8 +1334,8 @@ function MemberSelect({ label, t, value, onChange, familyMembers }) {
 }
 
 // ─── EXPENSE FORM ─────────────────────────────────────────────────────────────
-function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
-  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:"Você" });
+function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [] }) {
+  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:"Você", card_id:"" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
   const [saving, setSaving] = useState(false);
@@ -1394,6 +1405,12 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate }) {
         <option value="debito">🏦 Débito</option>
         <option value="credito">💳 Crédito</option>
       </Select>
+      {isCredit && cards.length > 0 && (
+        <Select label="Cartão" t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
+          <option value="">Sem cartão específico</option>
+          {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
+        </Select>
+      )}
       <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
         <option value="">Selecione...</option>
         {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
@@ -1510,7 +1527,7 @@ function IncomeForm({ t, onSave, onClose, familyMembers, initialDate }) {
 
 
 // ─── EDIT MODAL ───────────────────────────────────────────────────────────────
-function EditModal({ t, item, onSave, onClose, familyMembers }) {
+function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
   const isExp = item._type === "expense";
   const initParc = item.parcelas || 1;
   const isCredit = isExp && (item.type || "pix") === "credito";
@@ -1528,6 +1545,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
     parcelas:      initParc,
     user_label:    item.user_label || "Você",
     source:        item.source || item.category || "salario",
+    card_id:       item.card_id || "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -1577,7 +1595,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
       date:        form.date,
       category:    isExp ? form.category : form.source,
       user_label:  form.user_label,
-      ...(isExp ? { type: form.type, parcelas } : { source: form.category, category: form.category }),
+      ...(isExp ? { type: form.type, parcelas, card_id: form.card_id || null } : { source: form.category, category: form.category }),
     };
     await onSave(payload);
     setLoading(false);
@@ -1605,6 +1623,12 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
           <option value="debito">🏦 Débito</option>
           <option value="credito">💳 Crédito</option>
         </Select>
+        {form.type === "credito" && cards.length > 0 && (
+          <Select label="Cartão" t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
+            <option value="">Sem cartão específico</option>
+            {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
+          </Select>
+        )}
         <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
           {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
         </Select>
@@ -1670,7 +1694,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers }) {
 }
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
-function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers }) {
+function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [] }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [periodFilter, setPeriodFilter] = useState("month");
@@ -1979,7 +2003,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
-            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers}
+            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers} cards={cards}
               onSave={async(payload)=>{ if(payload._type==="expense") await onEditExpense(payload); else await onEditIncome(payload); setEditItem(null); }} />
           </div>
         </div>
@@ -3691,6 +3715,150 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
   );
 }
 
+// ─── CARDS MANAGER ───────────────────────────────────────────────────────────
+function CardsManager({ t, family, isDemo, addToast }) {
+  const [cards, setCards] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState({ name:"", holder:"", closing_day:28, due_day:6, color:"#7c6af7" });
+  const [loading, setLoading] = useState(false);
+  const CARD_COLORS = ["#7c6af7","#10b981","#ef4444","#3b82f6","#f97316","#ec4899"];
+  const sf = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  useEffect(()=>{
+    if(isDemo||!family?.family_id) return;
+    supabaseFetch(`/cards?family_id=eq.${family.family_id}&active=eq.true&order=created_at`)
+      .then(d=>setCards(d||[])).catch(()=>{});
+  },[family?.family_id,isDemo]);
+
+  const resetForm = ()=>{ setForm({name:"",holder:"",closing_day:28,due_day:6,color:"#7c6af7"}); setEditId(null); };
+
+  const save = async()=>{
+    if(!form.name.trim()||!form.holder.trim()){ addToast("Preencha nome e titular.","error"); return; }
+    setLoading(true);
+    const payload={ name:form.name.trim(), holder:form.holder.trim(), closing_day:parseInt(form.closing_day)||28, due_day:parseInt(form.due_day)||6, color:form.color, family_id:family?.family_id, active:true };
+    try{
+      if(editId){
+        await supabaseFetch(`/cards?id=eq.${editId}`,{method:"PATCH",body:JSON.stringify(payload)});
+        setCards(p=>p.map(c=>c.id===editId?{...c,...payload}:c));
+        addToast("Cartão atualizado!","success");
+      } else {
+        const cr=await supabaseFetch("/cards",{method:"POST",body:JSON.stringify(payload)});
+        if(cr?.[0]) setCards(p=>[...p,cr[0]]);
+        addToast("Cartão criado!","success");
+      }
+      resetForm();
+    }catch(err){addToast(err.message,"error");}
+    finally{setLoading(false);}
+  };
+
+  const del = async(id)=>{
+    if(cards.length<=1){addToast("Não é possível excluir o único cartão.","error");return;}
+    if(!window.confirm("Excluir este cartão?")) return;
+    try{
+      await supabaseFetch(`/cards?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
+      setCards(p=>p.filter(c=>c.id!==id));
+      addToast("Cartão excluído.","info");
+    }catch(err){addToast(err.message,"error");}
+  };
+
+  const startEdit=(c)=>{ setEditId(c.id); setForm({name:c.name,holder:c.holder,closing_day:c.closing_day,due_day:c.due_day,color:c.color}); };
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      {cards.map(c=>(
+        <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:14,background:t.surface,border:`1px solid ${t.border}`}}>
+          <div style={{width:12,height:12,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:700,color:t.text}}>{c.name}</div>
+            <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{c.holder} · Fecha dia {c.closing_day} · Vence dia {c.due_day}</div>
+          </div>
+          <div style={{display:"flex",gap:4,flexShrink:0}}>
+            <button onClick={()=>startEdit(c)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
+            <button onClick={()=>del(c.id)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.danger} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
+          </div>
+        </div>
+      ))}
+      <div style={{padding:16,borderRadius:16,background:t.surface,border:`1px solid ${t.border}`}}>
+        <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>{editId?"Editar cartão":"Novo cartão"}</div>
+        <Input label="Nome do cartão" t={t} value={form.name} onChange={e=>sf("name",e.target.value)} placeholder="Ex: Santander Casal" />
+        <Input label="Titular" t={t} value={form.holder} onChange={e=>sf("holder",e.target.value)} placeholder="Ex: Casal, Fernando" />
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Input label="Dia fechamento" t={t} type="number" min={1} max={31} value={form.closing_day} onChange={e=>sf("closing_day",e.target.value)} />
+          <Input label="Dia vencimento" t={t} type="number" min={1} max={31} value={form.due_day} onChange={e=>sf("due_day",e.target.value)} />
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={{display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary}}>Cor</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {CARD_COLORS.map(col=>(
+              <button key={col} onClick={()=>sf("color",col)}
+                style={{width:28,height:28,borderRadius:"50%",background:col,border:form.color===col?"3px solid white":"2px solid transparent",outline:form.color===col?`2px solid ${col}`:"none",cursor:"pointer",transition:"all 0.15s"}}/>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:editId?"1fr 1fr":"1fr",gap:10}}>
+          {editId&&<Btn t={t} variant="ghost" onClick={resetForm}>Cancelar</Btn>}
+          <Btn t={t} onClick={save} disabled={loading}>{loading?"Salvando...":(editId?"Salvar alterações":"Criar cartão")}</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
+function BillingCard({ expenses, cards, t }) {
+  const curMo = today.getMonth()+1, curYr = today.getFullYear();
+
+  const items = useMemo(()=>
+    expenses.filter(e=>{
+      if(e.type!=="credito"||!e.date) return false;
+      const card=cards.find(c=>c.id===e.card_id);
+      const {month,year}=getBillingMonth(e.date,card?.closing_day??28);
+      return month===curMo&&year===curYr;
+    })
+  ,[expenses,cards,curMo,curYr]);
+
+  if(!items.length) return null;
+
+  const total=items.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+
+  // Group by card
+  const byCard={};
+  items.forEach(e=>{
+    const k=e.card_id||"__none__";
+    if(!byCard[k]) byCard[k]={card:cards.find(c=>c.id===e.card_id),total:0,count:0};
+    byCard[k].total+=parseFloat(e.amount)||0;
+    byCard[k].count++;
+  });
+  const groups=Object.values(byCard);
+  const dueDay=groups.find(g=>g.card)?.card?.due_day??6;
+  const vencMo=curMo===12?1:curMo+1;
+  const vencYr=curMo===12?curYr+1:curYr;
+
+  return(
+    <div style={{background:t.glassModal,border:`1px solid ${t.accent}33`,backdropFilter:"blur(16px)",borderRadius:20,padding:20,animation:"fadeInUp 0.3s ease"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+        <h3 style={{margin:0,fontFamily:"'Sora',sans-serif",fontSize:15,fontWeight:700,color:t.text}}>💳 Fatura em Aberto</h3>
+        <span style={{fontSize:11,color:t.textMuted,whiteSpace:"nowrap"}}>Vence dia {dueDay}/{String(vencMo).padStart(2,"0")}/{vencYr}</span>
+      </div>
+      <div style={{fontSize:26,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif",marginBottom:groups.length>1?12:8}}>{fmt(total)}</div>
+      {groups.length>1&&(
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+          {groups.map((g,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:10,background:t.surface}}>
+              <div style={{display:"flex",alignItems:"center",gap:7}}>
+                {g.card&&<span style={{width:8,height:8,borderRadius:"50%",background:g.card.color,display:"inline-block"}}/>}
+                <span style={{fontSize:12,color:t.text,fontWeight:600}}>{g.card?.name||"Sem cartão"}</span>
+              </div>
+              <span style={{fontSize:12,fontWeight:700,color:t.accent}}>{fmt(g.total)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{fontSize:11,color:t.textMuted}}>{items.length} lançamento{items.length>1?"s":""} · {MONTH_FULL[curMo-1]} {curYr}</div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [darkMode, setDarkMode] = useState(true);
@@ -3702,6 +3870,8 @@ export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
+  const [cards, setCards] = useState([]);
+  const [showCardsManager, setShowCardsManager] = useState(false);
   const [modal, setModal] = useState(null);
   const [calendarDate, setCalendarDate] = useState(null); // date selected in CalendarView
   const [showInvite, setShowInvite] = useState(false);
@@ -3771,11 +3941,12 @@ export default function App() {
   const loadData = useCallback(async () => {
     if (isDemo||!user||!family) return;
     try {
-      const [exp,inc]=await Promise.all([
+      const [exp,inc,cds]=await Promise.all([
         supabaseFetch(`/expenses?family_id=eq.${family.family_id}&select=*&order=date.desc`),
         supabaseFetch(`/incomes?family_id=eq.${family.family_id}&select=*&order=date.desc`),
+        supabaseFetch(`/cards?family_id=eq.${family.family_id}&active=eq.true&order=created_at`),
       ]);
-      setExpenses(exp||[]); setIncomes(inc||[]);
+      setExpenses(exp||[]); setIncomes(inc||[]); setCards(cds||[]);
     } catch { addToast("Erro ao carregar dados","error"); }
   }, [user, family, isDemo, addToast]);
 
@@ -3804,7 +3975,7 @@ export default function App() {
 
   const handleLogout=()=>{
     setAuthToken(null); setUser(null); setFamily(null); setProfile(null); setFamilyMembers([]);
-    setExpenses([]); setIncomes([]);
+    setExpenses([]); setIncomes([]); setCards([]);
     addToast("Saiu com sucesso","info");
   };
 
@@ -3828,6 +3999,7 @@ export default function App() {
       type:        expData.type,
       parcelas:    expData.parcelas,
       user_label:  expData.user_label,
+      card_id:     expData.card_id || null,
       family_id:   family?.family_id,
       user_id:     user?.id,
     };
@@ -3893,7 +4065,7 @@ export default function App() {
           body: JSON.stringify({
             description: data.description, amount: data.amount, date: data.date,
             category: data.category, type: data.type, parcelas: data.parcelas,
-            user_label: data.user_label,
+            user_label: data.user_label, card_id: data.card_id || null,
           }),
         });
         // Re-fetch the updated record from DB
@@ -4144,6 +4316,14 @@ export default function App() {
                           👥 Família
                         </button>
                       )}
+                      {family && (
+                        <button onClick={()=>{ setShowCardsManager(true); setShowUserMenu(false); }}
+                          style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.text,transition:"background 0.15s" }}
+                          onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          💳 Cartões
+                        </button>
+                      )}
                       <div style={{ height:1,background:t.border,margin:"6px 0" }} />
                       <button onClick={()=>{ handleLogout(); setShowUserMenu(false); }}
                         style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.danger,transition:"background 0.15s" }}
@@ -4178,6 +4358,13 @@ export default function App() {
                   title="Família"
                   style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                   👥
+                </button>
+              )}
+              {!isDemo && family && (
+                <button onClick={()=>setShowCardsManager(true)}
+                  title="Cartões"
+                  style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                  💳
                 </button>
               )}
             </div>
@@ -4234,6 +4421,7 @@ export default function App() {
               <SummaryCards expenses={expenses} incomes={incomes} t={t} />
               <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
               <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
+              <BillingCard expenses={expenses} cards={cards} t={t} />
               <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                 <h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>📊 Últimos 6 meses</h3>
                 <ResponsiveContainer width="100%" height={200}>
@@ -4250,7 +4438,7 @@ export default function App() {
             </div>
           )}
           {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
-          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} />}
+          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} />}
           {tab==="recurring"&&(
             <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
               <div style={{ marginBottom:20 }}>
@@ -4269,7 +4457,7 @@ export default function App() {
               <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
             </div>
           )}
-          {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} />}
+          {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} />}
           {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
         </main>
 
@@ -4291,7 +4479,7 @@ export default function App() {
 
       {/* Expense / Income modals */}
       <Modal open={modal==="expense"} onClose={()=>setModal(null)} title="💸 Registrar Gasto" t={t} darkMode={darkMode}>
-        <ExpenseForm t={t} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} />
+        <ExpenseForm t={t} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} cards={cards} />
       </Modal>
       <Modal open={modal==="income"} onClose={()=>setModal(null)} title="💰 Registrar Receita" t={t} darkMode={darkMode}>
         <IncomeForm t={t} onSave={saveIncome} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} />
@@ -4304,6 +4492,10 @@ export default function App() {
 
       <Modal open={showProfile} onClose={()=>setShowProfile(false)} title="👤 Meu Perfil" t={t} darkMode={darkMode}>
         <ProfileModal t={t} user={user} profile={profile} addToast={addToast} onSaved={(p)=>{ setProfile(p); setShowProfile(false); }} />
+      </Modal>
+
+      <Modal open={showCardsManager} onClose={()=>setShowCardsManager(false)} title="💳 Meus Cartões" t={t} darkMode={darkMode}>
+        {showCardsManager && <CardsManager t={t} family={family} isDemo={isDemo} addToast={addToast} />}
       </Modal>
 
       <Toast toasts={toasts} remove={removeToast} />
