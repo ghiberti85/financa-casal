@@ -2132,17 +2132,15 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           {/* ══ ROW 5: Chip rail — Por compra/fatura + Tipo + Categoria + Pessoa ══ */}
           <div style={{ display:"flex", gap:6, overflowX:"auto", margin:"0 -20px", padding:"0 20px 2px", scrollbarWidth:"none", marginBottom:16 }}>
             {/* Por compra / Por fatura */}
-            {[["purchase","📅 Por compra"],["billing","💳 Por fatura"]].map(([mode,label])=>(
-              <button key={mode} onClick={()=>setBillingMode(mode)}
-                style={{ display:"inline-flex", alignItems:"center", gap:5,
-                  height:30, padding:"0 11px", borderRadius:999, whiteSpace:"nowrap",
-                  fontSize:12, fontWeight:500, cursor:"pointer",
-                  background: billingMode===mode?"rgba(124,92,255,0.14)":t.surface,
-                  border: `1px solid ${billingMode===mode?"rgba(124,92,255,0.4)":t.border}`,
-                  color: billingMode===mode?"#C4B3FF":t.text }}>
-                {label}
-              </button>
-            ))}
+            <select value={billingMode} onChange={e=>setBillingMode(e.target.value)}
+              style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 8px", borderRadius:999,
+                fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
+                background: billingMode!=="purchase"?"rgba(124,92,255,0.14)":t.surface,
+                border: `1px solid ${billingMode!=="purchase"?"rgba(124,92,255,0.4)":t.border}`,
+                color: billingMode!=="purchase"?"#C4B3FF":t.text, outline:"none" }}>
+              <option value="purchase">📅 Por compra</option>
+              <option value="billing">💳 Por fatura</option>
+            </select>
             {/* Tipo */}
             {filter !== "income" && (
               <select value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)}
