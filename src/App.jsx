@@ -1026,9 +1026,22 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
+  const [billingMode, setBillingMode] = useState("purchase"); // 'purchase' | 'billing'
   const [selectedCreditMonth, setSelectedCreditMonth] = useState(null);
+  const [selectedBillingMonth, setSelectedBillingMonth] = useState(null);
   const [selectedPieCategory, setSelectedPieCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
+
+  // Helper: returns the effective {month,year} for an expense based on billingMode
+  // PIX and Débito always use purchase date; Crédito uses billing month when billingMode='billing'
+  const getDisplayMonth = (expense) => {
+    if (expense.type !== "credito" || billingMode === "purchase") {
+      const d = new Date(expense.date + "T12:00:00");
+      return { month: d.getMonth() + 1, year: d.getFullYear() };
+    }
+    const card = cards.find(c => c.id === expense.card_id);
+    return getBillingMonth(expense.date, card?.closing_day ?? 28);
+  };
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -1047,21 +1060,31 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const barData = useMemo(() => Array.from({length:6},(_,i) => {
     const d = new Date(refYear, refMonth - 5 + i, 1);
     const yr=d.getFullYear(), mn=d.getMonth();
+    const targetMo = mn + 1, targetYr = yr;
     const prefix=`${yr}-${String(mn+1).padStart(2,"0")}`;
     const inc = incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
-    const exp = expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+    const exp = expenses.filter(e => {
+      const dm = getDisplayMonth(e);
+      return dm.month === targetMo && dm.year === targetYr;
+    }).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
     return { name:MONTHS[mn], Receitas:Math.round(inc), Gastos:Math.round(exp), Saldo:Math.round(inc-exp) };
-  }), [expenses, incomes, refYear, refMonth]);
+  }), [expenses, incomes, refYear, refMonth, billingMode, cards]);
 
   // ── Pie: filtered by selected period ──
   const pieData = useMemo(() => {
     const filtered = period==="month"
-      ? expenses.filter(e=>e.date?.startsWith(`${selectedYear}-${String(selectedMonth+1).padStart(2,"0")}`))
-      : expenses.filter(e=>e.date?.startsWith(`${selectedYear}`));
+      ? expenses.filter(e => {
+          const dm = getDisplayMonth(e);
+          return dm.month === selectedMonth+1 && dm.year === selectedYear;
+        })
+      : expenses.filter(e => {
+          const dm = getDisplayMonth(e);
+          return dm.year === selectedYear;
+        });
     const map = {};
     filtered.forEach(e=>{ map[e.category]=(map[e.category]||0)+e.amount; });
     return Object.entries(map).map(([id,value]) => { const cat=CATEGORIES.find(c=>c.id===id); return { id, name:cat?.label||id, value:Math.round(value), emoji:cat?.emoji||"📦" }; }).sort((a,b)=>b.value-a.value);
-  }, [expenses, period, selectedMonth, selectedYear]);
+  }, [expenses, period, selectedMonth, selectedYear, billingMode, cards]);
 
   // ── Credit: 12 months starting from the reference month ──
   const creditData = useMemo(() => {
@@ -1073,10 +1096,16 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
     expenses.forEach(e => {
       const p = parseInt(e.parcelas) || 1;
       if (e.type!=="credito" || p <= 1 || !e.date) return;
-      // amount is already the per-installment value
       const iv = parseFloat(e.amount) || 0;
-      const [dYr, dMoStr] = e.date.slice(0,7).split("-");
-      const baseYr = parseInt(dYr), baseMo = parseInt(dMoStr) - 1;
+      let baseYr, baseMo;
+      if (billingMode === "billing") {
+        const card = cards.find(c => c.id === e.card_id);
+        const bm = getBillingMonth(e.date, card?.closing_day ?? 28);
+        baseYr = bm.year; baseMo = bm.month - 1;
+      } else {
+        const [dYr, dMoStr] = e.date.slice(0,7).split("-");
+        baseYr = parseInt(dYr); baseMo = parseInt(dMoStr) - 1;
+      }
       for (let i=0; i<p; i++) {
         const mo = (baseMo + i) % 12;
         const yr = baseYr + Math.floor((baseMo + i) / 12);
@@ -1085,7 +1114,31 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, selectedYear, selectedMonth]);
+  }, [expenses, selectedYear, selectedMonth, billingMode, cards]);
+
+  // ── Billing chart: all credit expenses grouped by billing month (12 months from today) ──
+  const billingChartData = useMemo(() => {
+    const result = {};
+    for (let i=0;i<12;i++) {
+      const d=new Date(today.getFullYear(), today.getMonth()+i, 1);
+      result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0, items:[], yr:d.getFullYear(), mo:d.getMonth() };
+    }
+    expenses.forEach(e => {
+      if (e.type !== "credito" || !e.date) return;
+      const p = parseInt(e.parcelas) || 1;
+      const iv = parseFloat(e.amount) || 0;
+      const card = cards.find(c => c.id === e.card_id);
+      const bm = getBillingMonth(e.date, card?.closing_day ?? 28);
+      const baseYr = bm.year, baseMo = bm.month - 1;
+      for (let i=0; i<p; i++) {
+        const mo = (baseMo + i) % 12;
+        const yr = baseYr + Math.floor((baseMo + i) / 12);
+        const k = `${yr}-${mo}`;
+        if (result[k]) { result[k].value += iv; result[k].items.push({ ...e, _installNum: i+1, _installTotal: p }); }
+      }
+    });
+    return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
+  }, [expenses, cards]);
 
   const CTip = ({ active, payload, label }) => {
     if (!active||!payload?.length) return null;
@@ -1113,6 +1166,16 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         <select value={selectedYear} onChange={e=>setSelectedYear(Number(e.target.value))} style={{ padding:"8px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,fontWeight:600,cursor:"pointer",outline:"none" }}>
           {availableYears.map(yr=><option key={yr} value={yr}>{yr}</option>)}
         </select>
+      </div>
+      <div style={{ display:"flex",gap:8 }}>
+        {[["purchase","📅 Por compra"],["billing","💳 Por fatura"]].map(([mode,label])=>(
+          <button key={mode} onClick={()=>{ setBillingMode(mode); setSelectedBillingMonth(null); setSelectedCreditMonth(null); setSelectedPieCategory(null); }}
+            style={{ padding:"8px 18px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,transition:"all 0.2s",
+                     background:billingMode===mode?t.accent:t.surfaceHover,
+                     color:billingMode===mode?"#fff":t.textMuted }}>
+            {label}
+          </button>
+        ))}
       </div>
 
       <Card title={`📊 Receitas × Gastos — 6 meses até ${period==="month" ? MONTH_FULL[selectedMonth] : "Dez"}/${selectedYear}`}>
@@ -1292,6 +1355,70 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           );
         })()}
       </Card>
+
+      {billingMode === "billing" && (
+        <Card title="💳 Gráfico de Faturas — próximos 12 meses">
+          <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma barra para ver os lançamentos daquela fatura.</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={billingChartData} barCategoryGap="30%"
+              onClick={d=>{ if(d?.activePayload?.[0]) { const p=d.activePayload[0].payload; const k=`${p.yr}-${p.mo}`; setSelectedBillingMonth(prev=>prev===k?null:k); } }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
+              <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
+              <Bar dataKey="value" name="Fatura" fill={t.accent} radius={[6,6,0,0]}
+                onClick={d=>{ const k=`${d.yr}-${d.mo}`; setSelectedBillingMonth(prev=>prev===k?null:k); }}
+                style={{ cursor:"pointer" }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          {selectedBillingMonth && (() => {
+            const md = billingChartData.find(d=>`${d.yr}-${d.mo}`===selectedBillingMonth);
+            if (!md?.items?.length) return null;
+            return (
+              <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                  <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>💳 Fatura de {md.name}</h4>
+                  <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                    <span style={{ fontSize:15,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif" }}>{fmt(md.value)}</span>
+                    <button onClick={()=>setSelectedBillingMonth(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
+                  </div>
+                </div>
+                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                  {md.items.map((e,i) => {
+                    const cat = CATEGORIES.find(c=>c.id===e.category);
+                    return (
+                      <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.accentSoft,border:`1px solid ${t.accent}22` }}>
+                        <span style={{ fontSize:20,flexShrink:0 }}>{cat?.emoji||"💳"}</span>
+                        <div style={{ flex:1,minWidth:0 }}>
+                          <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.description}</div>
+                          <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>{e.user_label}{e._installTotal>1?` · Parcela ${e._installNum} de ${e._installTotal}`:""} · dia {e.date?.slice(8,10)}</div>
+                        </div>
+                        <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
+                          <span style={{ fontSize:14,fontWeight:700,color:t.accent }}>{fmt(parseFloat(e.amount)||0)}</span>
+                          {onEditExpense && (
+                            <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
+                              style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
+                              onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
+                              onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
+                          )}
+                          {onDeleteExpense && (
+                            <button onClick={()=>onDeleteExpense(e.id)} title="Remover"
+                              style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
+                              onMouseEnter={ev=>ev.currentTarget.style.color=t.danger}
+                              onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>🗑</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+        </Card>
+      )}
+
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
           style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
@@ -1704,6 +1831,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [billingMode, setBillingMode] = useState("purchase"); // 'purchase' | 'billing'
 
   const toggleSelect = (id) => setSelectedIds(p => {
     const n = new Set(p);
@@ -1730,10 +1858,33 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const setFilterAndClear      = (v) => { setFilter(v); setSelectedIds(new Set()); if(v!=="expense"){setPaymentFilter("all");setCategoryFilter("all");} };
 
   const all = useMemo(() => {
+    const matchesExpPeriod = (e) => {
+      // In billing mode, credit expenses are matched by their billing month
+      if (billingMode === "billing" && e.type === "credito") {
+        const card = cards.find(c => c.id === e.card_id);
+        const bm = getBillingMonth(e.date, card?.closing_day ?? 28);
+        if (periodFilter === "month") {
+          return bm.month === monthFilter+1 && bm.year === yearFilter;
+        }
+        const months = periodFilter==="3m"?3:periodFilter==="6m"?6:periodFilter==="9m"?9:12;
+        const from = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
+        const bmDate = new Date(bm.year, bm.month-1, 1);
+        return bmDate >= from;
+      }
+      if (periodFilter === "month") {
+        const prefix = yearFilter + "-" + String(monthFilter+1).padStart(2,"0");
+        return e.date?.startsWith(prefix);
+      }
+      const months = periodFilter==="3m"?3:periodFilter==="6m"?6:periodFilter==="9m"?9:12;
+      const from = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
+      const fromStr = `${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,"0")}-01`;
+      const toStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-31`;
+      return e.date>=fromStr && e.date<=toStr;
+    };
     if (periodFilter === "month") {
       const prefix = yearFilter + "-" + String(monthFilter+1).padStart(2,"0");
       return [
-        ...expenses.filter(e=>e.date?.startsWith(prefix)).map(e=>({...e,_type:"expense"})),
+        ...expenses.filter(e=>matchesExpPeriod(e)).map(e=>({...e,_type:"expense"})),
         ...incomes.filter(i=>i.date?.startsWith(prefix)).map(i=>({...i,_type:"income"}))
       ].sort((a,b)=>b.date?.localeCompare(a.date));
     }
@@ -1742,10 +1893,10 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     const fromStr = `${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,"0")}-01`;
     const toStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-31`;
     return [
-      ...expenses.filter(e=>e.date>=fromStr&&e.date<=toStr).map(e=>({...e,_type:"expense"})),
+      ...expenses.filter(e=>matchesExpPeriod(e)).map(e=>({...e,_type:"expense"})),
       ...incomes.filter(i=>i.date>=fromStr&&i.date<=toStr).map(i=>({...i,_type:"income"}))
     ].sort((a,b)=>b.date?.localeCompare(a.date));
-  }, [expenses, incomes, monthFilter, yearFilter, periodFilter]);
+  }, [expenses, incomes, monthFilter, yearFilter, periodFilter, billingMode, cards]);
 
   // ── Duplicate detection: same date + description (normalized) + amount + category ──
   const dupIds = useMemo(() => {
@@ -1822,6 +1973,18 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
             {availableYears.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
         </>}
+      </div>
+
+      {/* Billing mode toggle */}
+      <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+        {[["purchase","📅 Por compra"],["billing","💳 Por fatura"]].map(([mode,label])=>(
+          <button key={mode} onClick={()=>{ setBillingMode(mode); setSelectedIds(new Set()); }}
+            style={{ padding:"7px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,transition:"all 0.2s",
+                     background:billingMode===mode?t.accent:t.surfaceHover,
+                     color:billingMode===mode?"#fff":t.textMuted }}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Duplicate alert banner */}
@@ -1972,6 +2135,11 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                       return ` · ${typeLabel}${catLabel?" · "+catLabel:""}`;
                     })()}
                     {isDup && <span style={{ color:t.warning,fontWeight:600 }}> · sugerido para remoção</span>}
+                    {billingMode === "billing" && isExp && item.type === "credito" && (() => {
+                      const card = cards.find(c => c.id === item.card_id);
+                      const bm = getBillingMonth(item.date, card?.closing_day ?? 28);
+                      return <span style={{ color:t.accent,fontWeight:600 }}> · → Fatura {MONTH_FULL[bm.month-1]}/{bm.year}</span>;
+                    })()}
                   </div>
                 </div>
               </div>
