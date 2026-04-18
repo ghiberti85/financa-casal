@@ -1780,97 +1780,121 @@ function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [] }) {
-  const [filter, setFilter] = useState("all");
+  // ── Period / window state ──
+  // anchorMonth/anchorYear = the reference month shown in the period header
+  const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
+  const [anchorYear, setAnchorYear] = useState(today.getFullYear());
+  // window: '1m' | '3m' | '6m' | '9m' | '1y'
+  const [win, setWin] = useState("1m");
+
+  // ── Filter state ──
+  const [filter, setFilter] = useState("all"); // 'all' | 'expense' | 'income'
   const [search, setSearch] = useState("");
-  const [periodFilter, setPeriodFilter] = useState("month");
-  const [monthFilter, setMonthFilter] = useState(today.getMonth());
-  const [editItem, setEditItem] = useState(null);
-  const [showDupsOnly, setShowDupsOnly] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [memberFilter, setMemberFilter] = useState("all");
   const [billingMode, setBillingMode] = useState("purchase"); // 'purchase' | 'billing'
+  const [showDupsOnly, setShowDupsOnly] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
 
-  const toggleSelect = (id) => setSelectedIds(p => {
-    const n = new Set(p);
-    n.has(id) ? n.delete(id) : n.add(id);
-    return n;
-  });
-  const clearAll = () => setSelectedIds(new Set());
+  // ── Selection mode state ──
+  const [selMode, setSelMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const longPressRef = useRef(null);
+  const [longPressingId, setLongPressingId] = useState(null);
 
-  const availableYears = useMemo(() => {
-    const years = new Set();
-    [...expenses, ...incomes].forEach(r => {
-      const y = r.date?.slice(0,4);
-      if (y) years.add(parseInt(y));
-    });
-    years.add(today.getFullYear());
-    return Array.from(years).sort((a,b) => b - a);
-  }, [expenses, incomes]);
+  // ── Edit modal state ──
+  const [editItem, setEditItem] = useState(null);
 
-  const [yearFilter, setYearFilter] = useState(today.getFullYear());
+  // ── Window definitions ──
+  const WINDOWS = [
+    { id: "1m",  label: "1 mês"   },
+    { id: "3m",  label: "3 meses" },
+    { id: "6m",  label: "6 meses" },
+    { id: "9m",  label: "9 meses" },
+    { id: "1y",  label: "1 ano"   },
+  ];
 
-  // Derive unique member labels from the full dataset
+  // Period header title & subtitle
+  const periodTitle = useMemo(() => {
+    const shortYr = String(anchorYear).slice(2);
+    const curShortYr = String(today.getFullYear()).slice(2);
+    if (win === "1m") return `${MONTH_FULL[anchorMonth]} ${anchorYear}`;
+    const winMonths = win==="3m"?3:win==="6m"?6:win==="9m"?9:12;
+    // start = (anchorMonth - winMonths + 1) months from anchor
+    const startTotal = anchorMonth - winMonths + 1;
+    const startMo = ((startTotal % 12) + 12) % 12;
+    const startYr = anchorYear + Math.floor(startTotal / 12);
+    const sShort = String(startYr).slice(2);
+    const eShort = String(anchorYear).slice(2);
+    if (startYr === anchorYear) {
+      return `${MONTHS[startMo]} – ${MONTHS[anchorMonth]} ${anchorYear}`;
+    }
+    return `${MONTHS[startMo]}/${sShort} – ${MONTHS[anchorMonth]}/${eShort}`;
+  }, [anchorMonth, anchorYear, win]);
+
+  const periodSubtitle = useMemo(() => {
+    if (win === "1m") return null; // will show count
+    const winMonths = win==="3m"?3:win==="6m"?6:win==="9m"?9:12;
+    return `ÚLTIMOS ${winMonths} MESES`;
+  }, [win]);
+
+  // Navigate anchor month
+  const prevMonth = () => {
+    if (anchorMonth === 0) { setAnchorMonth(11); setAnchorYear(y => y - 1); }
+    else setAnchorMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (anchorMonth === 11) { setAnchorMonth(0); setAnchorYear(y => y + 1); }
+    else setAnchorMonth(m => m + 1);
+  };
+
+  // Derive unique member labels
   const memberOptions = useMemo(() => {
     const labels = new Set();
     [...expenses, ...incomes].forEach(item => { if (item.user_label) labels.add(item.user_label); });
     return Array.from(labels).sort();
   }, [expenses, incomes]);
 
-  // Clear selection when filter context changes
-  const setMonthFilterAndClear = (v) => { setMonthFilter(v); setSelectedIds(new Set()); };
-  const setYearFilterAndClear  = (v) => { setYearFilter(v);  setSelectedIds(new Set()); };
-  const setFilterAndClear      = (v) => { setFilter(v); setSelectedIds(new Set()); if(v!=="expense"){setPaymentFilter("all");setCategoryFilter("all");} };
-  const hasActiveDetailFilters = paymentFilter !== "all" || categoryFilter !== "all" || memberFilter !== "all";
-  const clearDetailFilters     = () => { setPaymentFilter("all"); setCategoryFilter("all"); setMemberFilter("all"); };
-
+  // ── "all" — items in the selected window ──
   const all = useMemo(() => {
+    // Compute date range from anchor + window
+    let fromStr, toStr;
+    if (win === "1m") {
+      fromStr = `${anchorYear}-${String(anchorMonth+1).padStart(2,"0")}-01`;
+      // last day of anchor month
+      const lastDay = new Date(anchorYear, anchorMonth+1, 0).getDate();
+      toStr = `${anchorYear}-${String(anchorMonth+1).padStart(2,"0")}-${lastDay}`;
+    } else {
+      const winMonths = win==="3m"?3:win==="6m"?6:win==="9m"?9:12;
+      const startTotal = anchorMonth - winMonths + 1;
+      const startMo = ((startTotal % 12) + 12) % 12;
+      const startYr = anchorYear + Math.floor(startTotal / 12);
+      fromStr = `${startYr}-${String(startMo+1).padStart(2,"0")}-01`;
+      const lastDay = new Date(anchorYear, anchorMonth+1, 0).getDate();
+      toStr = `${anchorYear}-${String(anchorMonth+1).padStart(2,"0")}-${lastDay}`;
+    }
+
     const matchesExpPeriod = (e) => {
-      // In billing mode, credit expenses are matched by their billing month
       if (billingMode === "billing" && e.type === "credito") {
         const card = cards.find(c => c.id === e.card_id);
         const bm = getBillingMonth(e.date, card?.closing_day ?? 28);
-        if (periodFilter === "month") {
-          return bm.month === monthFilter+1 && bm.year === yearFilter;
-        }
-        const months = periodFilter==="3m"?3:periodFilter==="6m"?6:periodFilter==="9m"?9:12;
-        const from = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
-        const bmDate = new Date(bm.year, bm.month-1, 1);
-        return bmDate >= from;
+        const bmStr = `${bm.year}-${String(bm.month).padStart(2,"0")}-01`;
+        return bmStr >= fromStr && bmStr <= toStr;
       }
-      if (periodFilter === "month") {
-        const prefix = yearFilter + "-" + String(monthFilter+1).padStart(2,"0");
-        return e.date?.startsWith(prefix);
-      }
-      const months = periodFilter==="3m"?3:periodFilter==="6m"?6:periodFilter==="9m"?9:12;
-      const from = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
-      const fromStr = `${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,"0")}-01`;
-      const toStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-31`;
-      return e.date>=fromStr && e.date<=toStr;
+      return e.date >= fromStr && e.date <= toStr;
     };
-    if (periodFilter === "month") {
-      const prefix = yearFilter + "-" + String(monthFilter+1).padStart(2,"0");
-      return [
-        ...expenses.filter(e=>matchesExpPeriod(e)).map(e=>({...e,_type:"expense"})),
-        ...incomes.filter(i=>i.date?.startsWith(prefix)).map(i=>({...i,_type:"income"}))
-      ].sort((a,b)=>b.date?.localeCompare(a.date));
-    }
-    const months = periodFilter==="3m"?3:periodFilter==="6m"?6:periodFilter==="9m"?9:12;
-    const from = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
-    const fromStr = `${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,"0")}-01`;
-    const toStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-31`;
-    return [
-      ...expenses.filter(e=>matchesExpPeriod(e)).map(e=>({...e,_type:"expense"})),
-      ...incomes.filter(i=>i.date>=fromStr&&i.date<=toStr).map(i=>({...i,_type:"income"}))
-    ].sort((a,b)=>b.date?.localeCompare(a.date));
-  }, [expenses, incomes, monthFilter, yearFilter, periodFilter, billingMode, cards]);
 
-  // ── Duplicate detection: same date + description (normalized) + amount + category ──
+    return [
+      ...expenses.filter(e => matchesExpPeriod(e)).map(e => ({...e, _type:"expense"})),
+      ...incomes.filter(i => i.date >= fromStr && i.date <= toStr).map(i => ({...i, _type:"income"}))
+    ].sort((a,b) => b.date?.localeCompare(a.date));
+  }, [expenses, incomes, anchorMonth, anchorYear, win, billingMode, cards]);
+
+  // ── Duplicate detection ──
   const dupIds = useMemo(() => {
-    const seen = new Map(); // key → [first_id, ...later_ids]
+    const seen = new Map();
     const dups = new Set();
-    // Process in date order (oldest first) so latest = duplicate
     const sorted = [...all].sort((a,b) => a.date?.localeCompare(b.date) || 0);
     sorted.forEach(item => {
       const key = [
@@ -1880,19 +1904,16 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
         item.category || item.source || "",
         item._type
       ].join("|");
-      if (seen.has(key)) {
-        dups.add(item.id); // Mark the later one as duplicate
-      } else {
-        seen.set(key, item.id);
-      }
+      if (seen.has(key)) dups.add(item.id);
+      else seen.set(key, item.id);
     });
     return dups;
   }, [all]);
 
-  const filtered = useMemo(() => all.filter(item=>{
-    if (filter==="expense"&&item._type!=="expense") return false;
-    if (filter==="income"&&item._type!=="income") return false;
-    if (search&&!item.description?.toLowerCase().includes(search.toLowerCase())) return false;
+  const filtered = useMemo(() => all.filter(item => {
+    if (filter==="expense" && item._type!=="expense") return false;
+    if (filter==="income"  && item._type!=="income")  return false;
+    if (search && !item.description?.toLowerCase().includes(search.toLowerCase())) return false;
     if (showDupsOnly && !dupIds.has(item.id)) return false;
     if (paymentFilter!=="all" && item._type==="expense" && item.type!==paymentFilter) return false;
     if (categoryFilter!=="all" && item._type==="expense" && item.category!==categoryFilter) return false;
@@ -1900,130 +1921,289 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     return true;
   }), [all, filter, search, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
 
-  const selectAll = () => setSelectedIds(new Set(filtered.map(r => r.id)));
-  const isAllSelected = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id));
-
   const totalExp = filtered.filter(i=>i._type==="expense").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const totalInc = filtered.filter(i=>i._type==="income").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
-
-  const filteredExpIds = filtered.filter(i=>i._type==="expense").map(i=>i.id);
-  const filteredIncIds = filtered.filter(i=>i._type==="income").map(i=>i.id);
   const dupCount = dupIds.size;
   const dupIdsArray = Array.from(dupIds);
 
+  const hasActiveChipFilters = paymentFilter!=="all" || categoryFilter!=="all" || memberFilter!=="all";
+
+  // ── Selection helpers ──
+  const enterSelMode = (id) => { setSelMode(true); setSelectedIds(new Set([id])); };
+  const exitSelMode  = () => { setSelMode(false); setSelectedIds(new Set()); };
+  const toggleSel    = (id) => setSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
+  const selectAll    = () => setSelectedIds(new Set(filtered.map(r=>r.id)));
+  const isAllSel     = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id));
+
+  // Long-press handlers
+  const startLongPress = (id) => {
+    if (selMode) return; // already in selection mode — normal tap
+    longPressRef.current = setTimeout(() => {
+      setLongPressingId(null);
+      enterSelMode(id);
+    }, 500);
+    setLongPressingId(id);
+  };
+  const cancelLongPress = () => {
+    clearTimeout(longPressRef.current);
+    setLongPressingId(null);
+  };
+
+  // Delete selected
   const handleDeleteSelected = () => {
     const selArr = Array.from(selectedIds);
-    const expIds = selArr.filter(id => all.find(i => i.id === id && i._type === "expense"));
-    const incIds = selArr.filter(id => all.find(i => i.id === id && i._type === "income"));
     if (!selArr.length) return;
     if (!window.confirm(`Remover ${selArr.length} lançamento(s) selecionado(s)?`)) return;
+    const expIds = selArr.filter(id => all.find(i=>i.id===id&&i._type==="expense"));
+    const incIds = selArr.filter(id => all.find(i=>i.id===id&&i._type==="income"));
     if (expIds.length) onDeleteAllExpenses(expIds);
     if (incIds.length) onDeleteAllIncomes(incIds);
-    setSelectedIds(new Set());
+    exitSelMode();
+  };
+
+  // Delete filtered (from action sheet)
+  const handleDeleteFiltered = () => {
+    setShowActionSheet(false);
+    const expIds = filtered.filter(i=>i._type==="expense").map(i=>i.id);
+    const incIds = filtered.filter(i=>i._type==="income").map(i=>i.id);
+    if (!filtered.length) return;
+    if (!window.confirm(`Remover ${filtered.length} lançamento(s) filtrado(s)?`)) return;
+    if (expIds.length) onDeleteAllExpenses(expIds);
+    if (incIds.length) onDeleteAllIncomes(incIds);
+  };
+
+  // Glass tokens (matching design reference)
+  const G = {
+    glass:   "rgba(255,255,255,0.055)",
+    border:  "rgba(255,255,255,0.09)",
+    muted:   "rgba(255,255,255,0.55)",
+    purple:  "#7C5CFF",
+    purpleA: "rgba(124,92,255,0.22)",
+    purpleB: "rgba(124,92,255,0.4)",
+    chip:    "rgba(124,92,255,0.14)",
+    chipTxt: "#C4B3FF",
+  };
+  // In light mode fall back to theme tokens
+  const isDark = t.bg === "#0f0c1a" || t.bg?.startsWith("#0") || t.bg?.startsWith("rgb(5") || t.bg?.includes("0f0");
+
+  const btnIcon = {
+    width:28, height:28, borderRadius:999,
+    border:`1px solid ${t.border}`,
+    background:t.surface, color:t.text,
+    fontSize:16, lineHeight:1, cursor:"pointer",
+    display:"inline-flex", alignItems:"center", justifyContent:"center", padding:0,
+    flexShrink:0,
   };
 
   return (
-    <div>
-      {/* ── Camada 1: Busca + Período ── */}
-      <div style={{ display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center" }}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar lançamento..." style={{ flex:1,minWidth:160,padding:"9px 14px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none" }} />
-        <select value={periodFilter} onChange={e=>{ setPeriodFilter(e.target.value); setSelectedIds(new Set()); }}
-          style={{ padding:"9px 12px",borderRadius:12,border:`1px solid ${periodFilter!=="month"?t.accent:t.border}`,background:periodFilter!=="month"?t.accentSoft:t.inputBg,color:periodFilter!=="month"?t.accent:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:600 }}>
-          <option value="month">📅 Mês</option>
-          <option value="3m">📅 3 meses</option>
-          <option value="6m">📅 6 meses</option>
-          <option value="9m">📅 9 meses</option>
-          <option value="1y">📅 1 ano</option>
-        </select>
-        {periodFilter === "month" && <>
-          <select value={monthFilter} onChange={e=>setMonthFilterAndClear(Number(e.target.value))} style={{ padding:"9px 12px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none" }}>
-            {MONTH_FULL.map((mn,i)=><option key={i} value={i}>{mn}</option>)}
-          </select>
-          <select value={yearFilter} onChange={e=>setYearFilterAndClear(Number(e.target.value))} style={{ padding:"9px 12px",borderRadius:12,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,cursor:"pointer",outline:"none",fontWeight:700 }}>
-            {availableYears.map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-        </>}
-      </div>
+    <div style={{ position:"relative" }}>
 
-      {/* ── Camada 2: Tipo (Todos/Gastos/Receitas) + modo fatura + ações ── */}
-      <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap" }}>
-        {[["all","Todos"],["expense","Gastos"],["income","Receitas"]].map(([v,l])=>(
-          <button key={v} onClick={()=>setFilterAndClear(v)}
-            style={{ padding:"7px 16px",borderRadius:20,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,transition:"all 0.2s",
-                     background:filter===v?t.accent:t.surfaceHover, color:filter===v?"#fff":t.textMuted }}>
-            {l}
+      {/* ══ SELECTION BAR (replaces filter block while in selection mode) ══ */}
+      {selMode ? (
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 0 14px", gap:10 }}>
+          <button onClick={exitSelMode}
+            style={{ background:"none", border:"none", color:t.accent, fontSize:14, fontWeight:600, padding:"4px 0", cursor:"pointer" }}>
+            Cancelar
           </button>
-        ))}
-        <div style={{ width:1,height:18,background:t.border,margin:"0 4px",flexShrink:0 }} />
-        {[["purchase","📅 Por compra"],["billing","💳 Por fatura"]].map(([mode,label])=>(
-          <button key={mode} onClick={()=>{ setBillingMode(mode); setSelectedIds(new Set()); }}
-            style={{ padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,transition:"all 0.2s",
-                     background:billingMode===mode?t.accent:t.surfaceHover, color:billingMode===mode?"#fff":t.textMuted }}>
-            {label}
+          <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:15, fontWeight:700, color:t.text }}>{selectedIds.size} selecionado{selectedIds.size!==1?"s":""}</div>
+            <div style={{ fontSize:10, color:t.textMuted, letterSpacing:"0.04em", textTransform:"uppercase" }}>de {filtered.length}</div>
+          </div>
+          <button onClick={isAllSel?exitSelMode:selectAll}
+            style={{ background:"none", border:"none", color:t.accent, fontSize:14, fontWeight:600, padding:"4px 0", cursor:"pointer" }}>
+            {isAllSel ? "Nenhum" : "Todos"}
           </button>
-        ))}
-        <div style={{ flex:1 }} />
-        {selectedIds.size > 0 && (
-          <button onClick={handleDeleteSelected}
-            style={{ padding:"7px 14px",borderRadius:10,border:`1px solid ${t.danger}66`,background:t.danger,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5,boxShadow:`0 2px 8px ${t.danger}44` }}
-            onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
-            onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
-            🗑 Apagar {selectedIds.size} selecionado{selectedIds.size!==1?"s":""}
-          </button>
-        )}
-      </div>
-
-      {/* ── Camada 3: Filtros detalhados + selecionar todos ── */}
-      <div style={{ display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center" }}>
-        <div style={{ display:"flex",alignItems:"center",gap:6,padding:"7px 10px",borderRadius:10,background:t.surfaceHover,cursor:"pointer",flexShrink:0 }}
-          onClick={()=>isAllSelected?clearAll():selectAll()}>
-          <input type="checkbox" checked={isAllSelected} onChange={()=>isAllSelected?clearAll():selectAll()}
-            onClick={e=>e.stopPropagation()} style={{ width:14,height:14,cursor:"pointer",accentColor:t.accent }} />
-          <span style={{ fontSize:12,fontWeight:600,color:t.textMuted,whiteSpace:"nowrap" }}>
-            {selectedIds.size > 0 ? `${selectedIds.size} selecionado${selectedIds.size!==1?"s":""}` : "Selecionar"}
-          </span>
         </div>
-        {filter !== "income" && (
-          <select value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)}
-            style={{ padding:"7px 11px",borderRadius:10,border:`1px solid ${paymentFilter!=="all"?t.accent:t.border}`,background:paymentFilter!=="all"?t.accentSoft:t.inputBg,color:paymentFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
-            <option value="all">💳 Tipo: Todos</option>
-            <option value="pix">💸 PIX</option>
-            <option value="debito">🏦 Débito</option>
-            <option value="credito">💳 Crédito</option>
-          </select>
-        )}
-        {filter !== "income" && (
-          <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}
-            style={{ padding:"7px 11px",borderRadius:10,border:`1px solid ${categoryFilter!=="all"?t.accent:t.border}`,background:categoryFilter!=="all"?t.accentSoft:t.inputBg,color:categoryFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
-            <option value="all">🏷️ Categoria: Todas</option>
-            {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-          </select>
-        )}
-        {memberOptions.length > 1 && (
-          <select value={memberFilter} onChange={e=>setMemberFilter(e.target.value)}
-            style={{ padding:"7px 11px",borderRadius:10,border:`1px solid ${memberFilter!=="all"?t.accent:t.border}`,background:memberFilter!=="all"?t.accentSoft:t.inputBg,color:memberFilter!=="all"?t.accent:t.text,fontSize:12,fontWeight:600,cursor:"pointer",outline:"none" }}>
-            <option value="all">👤 Pessoa: Todos</option>
-            {memberOptions.map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
-        )}
-        {hasActiveDetailFilters && (
-          <button onClick={clearDetailFilters}
-            style={{ padding:"7px 12px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMuted,fontSize:12,fontWeight:600,cursor:"pointer" }}>
-            ✕ Limpar filtros
-          </button>
-        )}
-      </div>
+      ) : (
+        <>
+          {/* ══ ROW 1: Period header (‹ / title / › / ••• ) ══ */}
+          <div style={{ display:"grid", gridTemplateColumns:"28px 1fr 28px auto", alignItems:"center", gap:8, marginBottom:10 }}>
+            <button style={btnIcon} onClick={prevMonth}>‹</button>
+            <div style={{ textAlign:"center", minWidth:0 }}>
+              <div style={{ fontSize:17, fontWeight:700, letterSpacing:-0.3, color:t.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                {periodTitle}
+              </div>
+              <div style={{ fontSize:10, color:t.textMuted, marginTop:1, letterSpacing:"0.04em", textTransform:"uppercase" }}>
+                {periodSubtitle || `${filtered.length} lançamento${filtered.length!==1?"s":""}`}
+              </div>
+            </div>
+            <button style={btnIcon} onClick={nextMonth}>›</button>
+            {/* ••• menu */}
+            <div style={{ position:"relative" }}>
+              <button
+                onClick={e=>{ e.stopPropagation(); setShowActionSheet(v=>!v); }}
+                style={{ width:32, height:32, borderRadius:9,
+                  background: showActionSheet ? "rgba(124,92,255,0.22)" : t.surface,
+                  border:`1px solid ${showActionSheet?"rgba(124,92,255,0.4)":t.border}`,
+                  display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
+                  <circle cx="2" cy="2" r="1.6" fill={t.text}/>
+                  <circle cx="8" cy="2" r="1.6" fill={t.text}/>
+                  <circle cx="14" cy="2" r="1.6" fill={t.text}/>
+                </svg>
+              </button>
+              {/* Backdrop */}
+              {showActionSheet && (
+                <div onClick={()=>setShowActionSheet(false)}
+                  style={{ position:"fixed", inset:0, zIndex:299 }} />
+              )}
+              {/* Action sheet popover */}
+              {showActionSheet && (
+                <div onClick={e=>e.stopPropagation()}
+                  style={{ position:"absolute", top:"calc(100% + 8px)", right:0, zIndex:300,
+                    width:230, padding:4, borderRadius:14,
+                    background:t.glassModal, backdropFilter:"blur(22px)",
+                    border:`1px solid ${t.glassBorder}`,
+                    boxShadow:t.shadow }}>
+                  {/* Arrow */}
+                  <div style={{ position:"absolute", top:-6, right:12, width:12, height:12,
+                    background:t.glassModal,
+                    borderLeft:`1px solid ${t.glassBorder}`,
+                    borderTop:`1px solid ${t.glassBorder}`,
+                    transform:"rotate(45deg)" }} />
+                  {/* Selecionar */}
+                  <button onClick={()=>{ setShowActionSheet(false); setSelMode(true); setSelectedIds(new Set()); }}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:10,
+                      background:"rgba(124,92,255,0.14)", color:t.text, border:"none", cursor:"pointer", fontSize:13.5, fontWeight:500 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="2" y="2" width="12" height="12" rx="3" stroke={t.text} strokeWidth="1.3"/>
+                      <path d="M5 8.2l2.2 2.2L11.2 6" stroke={t.text} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Selecionar lançamentos
+                  </button>
+                  <div style={{ height:0.5, background:t.border, margin:"4px 10px" }} />
+                  {/* Apagar filtrados */}
+                  <button onClick={handleDeleteFiltered}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:10,
+                      background:"transparent", color:"#FF6B6B", border:"none", cursor:"pointer", fontSize:13.5, fontWeight:500 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF6B6B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Apagar filtrados…
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
-      {/* Duplicate alert banner */}
+          {/* ══ ROW 2: Window segmented control ══ */}
+          <div style={{ display:"flex", padding:3, borderRadius:999, background:"rgba(255,255,255,0.035)", border:`1px solid ${t.border}`, marginBottom:10 }}>
+            {WINDOWS.map(w => (
+              <button key={w.id} onClick={()=>setWin(w.id)}
+                style={{ flex:1, height:26, borderRadius:999, border: win===w.id?"1px solid rgba(124,92,255,0.35)":"1px solid transparent",
+                  background: win===w.id?"rgba(124,92,255,0.22)":"transparent",
+                  color: win===w.id?"#D6CAFF":t.textMuted,
+                  fontSize:11.5, fontWeight:600, cursor:"pointer" }}>
+                {w.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ══ ROW 3: Search ══ */}
+          <div style={{ height:36, borderRadius:999, background:t.surface, border:`1px solid ${t.border}`,
+            display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13, marginBottom:10 }}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke={t.textMuted} strokeWidth="1.5"/>
+              <path d="M11 11l4 4" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <input value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder="Buscar lançamento…"
+              style={{ flex:1, background:"transparent", border:"none", outline:"none", color:t.text, fontSize:13 }} />
+            {search && (
+              <button onClick={()=>setSearch("")}
+                style={{ background:"none", border:"none", color:t.textMuted, cursor:"pointer", fontSize:15, padding:0, lineHeight:1 }}>×</button>
+            )}
+          </div>
+
+          {/* ══ ROW 4: Todos/Gastos/Receitas segmented ══ */}
+          <div style={{ display:"flex", padding:3, borderRadius:999, background:"rgba(255,255,255,0.04)", border:`1px solid ${t.border}`, marginBottom:10 }}>
+            {[["all","Todos"],["expense","Gastos"],["income","Receitas"]].map(([v,l])=>(
+              <button key={v} onClick={()=>{ setFilter(v); if(v!=="expense"){ setPaymentFilter("all"); setCategoryFilter("all"); } }}
+                style={{ flex:1, height:30, borderRadius:999, border:"none",
+                  background: filter===v?t.accent:"transparent",
+                  color: filter===v?"#fff":t.textMuted,
+                  fontSize:12.5, fontWeight:600, cursor:"pointer",
+                  boxShadow: filter===v?`0 2px 8px ${t.accentGlow}`:"none" }}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* ══ ROW 5: Chip rail — Por compra/fatura + Tipo + Categoria + Pessoa ══ */}
+          <div style={{ display:"flex", gap:6, overflowX:"auto", margin:"0 -20px", padding:"0 20px 2px", scrollbarWidth:"none", marginBottom:16 }}>
+            {/* Por compra / Por fatura */}
+            {[["purchase","📅 Por compra"],["billing","💳 Por fatura"]].map(([mode,label])=>(
+              <button key={mode} onClick={()=>setBillingMode(mode)}
+                style={{ display:"inline-flex", alignItems:"center", gap:5,
+                  height:30, padding:"0 11px", borderRadius:999, whiteSpace:"nowrap",
+                  fontSize:12, fontWeight:500, cursor:"pointer",
+                  background: billingMode===mode?"rgba(124,92,255,0.14)":t.surface,
+                  border: `1px solid ${billingMode===mode?"rgba(124,92,255,0.4)":t.border}`,
+                  color: billingMode===mode?"#C4B3FF":t.text }}>
+                {label}
+              </button>
+            ))}
+            {/* Tipo */}
+            {filter !== "income" && (
+              <select value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)}
+                style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 8px", borderRadius:999,
+                  fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
+                  background: paymentFilter!=="all"?"rgba(124,92,255,0.14)":t.surface,
+                  border: `1px solid ${paymentFilter!=="all"?"rgba(124,92,255,0.4)":t.border}`,
+                  color: paymentFilter!=="all"?"#C4B3FF":t.text, outline:"none" }}>
+                <option value="all">📁 Tipo</option>
+                <option value="pix">💸 PIX</option>
+                <option value="debito">🏦 Débito</option>
+                <option value="credito">💳 Crédito</option>
+              </select>
+            )}
+            {/* Categoria */}
+            {filter !== "income" && (
+              <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}
+                style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 8px", borderRadius:999,
+                  fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
+                  background: categoryFilter!=="all"?"rgba(124,92,255,0.14)":t.surface,
+                  border: `1px solid ${categoryFilter!=="all"?"rgba(124,92,255,0.4)":t.border}`,
+                  color: categoryFilter!=="all"?"#C4B3FF":t.text, outline:"none" }}>
+                <option value="all">📂 Categoria</option>
+                {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+              </select>
+            )}
+            {/* Pessoa */}
+            {memberOptions.length > 1 && (
+              <select value={memberFilter} onChange={e=>setMemberFilter(e.target.value)}
+                style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 8px", borderRadius:999,
+                  fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
+                  background: memberFilter!=="all"?"rgba(124,92,255,0.14)":t.surface,
+                  border: `1px solid ${memberFilter!=="all"?"rgba(124,92,255,0.4)":t.border}`,
+                  color: memberFilter!=="all"?"#C4B3FF":t.text, outline:"none" }}>
+                <option value="all">👤 Pessoa</option>
+                {memberOptions.map(m=><option key={m} value={m}>{m}</option>)}
+              </select>
+            )}
+            {/* Clear chip filters */}
+            {hasActiveChipFilters && (
+              <button onClick={()=>{ setPaymentFilter("all"); setCategoryFilter("all"); setMemberFilter("all"); }}
+                style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 11px", borderRadius:999,
+                  fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
+                  background:"rgba(255,107,107,0.12)", border:"1px solid rgba(255,107,107,0.35)", color:"#FF9B9B" }}>
+                ✕ Limpar
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ══ DUPLICATE ALERT ══ */}
       {dupCount > 0 && (
         <div style={{ marginBottom:16,padding:"14px 16px",borderRadius:14,background:"rgba(217,119,6,0.10)",border:"1px solid rgba(217,119,6,0.3)",display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap" }}>
           <span style={{ fontSize:20,flexShrink:0,marginTop:1 }}>⚠️</span>
           <div style={{ flex:1,minWidth:200 }}>
             <div style={{ fontSize:13,fontWeight:700,color:t.warning,marginBottom:3 }}>
-              {dupCount} lançamento{dupCount>1?"s":""}  duplicado{dupCount>1?"s":""} detectado{dupCount>1?"s":""}
+              {dupCount} lançamento{dupCount>1?"s":""} duplicado{dupCount>1?"s":""} detectado{dupCount>1?"s":""}
             </div>
             <div style={{ fontSize:12,color:t.textMuted,lineHeight:1.5 }}>
-              Itens com mesmo nome, categoria e valor no mesmo dia. Os mais recentes estão marcados com 🔁 e são sugeridos para remoção.
+              Itens com mesmo nome, categoria e valor no mesmo dia. Os mais recentes estão marcados com 🔁.
             </div>
           </div>
           <div style={{ display:"flex",gap:8,flexShrink:0,flexWrap:"wrap" }}>
@@ -2032,8 +2212,8 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               {showDupsOnly ? "Ver todos" : "Ver duplicatas"}
             </button>
             <button onClick={()=>{
-              const expDups = dupIdsArray.filter(id => all.find(i=>i.id===id&&i._type==="expense"));
-              const incDups = dupIdsArray.filter(id => all.find(i=>i.id===id&&i._type==="income"));
+              const expDups = dupIdsArray.filter(id=>all.find(i=>i.id===id&&i._type==="expense"));
+              const incDups = dupIdsArray.filter(id=>all.find(i=>i.id===id&&i._type==="income"));
               if(window.confirm(`Remover ${dupCount} lançamento(s) duplicado(s)? Esta ação não pode ser desfeita.`)){
                 if(expDups.length) onDeleteAllExpenses(expDups);
                 if(incDups.length) onDeleteAllIncomes(incDups);
@@ -2047,17 +2227,17 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
         </div>
       )}
 
-      {/* Summary cards — totals respect every active filter */}
+      {/* ══ SUMMARY CARDS ══ */}
       <div style={{ display:"grid", gridTemplateColumns: filter==="income"?"1fr":filter==="expense"?"1fr":"1fr 1fr", gap:10, marginBottom:20 }}>
         {filter !== "income" && (
-          <div style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:14,padding:"14px 18px" }}>
+          <div style={{ background:t.dangerSoft, border:`1px solid ${t.danger}33`, borderRadius:14, padding:"14px 18px" }}>
             <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>GASTOS</div>
             <div style={{ fontSize:20,fontWeight:800,color:t.danger }}>{fmt(totalExp)}</div>
             <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{filtered.filter(i=>i._type==="expense").length} lançamento{filtered.filter(i=>i._type==="expense").length!==1?"s":""}</div>
           </div>
         )}
         {filter !== "expense" && (
-          <div style={{ background:t.successSoft,border:`1px solid ${t.success}33`,borderRadius:14,padding:"14px 18px" }}>
+          <div style={{ background:t.successSoft, border:`1px solid ${t.success}33`, borderRadius:14, padding:"14px 18px" }}>
             <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>RECEITAS</div>
             <div style={{ fontSize:20,fontWeight:800,color:t.success }}>{fmt(totalInc)}</div>
             <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{filtered.filter(i=>i._type==="income").length} lançamento{filtered.filter(i=>i._type==="income").length!==1?"s":""}</div>
@@ -2065,83 +2245,168 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
         )}
       </div>
 
-      <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-        {filtered.length===0 ? (
-          <div style={{ textAlign:"center",padding:"40px 0",color:t.textMuted,fontSize:14 }}>
+      {/* ══ LIST ══ */}
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"40px 0", color:t.textMuted, fontSize:14 }}>
             {showDupsOnly ? "Nenhuma duplicata encontrada neste período" : "Nenhum lançamento encontrado"}
           </div>
-        ) : filtered.map(item=>{
-          const isExp = item._type==="expense";
-          const isDup = dupIds.has(item.id);
-          const isSel = selectedIds.has(item.id);
-          const cat = isExp?CATEGORIES.find(c=>c.id===item.category):INCOME_SOURCES.find(s=>s.id===item.source);
+        ) : filtered.map(item => {
+          const isExp  = item._type === "expense";
+          const isDup  = dupIds.has(item.id);
+          const isSel  = selectedIds.has(item.id);
+          const isLong = longPressingId === item.id;
+          const cat    = isExp ? CATEGORIES.find(c=>c.id===item.category) : INCOME_SOURCES.find(s=>s.id===item.source);
+
           return (
-            <div key={item.id} style={{
-              display:"flex",alignItems:"center",justifyContent:"space-between",
-              padding:"12px 16px",borderRadius:14,transition:"all 0.2s",
-              background: isSel ? t.accentSoft : isDup ? "rgba(217,119,6,0.08)" : isExp ? t.dangerSoft : t.successSoft,
-              border: isSel ? `1px solid ${t.accent}66` : isDup ? "1px solid rgba(217,119,6,0.35)" : `1px solid ${isExp?t.danger:t.success}22`,
-              cursor:"pointer",
-            }} onClick={()=>toggleSelect(item.id)}>
-              <div style={{ display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1 }}>
-                <input type="checkbox" checked={isSel} onChange={()=>toggleSelect(item.id)}
-                  onClick={e=>e.stopPropagation()}
-                  style={{ width:15,height:15,cursor:"pointer",accentColor:t.accent,flexShrink:0 }} />
-                <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||(isExp?"📦":"💰")}</span>
-                <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" }}>
-                    <span style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.description}</span>
-                    {isDup && (
-                      <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(217,119,6,0.15)",color:t.warning,border:"1px solid rgba(217,119,6,0.3)",flexShrink:0,whiteSpace:"nowrap" }}>
-                        🔁 duplicata
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize:11,color:t.textMuted,marginTop:1,textAlign:"left" }}>
-                    {item.user_label} · {(item.date||"").slice(8,10)+"/"+(item.date||"").slice(5,7)+"/"+(item.date||"").slice(2,4)}{isExp && (() => {
-                      const typeLabel = item.type==="pix"?"PIX":item.type==="debito"?"Débito":"Crédito";
-                      const p = parseInt(item.parcelas)||1;
-                      const catLabel = cat?.label || "";
-                      if(item.type==="credito" && p>1){
-                        const startKey = item.description?.toLowerCase().trim();
-                        const allSameItem = expenses.filter(e=>e.description?.toLowerCase().trim()===startKey&&e.type==="credito"&&parseInt(e.parcelas)===p).sort((a,b)=>a.date?.localeCompare(b.date));
-                        const startDate = allSameItem[0]?.date || item.date;
-                        const startD = new Date((startDate||item.date).slice(0,10)+"T12:00:00");
-                        const thisD  = new Date((item.date||"").slice(0,10)+"T12:00:00");
-                        const diffM  = (thisD.getFullYear()-startD.getFullYear())*12+(thisD.getMonth()-startD.getMonth());
-                        const nthInstall = Math.max(1, Math.min(p, diffM+1));
-                        return ` · Crédito ${nthInstall} de ${p}${catLabel?" · "+catLabel:""}`;
-                      }
-                      return ` · ${typeLabel}${catLabel?" · "+catLabel:""}`;
-                    })()}
-                    {isDup && <span style={{ color:t.warning,fontWeight:600 }}> · sugerido para remoção</span>}
-                    {billingMode === "billing" && isExp && item.type === "credito" && (() => {
-                      const card = cards.find(c => c.id === item.card_id);
-                      const bm = getBillingMonth(item.date, card?.closing_day ?? 28);
-                      return <span style={{ color:t.accent,fontWeight:600 }}> · → Fatura {MONTH_FULL[bm.month-1]}/{bm.year}</span>;
-                    })()}
-                  </div>
+            <div key={item.id}
+              style={{
+                position:"relative",
+                display:"flex", alignItems:"center", gap:12,
+                padding:"12px 14px", borderRadius:16,
+                transition:"transform 120ms, box-shadow 120ms, background 150ms, border-color 150ms",
+                background: isSel ? "rgba(124,92,255,0.1)" : isDup ? "rgba(217,119,6,0.08)" : t.surface,
+                border: `1px solid ${isSel?"rgba(124,92,255,0.4)":isDup?"rgba(217,119,6,0.35)":t.border}`,
+                transform: isLong ? "scale(1.015)" : "none",
+                boxShadow: isLong ? "0 8px 24px rgba(124,92,255,0.35), 0 0 0 2px rgba(124,92,255,0.5)" : "none",
+                cursor: "pointer",
+                userSelect:"none",
+              }}
+              onClick={() => {
+                if (selMode) { toggleSel(item.id); return; }
+              }}
+              onMouseDown={() => startLongPress(item.id)}
+              onMouseUp={cancelLongPress}
+              onMouseLeave={cancelLongPress}
+              onTouchStart={() => startLongPress(item.id)}
+              onTouchEnd={cancelLongPress}
+              onTouchCancel={cancelLongPress}
+            >
+              {/* Checkbox (selection mode) or category placeholder */}
+              {selMode ? (
+                <div style={{
+                  width:22, height:22, borderRadius:999, flexShrink:0,
+                  border: isSel?"none":"1.8px solid rgba(255,255,255,0.35)",
+                  background: isSel?t.accent:"transparent",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  {isSel && (
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+              ) : (
+                <div style={{ width:20, height:20, borderRadius:6, border:`1.5px solid ${t.border}`, flexShrink:0 }} />
+              )}
+
+              {/* Emoji */}
+              <div style={{ fontSize:20, width:28, textAlign:"center", flexShrink:0 }}>
+                {cat?.emoji || (isExp?"📦":"💰")}
+              </div>
+
+              {/* Text */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                  <span style={{ fontWeight:700, fontSize:14, color:t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing:0.2 }}>
+                    {item.description}
+                  </span>
+                  {isDup && (
+                    <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(217,119,6,0.15)",color:t.warning,border:"1px solid rgba(217,119,6,0.3)",flexShrink:0 }}>
+                      🔁 duplicata
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize:11, color:t.textMuted, marginTop:2, lineHeight:1.4 }}>
+                  {item.user_label} · {(item.date||"").slice(8,10)+"/"+(item.date||"").slice(5,7)+"/"+(item.date||"").slice(2,4)}
+                  {isExp && (() => {
+                    const typeLabel = item.type==="pix"?"PIX":item.type==="debito"?"Débito":"Crédito";
+                    const p = parseInt(item.parcelas)||1;
+                    const catLabel = cat?.label || "";
+                    if (item.type==="credito" && p>1) {
+                      const startKey = item.description?.toLowerCase().trim();
+                      const allSameItem = expenses.filter(e=>e.description?.toLowerCase().trim()===startKey&&e.type==="credito"&&parseInt(e.parcelas)===p).sort((a,b)=>a.date?.localeCompare(b.date));
+                      const startDate = allSameItem[0]?.date || item.date;
+                      const startD = new Date((startDate||item.date).slice(0,10)+"T12:00:00");
+                      const thisD  = new Date((item.date||"").slice(0,10)+"T12:00:00");
+                      const diffM  = (thisD.getFullYear()-startD.getFullYear())*12+(thisD.getMonth()-startD.getMonth());
+                      const nthInstall = Math.max(1, Math.min(p, diffM+1));
+                      return ` · Crédito ${nthInstall} de ${p}${catLabel?" · "+catLabel:""}`;
+                    }
+                    return ` · ${typeLabel}${catLabel?" · "+catLabel:""}`;
+                  })()}
+                  {isDup && <span style={{ color:t.warning, fontWeight:600 }}> · sugerido para remoção</span>}
+                  {billingMode==="billing" && isExp && item.type==="credito" && (() => {
+                    const card = cards.find(c=>c.id===item.card_id);
+                    const bm = getBillingMonth(item.date, card?.closing_day??28);
+                    return <span style={{ color:t.accent,fontWeight:600 }}> · → Fatura {MONTH_FULL[bm.month-1]}/{bm.year}</span>;
+                  })()}
                 </div>
               </div>
-              <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-                <span style={{ fontWeight:700,fontSize:14,color:isDup?t.warning:isExp?t.danger:t.success }}>{fmt(item.amount)}</span>
-                <button onClick={()=>setEditItem(item)} title="Editar"
-                  style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
-                  onMouseEnter={e=>e.currentTarget.style.color=t.accent}
-                  onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}
-                >✏️</button>
-                <button onClick={()=>isExp?onDeleteExpense(item.id):onDeleteIncome(item.id)} title="Remover"
-                  style={{ background:"transparent",border:"none",cursor:"pointer",color:isDup?t.warning:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
-                  onMouseEnter={e=>e.currentTarget.style.color=t.danger}
-                  onMouseLeave={e=>e.currentTarget.style.color=isDup?t.warning:t.textMuted}
-                >🗑</button>
+
+              {/* Amount + actions */}
+              <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+                <span style={{ fontWeight:700, fontSize:14, color:isDup?t.warning:isExp?t.danger:t.success, whiteSpace:"nowrap" }}>
+                  {fmt(item.amount)}
+                </span>
+                {!selMode && <>
+                  <button
+                    onClick={e=>{ e.stopPropagation(); setEditItem(item); }}
+                    title="Editar"
+                    style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
+                    onMouseEnter={e=>e.currentTarget.style.color=t.accent}
+                    onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>
+                    ✏️
+                  </button>
+                  <button
+                    onClick={e=>{ e.stopPropagation(); isExp?onDeleteExpense(item.id):onDeleteIncome(item.id); }}
+                    title="Remover"
+                    style={{ background:"transparent",border:"none",cursor:"pointer",color:isDup?t.warning:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
+                    onMouseEnter={e=>e.currentTarget.style.color=t.danger}
+                    onMouseLeave={e=>e.currentTarget.style.color=isDup?t.warning:t.textMuted}>
+                    🗑
+                  </button>
+                </>}
               </div>
+
+              {/* Long-press hint tooltip */}
+              {isLong && (
+                <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)",
+                  background:"#000", color:"#fff", fontSize:10, fontWeight:600,
+                  padding:"4px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.15)",
+                  whiteSpace:"nowrap", pointerEvents:"none" }}>
+                  segurando…
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Edit Modal */}
+      {/* ══ FLOATING SELECTION ACTION BAR ══ */}
+      {selMode && selectedIds.size > 0 && (
+        <div style={{
+          position:"fixed", bottom:84, left:20, right:20, zIndex:200,
+          padding:"10px 12px", borderRadius:18,
+          background:"rgba(20,14,36,0.92)", backdropFilter:"blur(22px)",
+          border:`1px solid ${t.glassBorder}`,
+          display:"flex", alignItems:"center", gap:10,
+          boxShadow:"0 20px 40px rgba(0,0,0,0.5)",
+        }}>
+          <button onClick={handleDeleteSelected}
+            style={{ flex:1, height:40, borderRadius:12,
+              background:"rgba(255,107,107,0.18)", border:"1px solid rgba(255,107,107,0.35)",
+              color:"#FF9B9B", fontSize:13.5, fontWeight:700, cursor:"pointer",
+              display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Excluir {selectedIds.size}
+          </button>
+        </div>
+      )}
+
+      {/* ══ EDIT MODAL ══ */}
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
           style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
