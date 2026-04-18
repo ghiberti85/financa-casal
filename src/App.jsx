@@ -3307,15 +3307,15 @@ function SummaryCards({ expenses, incomes, t }) {
     { label:"Parcelas Futuras",value:fmt(creditPending),color:t.warning,bg:t.warningSoft,border:`${t.warning}33`,icon:"💳" },
   ];
   return (
-    <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:14 }}>
+    <div className="summary-grid">
       {cards.map(c=>(
-        <div key={c.label} style={{ background:c.bg,border:`1px solid ${c.border}`,backdropFilter:"blur(12px)",borderRadius:18,padding:"18px 20px",transition:"transform 0.2s" }}
+        <div key={c.label} style={{ background:c.bg,border:`1px solid ${c.border}`,backdropFilter:"blur(12px)",borderRadius:18,padding:"20px 22px",transition:"transform 0.2s" }}
           onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
           onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}
         >
-          <div style={{ fontSize:24,marginBottom:10 }}>{c.icon}</div>
-          <div style={{ fontSize:11,fontWeight:700,color:t.textMuted,letterSpacing:"0.06em",marginBottom:6 }}>{c.label.toUpperCase()}</div>
-          <div style={{ fontSize:20,fontWeight:800,color:c.color,fontFamily:"'Sora', sans-serif" }}>{c.value}</div>
+          <div style={{ fontSize:26,marginBottom:10 }}>{c.icon}</div>
+          <div style={{ fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:6,textTransform:"uppercase" }}>{c.label}</div>
+          <div style={{ fontSize:22,fontWeight:800,color:c.color,fontFamily:"'Sora', sans-serif",letterSpacing:"-0.02em" }}>{c.value}</div>
         </div>
       ))}
     </div>
@@ -4305,6 +4305,7 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showFabSheet, setShowFabSheet] = useState(false);
 
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT") || user?.id === "demo";
@@ -4572,14 +4573,16 @@ export default function App() {
   };
 
   const tabs=[
-    {id:"dashboard",label:"Dashboard",icon:"🏠"},
-    {id:"calendar",label:"Calendário",icon:"📅"},
-    {id:"charts",label:"Gráficos",icon:"📊"},
-    {id:"budget",label:"Orçamento",icon:"🎯"},
-    {id:"recurring",label:"Recorrentes",icon:"🔁"},
-    {id:"transactions",label:"Lançamentos",icon:"📋"},
-    {id:"import",label:"Importar",icon:"📥"},
+    {id:"dashboard",  label:"Início",      shortLabel:"Início",   icon:"🏠"},
+    {id:"calendar",   label:"Calendário",  shortLabel:"Agenda",   icon:"📅"},
+    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos", icon:"📊"},
+    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",icon:"🎯"},
+    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",  icon:"🔁"},
+    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",  icon:"📋"},
+    {id:"import",     label:"Importar",    shortLabel:"Importar", icon:"📥"},
   ];
+  // primary tabs shown in the mobile bottom bar (4 slots + center FAB)
+  const PRIMARY_MOBILE_TABS = ["dashboard","calendar","charts","recurring"];
 
   const css=`
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -4588,25 +4591,33 @@ export default function App() {
     body{font-family:'DM Sans',sans-serif;background:${t.bg};-webkit-overflow-scrolling:touch;}
     @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideInRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes slideInLeft{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
     @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes sheetIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(124,106,247,0.3);border-radius:3px}
     input[type=date]::-webkit-calendar-picker-indicator{opacity:0.7;cursor:pointer;filter:${darkMode?"brightness(0) saturate(100%) invert(96%) sepia(5%) saturate(200%) hue-rotate(200deg) brightness(105%)":"brightness(0) saturate(100%) invert(8%) sepia(20%) saturate(800%) hue-rotate(215deg) brightness(90%)"}}
     input[type=date]::-webkit-calendar-picker-indicator:hover{opacity:1}
     input[type=date]{width:100%!important;max-width:100%!important;box-sizing:border-box!important;text-align:left!important;-webkit-appearance:none!important;appearance:none!important;padding:11px 14px!important;}
     input[type=date]::-webkit-date-and-time-value{text-align:left!important;}
+    .summary-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+    .sidebar-btn{transition:background 0.15s,color 0.15s;}
+    .sidebar-btn:hover{background:${t.surfaceHover}!important;color:${t.text}!important;}
     @media(max-width:600px){
-      .mobile-hide{display:none!important;}
-      .mobile-nav-label{display:none!important;}
-      .fab-container{bottom:calc(60px + env(safe-area-inset-bottom))!important;}
+      .desktop-sidebar{display:none!important;}
+      .desktop-topbar{display:none!important;}
+      .desktop-fab{display:none!important;}
+      .main-content-wrap{margin-left:0!important;}
     }
     @media(min-width:601px){
-      .desktop-hide{display:none!important;}
+      .mobile-topbar{display:none!important;}
+      .mobile-bottombar{display:none!important;}
+      .mobile-fab-sheet{display:none!important;}
+      .summary-grid{grid-template-columns:repeat(4,1fr);}
+      .main-content-wrap{margin-left:64px;}
+      .main-content{padding-bottom:100px!important;}
     }
     @media(max-width:900px){
       .nav-label{display:none!important;}
-    }
-    @media(max-width:700px) and (min-width:601px){
-      .nav-logo-text{display:none!important;}
     }
   `;
 
@@ -4616,17 +4627,22 @@ export default function App() {
       .sk{border-radius:10px;background:linear-gradient(90deg,${t.surface} 25%,${t.surfaceHover} 50%,${t.surface} 75%);background-size:800px 100%;animation:shimmer 1.4s infinite linear;}
     `}</style>
     <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'DM Sans',sans-serif" }}>
-      {/* Skeleton nav */}
-      <div style={{ height:64,background:`${t.bg}ee`,borderBottom:`1px solid ${t.border}`,display:"flex",alignItems:"center",padding:"0 20px",gap:16,maxWidth:900,margin:"0 auto" }}>
-        <div className="sk" style={{ width:32,height:32,borderRadius:10 }} />
-        <div className="sk" style={{ width:160,height:20,borderRadius:8 }} />
-        <div style={{ flex:1 }} />
-        <div className="sk" style={{ width:80,height:32,borderRadius:10 }} />
-        <div className="sk" style={{ width:32,height:32,borderRadius:10 }} />
+      {/* Skeleton sidebar (desktop) */}
+      <div className="desktop-sidebar" style={{ position:"fixed",left:0,top:0,bottom:0,width:64,background:t.bg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",alignItems:"center",padding:"14px 0",gap:8 }}>
+        <div className="sk" style={{ width:36,height:36,borderRadius:10 }} />
+        {[1,2,3,4,5,6,7].map(i=><div key={i} className="sk" style={{ width:40,height:40,borderRadius:12 }} />)}
       </div>
-      <div style={{ maxWidth:900,margin:"0 auto",padding:"32px 20px" }}>
-        {/* Skeleton summary cards */}
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:28 }}>
+      {/* Skeleton top header */}
+      <div className="main-content-wrap" style={{ marginLeft:0 }}>
+        <div className="desktop-topbar" style={{ height:60,background:`${t.bg}ee`,borderBottom:`1px solid ${t.border}`,display:"flex",alignItems:"center",padding:"0 28px",gap:16 }}>
+          <div className="sk" style={{ width:120,height:22,borderRadius:8 }} />
+          <div style={{ flex:1 }} />
+          <div className="sk" style={{ width:200,height:36,borderRadius:999 }} />
+          <div className="sk" style={{ width:36,height:36,borderRadius:10 }} />
+        </div>
+        <div style={{ maxWidth:960,margin:"0 auto",padding:"28px 24px" }}>
+          {/* Skeleton summary cards */}
+          <div className="summary-grid" style={{ marginBottom:24 }}>
           {[1,2,3,4].map(i=>(
             <div key={i} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:18,padding:"18px 20px" }}>
               <div className="sk" style={{ width:32,height:32,borderRadius:8,marginBottom:12 }} />
@@ -4640,19 +4656,6 @@ export default function App() {
           <div className="sk" style={{ width:200,height:16,borderRadius:8,marginBottom:24 }} />
           <div className="sk" style={{ width:"100%",height:200,borderRadius:12 }} />
         </div>
-        {/* Skeleton list rows */}
-        <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:20,padding:24 }}>
-          <div className="sk" style={{ width:140,height:16,borderRadius:8,marginBottom:20 }} />
-          {[1,2,3,4,5].map(i=>(
-            <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<5?`1px solid ${t.border}`:"none" }}>
-              <div className="sk" style={{ width:36,height:36,borderRadius:10,flexShrink:0 }} />
-              <div style={{ flex:1 }}>
-                <div className="sk" style={{ width:`${45+i*8}%`,height:13,borderRadius:6,marginBottom:6 }} />
-                <div className="sk" style={{ width:`${25+i*5}%`,height:10,borderRadius:5 }} />
-              </div>
-              <div className="sk" style={{ width:70,height:16,borderRadius:6 }} />
-            </div>
-          ))}
         </div>
       </div>
     </div>
@@ -4661,6 +4664,8 @@ export default function App() {
 
   if (!user) return <><style>{css}</style><LoginPage t={t} darkMode={darkMode} onLogin={handleLogin} addToast={addToast} /><Toast toasts={toasts} remove={removeToast} /></>;
 
+  const currentTabLabel = tabs.find(tb=>tb.id===tab)?.label || "Início";
+
   return (
     <>
       <style>{css}</style>
@@ -4668,248 +4673,219 @@ export default function App() {
         <div style={{ position:"fixed",width:500,height:500,borderRadius:"50%",background:`radial-gradient(circle, ${t.accentGlow} 0%, transparent 70%)`,top:-150,right:-150,pointerEvents:"none",zIndex:0 }} />
         <div style={{ position:"fixed",width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle, ${t.successSoft} 0%, transparent 70%)`,bottom:50,left:-50,pointerEvents:"none",zIndex:0 }} />
 
-        <nav style={{ position:"sticky",top:0,zIndex:100,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
-          {/* ── Desktop nav ── */}
-          <div className="mobile-hide" style={{ maxWidth:1100,margin:"0 auto",padding:"0 16px",height:64,display:"flex",alignItems:"center",gap:8 }}>
-            {/* Logo — compact */}
-            <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
-              <span style={{ fontSize:20 }}>💎</span>
-              <span className="nav-logo-text" style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.02em",whiteSpace:"nowrap" }}>Finanças do Casal</span>
-            </div>
-
-            {/* Separator */}
-            <div style={{ width:1,height:24,background:t.border,flexShrink:0 }} />
-
-            {/* All secondary tabs centered */}
-            <div style={{ flex:1,display:"flex",justifyContent:"center",gap:2,overflow:"hidden",minWidth:0 }}>
-              {tabs.filter(tb=>["budget","recurring","transactions","import"].includes(tb.id)).map(tb=>(
-                <button key={tb.id} onClick={()=>setTab(tb.id)}
-                  title={tb.label}
-                  style={{ padding:"6px 10px",borderRadius:9,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap",fontFamily:"'DM Sans', sans-serif",transition:"all 0.2s",flexShrink:1,minWidth:0,background:tab===tb.id?t.accent:"transparent",color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 2px 10px ${t.accentGlow}`:"none" }}
-                  onMouseEnter={e=>{ if(tab!==tb.id){ e.currentTarget.style.background=t.surfaceHover; e.currentTarget.style.color=t.text; }}}
-                  onMouseLeave={e=>{ if(tab!==tb.id){ e.currentTarget.style.background="transparent"; e.currentTarget.style.color=t.textMuted; }}}>
-                  <span>{tb.icon}</span>
-                  <span className="nav-label">{tb.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Separator */}
-            <div style={{ width:1,height:24,background:t.border,flexShrink:0 }} />
-
-            {/* Right: theme toggle + user avatar menu */}
-            <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-              {isDemo&&<span style={{ fontSize:11,background:t.warningSoft,color:t.warning,padding:"3px 8px",borderRadius:6,fontWeight:700,border:`1px solid ${t.warning}33` }}>DEMO</span>}
-
-              {/* Dark/light toggle — icon only */}
-              <button onClick={()=>setDarkMode(!darkMode)}
-                title={darkMode?"Modo claro":"Modo escuro"}
-                style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:9,width:34,height:34,cursor:"pointer",color:t.text,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.2s" }}
-                onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
-                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                {darkMode?"☀️":"🌙"}
-              </button>
-
-              {/* Avatar button — opens user dropdown */}
-              {!isDemo && user && (
-                <div style={{ position:"relative",zIndex:9997 }}>
-                  <button onClick={e=>{ e.stopPropagation(); setShowUserMenu(v=>!v); }}
-                    style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:9,padding:"5px 10px",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6,transition:"all 0.2s" }}
-                    onMouseEnter={e=>e.currentTarget.style.background=t.accent+"22"}
-                    onMouseLeave={e=>e.currentTarget.style.background=t.accentSoft}>
-                    <span style={{ width:22,height:22,borderRadius:"50%",background:t.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0 }}>
-                      {(profile?.first_name||"U")[0].toUpperCase()}
-                    </span>
-                    {profile?.first_name || "Conta"}
-                    <span style={{ fontSize:10,opacity:0.7 }}>▼</span>
-                  </button>
-
-                  {/* Backdrop to close menu on outside click */}
-                  {showUserMenu && (
-                    <div onClick={()=>setShowUserMenu(false)}
-                      style={{ position:"fixed",inset:0,zIndex:9998 }} />
-                  )}
-                  {/* Dropdown */}
-                  {showUserMenu && (
-                    <div onClick={e=>e.stopPropagation()}
-                      style={{ position:"absolute",top:"calc(100% + 8px)",right:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:190,boxShadow:t.shadow,zIndex:9999,animation:"fadeInUp 0.15s ease" }}>
-                      <div style={{ padding:"8px 12px",borderBottom:`1px solid ${t.border}`,marginBottom:6 }}>
-                        <div style={{ fontSize:12,fontWeight:700,color:t.text }}>{profile?.first_name} {profile?.last_name}</div>
-                        <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
-                      </div>
-                      <button onClick={()=>{ setShowProfile(true); setShowUserMenu(false); }}
-                        style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.text,transition:"background 0.15s" }}
-                        onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
-                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        👤 Meu Perfil
-                      </button>
-                      {family && (
-                        <button onClick={()=>{ setShowInvite(true); setShowUserMenu(false); }}
-                          style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.text,transition:"background 0.15s" }}
-                          onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
-                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                          👥 Família
-                        </button>
-                      )}
-                      {family && (
-                        <button onClick={()=>{ setShowCardsManager(true); setShowUserMenu(false); }}
-                          style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.text,transition:"background 0.15s" }}
-                          onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
-                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                          💳 Cartões
-                        </button>
-                      )}
-                      <div style={{ height:1,background:t.border,margin:"6px 0" }} />
-                      <button onClick={()=>{ handleLogout(); setShowUserMenu(false); }}
-                        style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",display:"flex",alignItems:"center",gap:8,background:"transparent",color:t.danger,transition:"background 0.15s" }}
-                        onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft}
-                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        🚪 Sair
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Mobile nav — title + utility buttons only, tabs are in the bottom bar ── */}
-          <div className="desktop-hide" style={{ padding:"0 16px",height:56,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              <span style={{ fontSize:20 }}>💎</span>
-              <span style={{ fontFamily:"'Sora', sans-serif",fontWeight:800,fontSize:15,color:t.text }}>Finanças do Casal</span>
-            </div>
-            <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-              <button onClick={()=>setDarkMode(!darkMode)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.text,fontSize:17,padding:"4px 6px",lineHeight:1 }}>{darkMode?"☀️":"🌙"}</button>
-              {!isDemo && user && (
-                <button onClick={()=>setShowProfile(true)}
-                  title="Meu Perfil"
-                  style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:9,width:34,height:34,cursor:"pointer",color:t.accent,fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                  {(profile?.first_name||"U")[0].toUpperCase()}
-                </button>
-              )}
-              {!isDemo && family && (
-                <button onClick={()=>setShowInvite(true)}
-                  title="Família"
-                  style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                  👥
-                </button>
-              )}
-              {!isDemo && family && (
-                <button onClick={()=>setShowCardsManager(true)}
-                  title="Cartões"
-                  style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                  💳
-                </button>
-              )}
-            </div>
-          </div>
-        </nav>
-
-        {/* Desktop bottom tab bar: Dashboard, Calendário, Gráficos */}
-        <div className="mobile-hide" style={{ maxWidth:900,margin:"0 auto",padding:"0 20px" }}>
-          <div style={{ display:"flex",gap:4,padding:"14px 0 0",justifyContent:"center" }}>
-            {tabs.filter(tb=>["dashboard","calendar","charts"].includes(tb.id)).map(tb=>(
-              <button key={tb.id} onClick={()=>setTab(tb.id)}
-                style={{ padding:"9px 18px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"all 0.2s",background:tab===tb.id?t.accent:t.surfaceHover,color:tab===tb.id?"#fff":t.textMuted,boxShadow:tab===tb.id?`0 4px 14px ${t.accentGlow}`:"none" }}>
-                {tb.icon} {tb.label}
+        {/* ══ DESKTOP SIDEBAR ══ */}
+        <aside className="desktop-sidebar" style={{ position:"fixed",left:0,top:0,bottom:0,width:64,zIndex:100,display:"flex",flexDirection:"column",alignItems:"center",padding:"14px 0 12px",background:t.bg,borderRight:`1px solid ${t.border}` }}>
+          {/* Logo */}
+          <div style={{ width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,marginBottom:12 }}>💎</div>
+          {/* Nav items */}
+          <div style={{ flex:1,display:"flex",flexDirection:"column",gap:2,width:"100%",alignItems:"center" }}>
+            {tabs.map(tb=>(
+              <button key={tb.id} onClick={()=>setTab(tb.id)} title={tb.label}
+                className="sidebar-btn"
+                style={{ width:44,height:44,borderRadius:14,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
+                  background:tab===tb.id?t.accentSoft:"transparent",
+                  color:tab===tb.id?t.accent:t.textMuted }}>
+                {tb.icon}
               </button>
             ))}
           </div>
+          {/* User avatar */}
+          {!isDemo && user && (
+            <div style={{ position:"relative" }}>
+              <button onClick={e=>{e.stopPropagation();setShowUserMenu(v=>!v);}} title={profile?.first_name||"Conta"}
+                style={{ width:38,height:38,borderRadius:"50%",border:`2px solid ${t.accent}55`,cursor:"pointer",background:t.accent,color:"#fff",fontSize:14,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                {(profile?.first_name||"U")[0].toUpperCase()}
+              </button>
+              {showUserMenu&&<div onClick={()=>setShowUserMenu(false)} style={{ position:"fixed",inset:0,zIndex:9998 }} />}
+              {showUserMenu&&(
+                <div onClick={e=>e.stopPropagation()} style={{ position:"absolute",bottom:"calc(100% + 8px)",left:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:195,boxShadow:t.shadow,zIndex:9999,animation:"fadeInUp 0.15s ease" }}>
+                  <div style={{ padding:"8px 12px",borderBottom:`1px solid ${t.border}`,marginBottom:6 }}>
+                    <div style={{ fontSize:12,fontWeight:700,color:t.text }}>{profile?.first_name} {profile?.last_name}</div>
+                    <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
+                  </div>
+                  {[{label:"👤 Meu Perfil",action:()=>{setShowProfile(true);setShowUserMenu(false);}},{label:"👥 Família",action:()=>{setShowInvite(true);setShowUserMenu(false);}},{label:"💳 Cartões",action:()=>{setShowCardsManager(true);setShowUserMenu(false);}}].map(item=>(
+                    <button key={item.label} onClick={item.action} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{item.label}</button>
+                  ))}
+                  <div style={{ height:1,background:t.border,margin:"6px 0" }} />
+                  <button onClick={()=>{setDarkMode(!darkMode);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
+                  <button onClick={()=>{handleLogout();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.danger }} onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>🚪 Sair</button>
+                </div>
+              )}
+            </div>
+          )}
+          {isDemo&&<div style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"3px 6px",borderRadius:6,fontWeight:700,textAlign:"center",marginTop:8,width:44 }}>DEMO</div>}
+        </aside>
+
+        {/* ══ MOBILE TOP HEADER ══ */}
+        <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:56,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            <span style={{ fontSize:20 }}>💎</span>
+            <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.01em" }}>Finanças do Casal</span>
+            {isDemo&&<span style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"2px 7px",borderRadius:6,fontWeight:700 }}>DEMO</span>}
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            <button onClick={()=>setMobileMenu(v=>!v)}
+              style={{ width:34,height:34,borderRadius:10,border:`1px solid ${t.border}`,background:mobileMenu?t.accentSoft:t.surface,color:t.text,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15,fontWeight:700,letterSpacing:1 }}>
+              ···
+            </button>
+            {!isDemo && user && (
+              <button onClick={()=>setShowProfile(true)}
+                style={{ display:"flex",alignItems:"center",gap:6,padding:"4px 10px 4px 5px",borderRadius:999,border:`1px solid ${t.border}`,background:t.surface,cursor:"pointer" }}>
+                <span style={{ width:26,height:26,borderRadius:"50%",background:t.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0 }}>
+                  {(profile?.first_name||"U")[0].toUpperCase()}
+                </span>
+                <span style={{ fontSize:13,fontWeight:600,color:t.text }}>{profile?.first_name||"Conta"}</span>
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* ══ MOBILE MENU DRAWER ══ */}
+        {mobileMenu&&(
+          <>
+            <div onClick={()=>setMobileMenu(false)} style={{ position:"fixed",inset:0,zIndex:198,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(2px)" }} />
+            <div style={{ position:"fixed",top:0,right:0,bottom:0,width:280,zIndex:199,background:t.glassModal,backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderLeft:`1px solid ${t.glassBorder}`,display:"flex",flexDirection:"column",animation:"slideInRight 0.22s ease",paddingTop:"calc(64px + env(safe-area-inset-top))",paddingBottom:"calc(20px + env(safe-area-inset-bottom))" }}>
+              {[{id:"budget",label:"🎯 Orçamento"},{id:"transactions",label:"📋 Lançamentos"},{id:"import",label:"📥 Importar"}].map(item=>(
+                <button key={item.id} onClick={()=>{setTab(item.id);setMobileMenu(false);}}
+                  style={{ padding:"14px 24px",border:"none",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",cursor:"pointer" }}>
+                  {item.label}
+                </button>
+              ))}
+              <div style={{ height:1,background:t.border,margin:"8px 20px" }} />
+              <button onClick={()=>{setShowProfile(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👤 Meu Perfil</button>
+              {family&&<button onClick={()=>{setShowInvite(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👥 Família</button>}
+              {family&&<button onClick={()=>{setShowCardsManager(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>💳 Cartões</button>}
+              <div style={{ height:1,background:t.border,margin:"8px 20px" }} />
+              <button onClick={()=>setDarkMode(!darkMode)} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
+              {!isDemo&&<button onClick={()=>{handleLogout();setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.danger,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>🚪 Sair</button>}
+            </div>
+          </>
+        )}
+
+        {/* ══ MAIN CONTENT WRAP (margin-left set by CSS on desktop) ══ */}
+        <div className="main-content-wrap" style={{ display:"flex",flexDirection:"column",minHeight:"100vh" }}>
+
+          {/* ── Desktop top header ── */}
+          <div className="desktop-topbar" style={{ position:"sticky",top:0,height:60,zIndex:50,display:"flex",alignItems:"center",padding:"0 28px",gap:16,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
+            <h1 style={{ fontSize:19,fontWeight:800,fontFamily:"'Sora',sans-serif",color:t.text,margin:0,flex:1,letterSpacing:"-0.02em" }}>{currentTabLabel}</h1>
+            {/* Cosmetic search */}
+            <div style={{ display:"flex",alignItems:"center",gap:8,height:36,padding:"0 14px",borderRadius:999,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13,minWidth:200,cursor:"default",userSelect:"none" }}>
+              <span style={{ fontSize:13 }}>🔍</span>
+              <span style={{ flex:1 }}>Buscar ou navegar...</span>
+              <span style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:6,padding:"2px 6px",fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.02em" }}>⌘K</span>
+            </div>
+            <button onClick={()=>setDarkMode(!darkMode)} title={darkMode?"Modo claro":"Modo escuro"}
+              style={{ width:36,height:36,borderRadius:10,border:`1px solid ${t.border}`,background:t.surface,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+              {darkMode?"☀️":"🌙"}
+            </button>
+          </div>
+
+          {/* ── Main content ── */}
+          <main className="main-content" style={{ maxWidth:960,margin:"0 auto",width:"100%",padding:"24px 24px 100px",position:"relative",animation:"fadeInUp 0.3s ease",flex:1 }}>
+            {tab==="dashboard"&&(
+              <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
+                <div>
+                  <h2 style={{ margin:"0 0 4px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>
+                    Olá{profile?.first_name ? `, ${profile.first_name}` : ""}! 👋
+                  </h2>
+                  <p style={{ color:t.textMuted,fontSize:13 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
+                </div>
+                <SummaryCards expenses={expenses} incomes={incomes} t={t} />
+                <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
+                <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
+                <BillingCard expenses={expenses} cards={cards} t={t} />
+                <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
+                  <h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>📊 Últimos 6 meses</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={Array.from({length:6},(_,i)=>{ const baseYr=today.getFullYear(),baseMo=today.getMonth(); const totalMo=baseMo-5+i; const yr=baseYr+Math.floor(totalMo/12), mn=((totalMo%12)+12)%12; const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], Receitas:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), Gastos:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
+                      <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background:t.tooltipBg,border:`1px solid ${t.glassBorder}`,borderRadius:12,boxShadow:t.shadowSm }} labelStyle={{ color:t.text,fontWeight:700 }} itemStyle={{ color:t.text }} cursor={{ fill:t.chartCursorFill }} />
+                      <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
+                      <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+            {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
+            {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} />}
+            {tab==="recurring"&&(
+              <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
+                <div style={{ marginBottom:20 }}>
+                  <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🔁 Gastos Recorrentes</h2>
+                  <p style={{ color:t.textMuted,fontSize:14 }}>Aluguel, contas fixas, assinaturas e lembretes mensais</p>
+                </div>
+                <RecurringView expenses={expenses} setExpenses={setExpenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} />
+              </div>
+            )}
+            {tab==="budget"&&(
+              <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
+                <div style={{ marginBottom:20 }}>
+                  <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🎯 Orçamento Mensal</h2>
+                  <p style={{ color:t.textMuted,fontSize:14 }}>Defina limites de gastos por categoria e acompanhe em tempo real</p>
+                </div>
+                <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
+              </div>
+            )}
+            {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} />}
+            {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
+          </main>
+
+          {/* Desktop FABs */}
+          {tab !== "import" && (
+            <div className="desktop-fab" style={{ position:"fixed",bottom:28,right:28,zIndex:150,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
+              <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Receita</Btn>
+              <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Gasto</Btn>
+            </div>
+          )}
+
+          <footer style={{ borderTop:`1px solid ${t.border}`,padding:"18px 24px",textAlign:"center" }}>
+            <div style={{ fontSize:12,color:t.textMuted }}>
+              Desenvolvido com 💜 por Fernando Ghiberti em parceria com Claude IA · 2026
+            </div>
+          </footer>
         </div>
-        {/* ── Mobile fixed bottom tab bar (all 7 tabs) ── */}
-        <div className="desktop-hide" style={{
-          position:"fixed", bottom:0, left:0, right:0, zIndex:200,
-          background:`${t.bg}f2`, backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)",
-          borderTop:`1px solid ${t.border}`,
-          display:"flex", alignItems:"stretch",
-          paddingBottom:"env(safe-area-inset-bottom)",
-        }}>
-          {tabs.map(tb => {
-            const isActive = tab === tb.id;
-            const shortLabel = tb.id==="dashboard"?"Início":tb.id==="calendar"?"Agenda":tb.id==="transactions"?"Lançam.":tb.id==="recurring"?"Recorr.":tb.label;
+
+        {/* ══ MOBILE BOTTOM BAR ══ */}
+        <div className="mobile-bottombar" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:`${t.bg}f4`,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${t.border}`,display:"flex",alignItems:"center",paddingBottom:"env(safe-area-inset-bottom)" }}>
+          {PRIMARY_MOBILE_TABS.slice(0,2).map(id=>{
+            const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
             return (
-              <button key={tb.id} onClick={()=>setTab(tb.id)} style={{
-                flex:1, border:"none", cursor:"pointer", background:"transparent",
-                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                padding:"7px 2px 5px", gap:2, minWidth:0,
-                color: isActive ? t.accent : t.textMuted,
-                transition:"color 0.18s",
-              }}>
-                <span style={{ fontSize:19, lineHeight:1 }}>{tb.icon}</span>
-                <span style={{ fontSize:9, fontWeight: isActive ? 700 : 500, lineHeight:1.3, whiteSpace:"nowrap" }}>{shortLabel}</span>
-                {isActive && <span style={{ width:16, height:2, borderRadius:2, background:t.accent, marginTop:1 }} />}
+              <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
+                <span style={{ fontSize:20,lineHeight:1 }}>{tb.icon}</span>
+                <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
+                {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
+              </button>
+            );
+          })}
+          {/* Center FAB */}
+          <button onClick={()=>setShowFabSheet(v=>!v)} style={{ flex:1,border:"none",background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",paddingBottom:4 }}>
+            <span style={{ width:52,height:52,borderRadius:"50%",background:showFabSheet?`${t.accent}cc`:t.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,color:"#fff",boxShadow:`0 4px 18px ${t.accentGlow}`,transform:showFabSheet?"rotate(45deg)":"none",transition:"all 0.2s",lineHeight:1,fontWeight:300 }}>+</span>
+          </button>
+          {PRIMARY_MOBILE_TABS.slice(2).map(id=>{
+            const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
+            return (
+              <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
+                <span style={{ fontSize:20,lineHeight:1 }}>{tb.icon}</span>
+                <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
+                {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
               </button>
             );
           })}
         </div>
 
-        <main style={{ maxWidth:900,margin:"0 auto",padding:"24px 20px 120px",position:"relative",animation:"fadeInUp 0.3s ease" }}>
-          {tab==="dashboard"&&(
-            <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
-              <div>
-                <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>
-                  Olá{profile?.first_name ? `, ${profile.first_name}` : ""}! 👋
-                </h2>
-                <p style={{ color:t.textMuted,fontSize:14 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
-              </div>
-              <SummaryCards expenses={expenses} incomes={incomes} t={t} />
-              <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
-              <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
-              <BillingCard expenses={expenses} cards={cards} t={t} />
-              <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
-                <h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>📊 Últimos 6 meses</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={Array.from({length:6},(_,i)=>{ const baseYr=today.getFullYear(),baseMo=today.getMonth(); const totalMo=baseMo-5+i; const yr=baseYr+Math.floor(totalMo/12), mn=((totalMo%12)+12)%12; const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], Receitas:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), Gastos:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
-                    <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
-                    <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background:t.tooltipBg,border:`1px solid ${t.glassBorder}`,borderRadius:12,boxShadow:t.shadowSm }} labelStyle={{ color:t.text,fontWeight:700 }} itemStyle={{ color:t.text }} cursor={{ fill:t.chartCursorFill }} />
-                    <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
-                    <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+        {/* ══ MOBILE FAB SHEET ══ */}
+        {showFabSheet&&(
+          <>
+            <div className="mobile-fab-sheet" onClick={()=>setShowFabSheet(false)} style={{ position:"fixed",inset:0,zIndex:201,background:"rgba(0,0,0,0.45)" }} />
+            <div className="mobile-fab-sheet" style={{ position:"fixed",bottom:"calc(70px + env(safe-area-inset-bottom))",left:20,right:20,zIndex:202,borderRadius:20,background:t.glassModal,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:`1px solid ${t.glassBorder}`,padding:16,display:"flex",flexDirection:"column",gap:12,animation:"sheetIn 0.2s ease",boxShadow:t.shadow }}>
+              <Btn t={t} variant="success" onClick={()=>{setModal("income");setShowFabSheet(false);}} style={{ width:"100%",height:52,fontSize:15,borderRadius:14,justifyContent:"center" }}>💰 + Receita</Btn>
+              <Btn t={t} onClick={()=>{setModal("expense");setShowFabSheet(false);}} style={{ width:"100%",height:52,fontSize:15,borderRadius:14,justifyContent:"center" }}>💸 + Gasto</Btn>
             </div>
-          )}
-          {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
-          {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} />}
-          {tab==="recurring"&&(
-            <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
-              <div style={{ marginBottom:20 }}>
-                <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🔁 Gastos Recorrentes</h2>
-                <p style={{ color:t.textMuted,fontSize:14 }}>Aluguel, contas fixas, assinaturas e lembretes mensais</p>
-              </div>
-              <RecurringView expenses={expenses} setExpenses={setExpenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} />
-            </div>
-          )}
-          {tab==="budget"&&(
-            <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
-              <div style={{ marginBottom:20 }}>
-                <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🎯 Orçamento Mensal</h2>
-                <p style={{ color:t.textMuted,fontSize:14 }}>Defina limites de gastos por categoria e acompanhe em tempo real</p>
-              </div>
-              <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
-            </div>
-          )}
-          {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} />}
-          {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
-        </main>
-
-        {/* FAB — hidden on import tab to avoid overlapping the review footer */}
-        {tab !== "import" && (
-          <div className="fab-container" style={{ position:"fixed",bottom:28,right:24,zIndex:150,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
-            <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Receita</Btn>
-            <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Gasto</Btn>
-          </div>
+          </>
         )}
-
-        {/* Footer */}
-        <footer style={{ borderTop:`1px solid ${t.border}`,marginTop:40,padding:"20px",textAlign:"center" }}>
-          <div style={{ fontSize:12,color:t.textMuted }}>
-            Desenvolvido com 💜 por Fernando Ghiberti em parceria com Claude IA · 2026
-          </div>
-        </footer>
       </div>
 
       {/* Expense / Income modals */}
