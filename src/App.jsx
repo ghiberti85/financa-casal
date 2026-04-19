@@ -2046,8 +2046,8 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
         </div>
       ) : (
         <>
-          {/* ══ ROW 1: Period header (‹ / title / › / ••• ) ══ */}
-          <div style={{ display:"grid", gridTemplateColumns:"28px 1fr 28px auto", alignItems:"center", gap:8, marginBottom:10 }}>
+          {/* ══ ROW 1: Period header (‹ / title / ›) — centered, no ••• ══ */}
+          <div style={{ display:"grid", gridTemplateColumns:"28px 1fr 28px", alignItems:"center", gap:8, marginBottom:10 }}>
             <button style={btnIcon} onClick={prevMonth}>‹</button>
             <div style={{ textAlign:"center", minWidth:0 }}>
               <div style={{ fontSize:17, fontWeight:700, letterSpacing:-0.3, color:t.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
@@ -2058,62 +2058,6 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               </div>
             </div>
             <button style={btnIcon} onClick={nextMonth}>›</button>
-            {/* ••• menu */}
-            <div style={{ position:"relative" }}>
-              <button
-                onClick={e=>{ e.stopPropagation(); setShowActionSheet(v=>!v); }}
-                style={{ width:32, height:32, borderRadius:9,
-                  background: showActionSheet ? "rgba(124,92,255,0.22)" : t.surface,
-                  border:`1px solid ${showActionSheet?"rgba(124,92,255,0.4)":t.border}`,
-                  display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-                <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
-                  <circle cx="2" cy="2" r="1.6" fill={t.text}/>
-                  <circle cx="8" cy="2" r="1.6" fill={t.text}/>
-                  <circle cx="14" cy="2" r="1.6" fill={t.text}/>
-                </svg>
-              </button>
-              {/* Backdrop */}
-              {showActionSheet && (
-                <div onClick={()=>setShowActionSheet(false)}
-                  style={{ position:"fixed", inset:0, zIndex:299 }} />
-              )}
-              {/* Action sheet popover */}
-              {showActionSheet && (
-                <div onClick={e=>e.stopPropagation()}
-                  style={{ position:"absolute", top:"calc(100% + 8px)", right:0, zIndex:300,
-                    width:230, padding:4, borderRadius:14,
-                    background:t.glassModal, backdropFilter:"blur(22px)",
-                    border:`1px solid ${t.glassBorder}`,
-                    boxShadow:t.shadow }}>
-                  {/* Arrow */}
-                  <div style={{ position:"absolute", top:-6, right:12, width:12, height:12,
-                    background:t.glassModal,
-                    borderLeft:`1px solid ${t.glassBorder}`,
-                    borderTop:`1px solid ${t.glassBorder}`,
-                    transform:"rotate(45deg)" }} />
-                  {/* Selecionar */}
-                  <button onClick={()=>{ setShowActionSheet(false); setSelMode(true); setSelectedIds(new Set()); }}
-                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:10,
-                      background:"rgba(124,92,255,0.14)", color:t.text, border:"none", cursor:"pointer", fontSize:13.5, fontWeight:500 }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <rect x="2" y="2" width="12" height="12" rx="3" stroke={t.text} strokeWidth="1.3"/>
-                      <path d="M5 8.2l2.2 2.2L11.2 6" stroke={t.text} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Selecionar lançamentos
-                  </button>
-                  <div style={{ height:0.5, background:t.border, margin:"4px 10px" }} />
-                  {/* Apagar filtrados */}
-                  <button onClick={handleDeleteFiltered}
-                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:10,
-                      background:"transparent", color:"#FF6B6B", border:"none", cursor:"pointer", fontSize:13.5, fontWeight:500 }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF6B6B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Apagar filtrados…
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* ══ ROW 2: Window segmented control ══ */}
@@ -2129,20 +2073,73 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
             ))}
           </div>
 
-          {/* ══ ROW 3: Search ══ */}
-          <div style={{ height:36, borderRadius:999, background:t.surface, border:`1px solid ${t.border}`,
-            display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13, marginBottom:10 }}>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5.5" stroke={t.textMuted} strokeWidth="1.5"/>
-              <path d="M11 11l4 4" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <input value={search} onChange={e=>setSearch(e.target.value)}
-              placeholder="Buscar lançamento…"
-              style={{ flex:1, background:"transparent", border:"none", outline:"none", color:t.text, fontSize:13 }} />
-            {search && (
-              <button onClick={()=>setSearch("")}
-                style={{ background:"none", border:"none", color:t.textMuted, cursor:"pointer", fontSize:15, padding:0, lineHeight:1 }}>×</button>
-            )}
+          {/* ══ ROW 3: Search + ••• ══ */}
+          <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
+            <div style={{ flex:1, height:36, borderRadius:999, background:t.surface, border:`1px solid ${t.border}`,
+              display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13 }}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke={t.textMuted} strokeWidth="1.5"/>
+                <path d="M11 11l4 4" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Buscar lançamento…"
+                style={{ flex:1, background:"transparent", border:"none", outline:"none", color:t.text, fontSize:13 }} />
+              {search && (
+                <button onClick={()=>setSearch("")}
+                  style={{ background:"none", border:"none", color:t.textMuted, cursor:"pointer", fontSize:15, padding:0, lineHeight:1 }}>×</button>
+              )}
+            </div>
+            {/* ••• menu */}
+            <div style={{ position:"relative", flexShrink:0 }}>
+              <button
+                onClick={e=>{ e.stopPropagation(); setShowActionSheet(v=>!v); }}
+                style={{ width:36, height:36, borderRadius:10,
+                  background: showActionSheet ? "rgba(124,92,255,0.22)" : t.surface,
+                  border:`1px solid ${showActionSheet?"rgba(124,92,255,0.4)":t.border}`,
+                  display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
+                  <circle cx="2" cy="2" r="1.6" fill={t.text}/>
+                  <circle cx="8" cy="2" r="1.6" fill={t.text}/>
+                  <circle cx="14" cy="2" r="1.6" fill={t.text}/>
+                </svg>
+              </button>
+              {showActionSheet && (
+                <div onClick={()=>setShowActionSheet(false)}
+                  style={{ position:"fixed", inset:0, zIndex:299 }} />
+              )}
+              {showActionSheet && (
+                <div onClick={e=>e.stopPropagation()}
+                  style={{ position:"absolute", top:"calc(100% + 8px)", right:0, zIndex:300,
+                    width:230, padding:4, borderRadius:14,
+                    background:t.glassModal, backdropFilter:"blur(22px)",
+                    border:`1px solid ${t.glassBorder}`,
+                    boxShadow:t.shadow }}>
+                  <div style={{ position:"absolute", top:-6, right:12, width:12, height:12,
+                    background:t.glassModal,
+                    borderLeft:`1px solid ${t.glassBorder}`,
+                    borderTop:`1px solid ${t.glassBorder}`,
+                    transform:"rotate(45deg)" }} />
+                  <button onClick={()=>{ setShowActionSheet(false); setSelMode(true); setSelectedIds(new Set()); }}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:10,
+                      background:"rgba(124,92,255,0.14)", color:t.text, border:"none", cursor:"pointer", fontSize:13.5, fontWeight:500 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="2" y="2" width="12" height="12" rx="3" stroke={t.text} strokeWidth="1.3"/>
+                      <path d="M5 8.2l2.2 2.2L11.2 6" stroke={t.text} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Selecionar lançamentos
+                  </button>
+                  <div style={{ height:0.5, background:t.border, margin:"4px 10px" }} />
+                  <button onClick={handleDeleteFiltered}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:10,
+                      background:"transparent", color:"#FF6B6B", border:"none", cursor:"pointer", fontSize:13.5, fontWeight:500 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF6B6B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Apagar filtrados…
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ══ ROW 4: Todos/Gastos/Receitas segmented ══ */}
