@@ -349,7 +349,7 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
         boxShadow: `${t.shadow}, ${t.innerGlow}`,
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h3 style={{ margin: 0, color: t.text, fontSize: 20, fontWeight: 700, fontFamily: "'Sora', sans-serif" }}>{title}</h3>
+          <h3 style={{ margin: 0, color: t.text, fontSize: 20, fontWeight: 700, letterSpacing:"-0.02em" }}>{title}</h3>
           <button
             onClick={onClose}
             style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.textSecondary, fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.18s" }}
@@ -435,7 +435,7 @@ function CalendarPickerModal({ value, onChange, onClose, t }) {
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
           <button onClick={prevMonth}
             style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:34,height:34,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>‹</button>
-          <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:700,fontSize:15,color:t.text }}>{MONTH_FULL[viewMo]} {viewYr}</span>
+          <span style={{ fontWeight:700,fontSize:15,color:t.text }}>{MONTH_FULL[viewMo]} {viewYr}</span>
           <div style={{ display:"flex",gap:6 }}>
             <button onClick={nextMonth}
               style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:34,height:34,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>›</button>
@@ -863,7 +863,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <button onClick={() => { if(mo===0){setViewYr(y=>y-1);setViewMo(11);}else{setViewMo(m=>m-1);} setSelectedDay(null); }} style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.text, fontSize: 16 }}>‹</button>
-        <h2 style={{ margin: 0, fontFamily: "'Sora', sans-serif", fontSize: 20, fontWeight: 700, color: t.text }}>{MONTH_FULL[mo]} {yr}</h2>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: t.text, letterSpacing:"-0.02em" }}>{MONTH_FULL[mo]} {yr}</h2>
         <button onClick={() => { if(mo===11){setViewYr(y=>y+1);setViewMo(0);}else{setViewMo(m=>m+1);} setSelectedDay(null); }} style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.text, fontSize: 16 }}>›</button>
       </div>
 
@@ -913,7 +913,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
       {selectedDay && (
         <div style={{ marginTop: 24, background: t.glassModal, border: `1px solid ${t.glassBorder}`, backdropFilter: "blur(16px)", borderRadius: 20, padding: 24, animation: "fadeInUp 0.25s ease" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, color: t.text, fontFamily: "'Sora', sans-serif", fontSize: 16, fontWeight: 700 }}>{selectedDay} de {MONTH_FULL[mo]}</h3>
+            <h3 style={{ margin: 0, color: t.text, fontSize: 16, fontWeight: 700, letterSpacing:"-0.02em" }}>{selectedDay} de {MONTH_FULL[mo]}</h3>
             <div style={{ display: "flex", gap: 12 }}>
               {sInc.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.success }}>{fmt(sInc.reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</span>}
               {sExp.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(sExp.reduce((s,e)=>s+(parseFloat(e.amount)||0),0))}</span>}
@@ -1024,7 +1024,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
             <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers}
@@ -1138,7 +1138,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
 
   const Card = ({ children, title }) => (
     <div style={{ background:t.glassModal, border:`1px solid ${t.glassBorder}`, backdropFilter:"blur(16px)", borderRadius:20, padding:24 }}>
-      {title&&<h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>{title}</h3>}
+      {title&&<h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>{title}</h3>}
       {children}
     </div>
   );
@@ -1157,10 +1157,10 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={barData} barGap={4} barCategoryGap="25%">
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
-            <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12,fontFamily:"'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
-            <Legend wrapperStyle={{ fontSize:13,fontFamily:"'DM Sans', sans-serif",color:t.textSecondary }} />
+            <Legend wrapperStyle={{ fontSize:13,color:t.textSecondary }} />
             <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
             <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
             <Bar dataKey="Saldo" fill={t.accent} radius={[6,6,0,0]} />
@@ -1216,11 +1216,11 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           return (
             <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8 }}>
-                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>
+                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>
                   {catObj?.emoji} {catObj?.label} — {period==="month"?MONTH_FULL[selectedMonth]:selectedYear}
                 </h4>
                 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-                  <span style={{ fontSize:15,fontWeight:800,color,fontFamily:"'Sora',sans-serif" }}>{fmt(total)}</span>
+                  <span style={{ fontSize:15,fontWeight:800,color }}>{fmt(total)}</span>
                   <button onClick={()=>setSelectedPieCategory(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
                 </div>
               </div>
@@ -1291,9 +1291,9 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           return (
             <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>💳 Parcelas em {md.name}</h4>
+                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>💳 Parcelas em {md.name}</h4>
                 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-                  <span style={{ fontSize:15,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif" }}>{fmt(md.value)}</span>
+                  <span style={{ fontSize:15,fontWeight:800,color:t.accent }}>{fmt(md.value)}</span>
                   <button onClick={()=>setSelectedCreditMonth(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
                 </div>
               </div>
@@ -1352,9 +1352,9 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
             return (
               <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
                 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-                  <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text,fontFamily:"'Sora',sans-serif" }}>💳 Fatura de {md.name}</h4>
+                  <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>💳 Fatura de {md.name}</h4>
                   <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-                    <span style={{ fontSize:15,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif" }}>{fmt(md.value)}</span>
+                    <span style={{ fontSize:15,fontWeight:800,color:t.accent }}>{fmt(md.value)}</span>
                     <button onClick={()=>setSelectedBillingMonth(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
                   </div>
                 </div>
@@ -1398,7 +1398,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
             <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]} cards={cards}
@@ -2438,7 +2438,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>✏️ Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>✏️ Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
             <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers} cards={cards}
@@ -2758,7 +2758,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
           </div>
           <div style={{ marginTop:12,paddingTop:10,borderTop:`1px solid ${t.success}44`,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
             <span style={{ fontSize:13,fontWeight:700,color:t.success }}>Total lançado</span>
-            <span style={{ fontSize:16,fontWeight:800,color:t.success,fontFamily:"'Sora',sans-serif" }}>
+            <span style={{ fontSize:16,fontWeight:800,color:t.success }}>
               {fmt(confirmed.reduce((s,r)=>s+(parseFloat(r.amount)||0),0))}
             </span>
           </div>
@@ -2922,7 +2922,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
       <div onClick={e=>e.stopPropagation()}
         style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,boxShadow:t.shadow,animation:"modalIn 0.25s ease",flexShrink:0 }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-          <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,fontFamily:"'Sora', sans-serif" }}>
+          <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>
             {isEdit ? "✏️ Editar Recorrente" : "🔁 Novo Recorrente"}
           </h3>
           <button onClick={onClose} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,padding:"2px 8px" }}>×</button>
@@ -3155,7 +3155,7 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
           <button onClick={prevMonth}
             style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,width:34,height:34,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>‹</button>
-          <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:700,fontSize:16,color:t.text,minWidth:140,textAlign:"center" }}>
+          <span style={{ fontWeight:700,fontSize:16,color:t.text,minWidth:140,textAlign:"center",letterSpacing:"-0.02em" }}>
             {MONTH_FULL[viewMonth]} {viewYear}
           </span>
           <button onClick={nextMonth}
@@ -3327,7 +3327,7 @@ function SummaryCards({ expenses, incomes, t }) {
         >
           <div style={{ fontSize:26,marginBottom:10 }}>{c.icon}</div>
           <div style={{ fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:6,textTransform:"uppercase" }}>{c.label}</div>
-          <div style={{ fontSize:22,fontWeight:800,color:c.color,fontFamily:"'Sora', sans-serif",letterSpacing:"-0.02em" }}>{c.value}</div>
+          <div style={{ fontSize:22,fontWeight:800,color:c.color,letterSpacing:"-0.02em" }}>{c.value}</div>
         </div>
       ))}
     </div>
@@ -3722,7 +3722,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
   if (step === "upload") return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <h2 style={{ margin: "0 0 6px", fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 800, color: t.text }}>📥 Importar Lançamentos</h2>
+        <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>📥 Importar Lançamentos</h2>
         <p style={{ color: t.textMuted, fontSize: 14 }}>A IA lê e mapeia automaticamente qualquer formato de extrato ou planilha</p>
       </div>
       <div
@@ -3783,7 +3783,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
   if (step === "mapping" || (loading && step !== "preview")) return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 360, gap: 20 }}>
       <div style={{ fontSize: 52, animation: "importSpin 1.2s linear infinite" }}>⚙️</div>
-      <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, fontWeight: 700, color: t.text, textAlign: "center" }}>{loadingMsg || "Processando..."}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: t.text, textAlign: "center", letterSpacing:"-0.02em" }}>{loadingMsg || "Processando..."}</div>
       <div style={{ fontSize: 13, color: t.textMuted }}>{fileName}</div>
       <style>{`@keyframes importSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
     </div>
@@ -3806,7 +3806,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h2 style={{ margin: "0 0 4px", fontFamily: "'Sora', sans-serif", fontSize: 20, fontWeight: 800, color: t.text }}>📋 Revisar Importação</h2>
+            <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>📋 Revisar Importação</h2>
             <p style={{ color: t.textMuted, fontSize: 13 }}>{fileName} — {mapped.length} itens detectados</p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -3827,7 +3827,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, borderRadius: 12, padding: "10px 14px" }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, letterSpacing: "0.05em" }}>{s.label.toUpperCase()}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: s.color, fontFamily: "'Sora', sans-serif" }}>{s.value}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
             </div>
           ))}
         </div>
@@ -3918,7 +3918,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 420, gap: 24, textAlign: "center" }}>
       <div style={{ fontSize: 72 }}>🎉</div>
       <div>
-        <h2 style={{ margin: "0 0 8px", fontFamily: "'Sora', sans-serif", fontSize: 24, fontWeight: 800, color: t.text }}>Importação concluída!</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>Importação concluída!</h2>
         <p style={{ color: t.textMuted, fontSize: 14 }}>Os dados já estão disponíveis em todo o dashboard</p>
       </div>
       {stats && (
@@ -4084,7 +4084,7 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
           </p>
           <div style={{ background:t.accentSoft,border:`2px dashed ${t.accent}55`,borderRadius:16,padding:"20px 16px",textAlign:"center",marginBottom:12 }}>
             <div style={{ fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.12em",marginBottom:8 }}>CÓDIGO DE CONVITE</div>
-            <div style={{ fontSize:34,fontWeight:800,color:t.accent,fontFamily:"'Sora', sans-serif",letterSpacing:"0.3em" }}>
+            <div style={{ fontSize:34,fontWeight:800,color:t.accent,letterSpacing:"0.3em" }}>
               {family?.invite_code || "------"}
             </div>
           </div>
@@ -4275,10 +4275,10 @@ function BillingCard({ expenses, cards, t }) {
   return(
     <div style={{background:t.glassModal,border:`1px solid ${t.accent}33`,backdropFilter:"blur(16px)",borderRadius:20,padding:20,animation:"fadeInUp 0.3s ease"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-        <h3 style={{margin:0,fontFamily:"'Sora',sans-serif",fontSize:15,fontWeight:700,color:t.text}}>💳 Fatura em Aberto</h3>
+        <h3 style={{margin:0,fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em"}}>💳 Fatura em Aberto</h3>
         <span style={{fontSize:11,color:t.textMuted,whiteSpace:"nowrap"}}>Vence dia {dueDay}/{String(vencMo).padStart(2,"0")}/{vencYr}</span>
       </div>
-      <div style={{fontSize:26,fontWeight:800,color:t.accent,fontFamily:"'Sora',sans-serif",marginBottom:groups.length>1?12:8}}>{fmt(total)}</div>
+      <div style={{fontSize:26,fontWeight:800,color:t.accent,marginBottom:groups.length>1?12:8}}>{fmt(total)}</div>
       {groups.length>1&&(
         <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
           {groups.map((g,i)=>(
@@ -4809,7 +4809,7 @@ export default function App() {
             {tab==="dashboard"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
                 <div>
-                  <h2 style={{ margin:"0 0 4px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>
+                  <h2 style={{ margin:"0 0 4px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>
                     Olá{profile?.first_name ? `, ${profile.first_name}` : ""}! 👋
                   </h2>
                   <p style={{ color:t.textMuted,fontSize:13 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
@@ -4819,7 +4819,7 @@ export default function App() {
                 <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
                 <BillingCard expenses={expenses} cards={cards} t={t} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
-                  <h3 style={{ margin:"0 0 20px",fontFamily:"'Sora', sans-serif",fontSize:16,fontWeight:700,color:t.text }}>📊 Últimos 6 meses</h3>
+                  <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>📊 Últimos 6 meses</h3>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={Array.from({length:6},(_,i)=>{ const baseYr=today.getFullYear(),baseMo=today.getMonth(); const totalMo=baseMo-5+i; const yr=baseYr+Math.floor(totalMo/12), mn=((totalMo%12)+12)%12; const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], Receitas:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), Gastos:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
                       <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
@@ -4838,7 +4838,7 @@ export default function App() {
             {tab==="recurring"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
-                  <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🔁 Gastos Recorrentes</h2>
+                  <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🔁 Gastos Recorrentes</h2>
                   <p style={{ color:t.textMuted,fontSize:14 }}>Aluguel, contas fixas, assinaturas e lembretes mensais</p>
                 </div>
                 <RecurringView expenses={expenses} setExpenses={setExpenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} />
@@ -4847,7 +4847,7 @@ export default function App() {
             {tab==="budget"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
-                  <h2 style={{ margin:"0 0 6px",fontFamily:"'Sora', sans-serif",fontSize:22,fontWeight:800,color:t.text }}>🎯 Orçamento Mensal</h2>
+                  <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🎯 Orçamento Mensal</h2>
                   <p style={{ color:t.textMuted,fontSize:14 }}>Defina limites de gastos por categoria e acompanhe em tempo real</p>
                 </div>
                 <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
