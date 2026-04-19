@@ -4588,16 +4588,16 @@ export default function App() {
   };
 
   const tabs=[
-    {id:"dashboard",  label:"Início",      shortLabel:"Início",   icon:"🏠"},
-    {id:"calendar",   label:"Calendário",  shortLabel:"Agenda",   icon:"📅"},
-    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos", icon:"📊"},
-    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",icon:"🎯"},
-    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",  icon:"🔁"},
-    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",  icon:"📋"},
-    {id:"import",     label:"Importar",    shortLabel:"Importar", icon:"📥"},
+    {id:"dashboard",  label:"Início",      shortLabel:"Início",     icon:"🏠"},
+    {id:"calendar",   label:"Calendário",  shortLabel:"Calendário", icon:"📅"},
+    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos",   icon:"📊"},
+    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",  icon:"🎯"},
+    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",    icon:"🔁"},
+    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",    icon:"📋"},
+    {id:"import",     label:"Importar",    shortLabel:"Importar",   icon:"📥"},
   ];
   // primary tabs shown in the mobile bottom bar (4 slots + center FAB)
-  const PRIMARY_MOBILE_TABS = ["dashboard","calendar","charts","recurring"];
+  const PRIMARY_MOBILE_TABS = ["calendar","charts","recurring","transactions"];
 
   const css=`
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -4759,45 +4759,37 @@ export default function App() {
 
         {/* ══ MOBILE TOP HEADER ══ */}
         <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:"calc(56px + env(safe-area-inset-top))",zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
-          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+          <button onClick={()=>setTab("dashboard")} style={{ display:"flex",alignItems:"center",gap:8,background:"none",border:"none",cursor:"pointer",padding:0 }}>
             <span style={{ fontSize:20 }}>💎</span>
-            <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.01em" }}>Finanças do Casal</span>
+            <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.01em" }}>Finanças Casal</span>
             {isDemo&&<span style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"2px 7px",borderRadius:6,fontWeight:700 }}>DEMO</span>}
-          </div>
-          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-            <button onClick={()=>setMobileMenu(v=>!v)}
-              style={{ width:34,height:34,borderRadius:10,border:`1px solid ${t.border}`,background:mobileMenu?t.accentSoft:t.surface,color:t.text,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15,fontWeight:700,letterSpacing:1 }}>
-              ···
-            </button>
-            {!isDemo && user && (
-              <button onClick={()=>setShowProfile(true)}
-                style={{ display:"flex",alignItems:"center",gap:6,padding:"4px 10px 4px 5px",borderRadius:999,border:`1px solid ${t.border}`,background:t.surface,cursor:"pointer" }}>
-                <span style={{ width:26,height:26,borderRadius:"50%",background:t.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0 }}>
-                  {(profile?.first_name||"U")[0].toUpperCase()}
-                </span>
-                <span style={{ fontSize:13,fontWeight:600,color:t.text }}>{profile?.first_name||"Conta"}</span>
-              </button>
-            )}
-          </div>
+          </button>
+          <button onClick={()=>setMobileMenu(v=>!v)}
+            style={{ width:36,height:36,borderRadius:10,border:`1px solid ${t.border}`,background:mobileMenu?t.accentSoft:t.surface,color:t.text,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0 }}>
+            {mobileMenu
+              ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke={t.text} strokeWidth="2" strokeLinecap="round"/></svg>
+              : <svg width="16" height="14" viewBox="0 0 16 14" fill="none"><path d="M1 1h14M1 7h14M1 13h14" stroke={t.text} strokeWidth="1.8" strokeLinecap="round"/></svg>
+            }
+          </button>
         </header>
 
         {/* ══ MOBILE MENU DRAWER ══ */}
         {mobileMenu&&(
           <>
             <div onClick={()=>setMobileMenu(false)} style={{ position:"fixed",inset:0,zIndex:198,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(2px)" }} />
-            <div style={{ position:"fixed",top:0,right:0,bottom:0,width:280,zIndex:199,background:t.glassModal,backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderLeft:`1px solid ${t.glassBorder}`,display:"flex",flexDirection:"column",animation:"slideInRight 0.22s ease",paddingTop:"calc(64px + env(safe-area-inset-top))",paddingBottom:"calc(20px + env(safe-area-inset-bottom))" }}>
-              {[{id:"budget",label:"🎯 Orçamento"},{id:"transactions",label:"📋 Lançamentos"},{id:"import",label:"📥 Importar"}].map(item=>(
+            <div style={{ position:"fixed",top:0,right:0,bottom:0,width:280,zIndex:199,background:t.glassModal,backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderLeft:`1px solid ${t.glassBorder}`,display:"flex",flexDirection:"column",animation:"slideInRight 0.22s ease",paddingTop:"calc(64px + env(safe-area-inset-top))",paddingBottom:"calc(20px + env(safe-area-inset-bottom))",overflowY:"auto" }}>
+              {[{id:"dashboard",label:"🏠 Início"},{id:"budget",label:"🎯 Orçamento"},{id:"import",label:"📥 Importar"}].map(item=>(
                 <button key={item.id} onClick={()=>{setTab(item.id);setMobileMenu(false);}}
                   style={{ padding:"14px 24px",border:"none",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",cursor:"pointer" }}>
                   {item.label}
                 </button>
               ))}
               <div style={{ height:1,background:t.border,margin:"8px 20px" }} />
-              <button onClick={()=>{setShowProfile(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👤 Meu Perfil</button>
-              {family&&<button onClick={()=>{setShowInvite(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👥 Família</button>}
-              {family&&<button onClick={()=>{setShowCardsManager(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>💳 Cartões</button>}
+              {!isDemo&&<button onClick={()=>{setShowProfile(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👤 Meu Perfil</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowInvite(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👥 Família</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowCardsManager(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>💳 Cartões</button>}
               <div style={{ height:1,background:t.border,margin:"8px 20px" }} />
-              <button onClick={()=>setDarkMode(!darkMode)} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
+              <button onClick={()=>{setDarkMode(!darkMode);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
               {!isDemo&&<button onClick={()=>{handleLogout();setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.danger,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>🚪 Sair</button>}
               {isDemo&&<button onClick={()=>{handleLogout();setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.danger,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>🚪 Sair do modo Demo</button>}
             </div>
