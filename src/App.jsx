@@ -1115,7 +1115,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const billingChartData = useMemo(() => {
     const result = {};
     for (let i=0;i<12;i++) {
-      const d=new Date(today.getFullYear(), today.getMonth()+i, 1);
+      const d=new Date(selectedYear, selectedMonth+i, 1);
       result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0, items:[], yr:d.getFullYear(), mo:d.getMonth() };
     }
     // Compras e parcelas confirmadas → mês de vencimento do cartão
@@ -1141,7 +1141,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       const ruleAmt = parseFloat(rule.amount) || 0;
       if (ruleAmt <= 0) return;
       for (let i=0; i<12; i++) {
-        const d = new Date(today.getFullYear(), today.getMonth()+i, 1);
+        const d = new Date(selectedYear, selectedMonth+i, 1);
         const targetYr = d.getFullYear(), targetMo = d.getMonth() + 1; // 1-indexed
         if (rule.frequency === "yearly" && rule.month_of_year !== targetMo) continue;
         if (rule.end_date && new Date(rule.end_date + "T12:00:00") < d) continue;
@@ -1164,7 +1164,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, cards, recurringRules]);
+  }, [expenses, cards, recurringRules, selectedMonth, selectedYear]);
 
   const CTip = ({ active, payload, label }) => {
     if (!active||!payload?.length) return null;
