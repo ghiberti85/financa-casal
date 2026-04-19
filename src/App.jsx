@@ -1434,8 +1434,8 @@ function MemberSelect({ label, t, value, onChange, familyMembers }) {
 }
 
 // ─── EXPENSE FORM ─────────────────────────────────────────────────────────────
-function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [] }) {
-  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:"Você", card_id:"" });
+function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [], currentUserLabel = "Você" }) {
+  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:currentUserLabel, card_id:"" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
   const [saving, setSaving] = useState(false);
@@ -1593,8 +1593,8 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
 }
 
 // ─── INCOME FORM ──────────────────────────────────────────────────────────────
-function IncomeForm({ t, onSave, onClose, familyMembers, initialDate }) {
-  const [form, setForm] = useState({ description:"Salário", amount:"", date:initialDate || today.toISOString().slice(0,10), source:"salario", category:"salario", user_label:"Você" });
+function IncomeForm({ t, onSave, onClose, familyMembers, initialDate, currentUserLabel = "Você" }) {
+  const [form, setForm] = useState({ description:"Salário", amount:"", date:initialDate || today.toISOString().slice(0,10), source:"salario", category:"salario", user_label:currentUserLabel });
   const [saving, setSaving] = useState(false);
 
   const handle = () => {
@@ -1794,7 +1794,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
 }
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
-function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [] }) {
+function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você" }) {
   // ── Period / window state ──
   // anchorMonth/anchorYear = the reference month shown in the period header
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
@@ -1864,15 +1864,21 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     else setAnchorMonth(m => m + 1);
   };
 
-  // Derive unique member labels from actual data — garantia de match exato com user_label salvo
+  // Derive unique member labels — "Você" é substituído pelo nome real do usuário logado no display
   const memberOptions = useMemo(() => {
     const labels = new Set();
     [...expenses, ...incomes].forEach(item => {
       const lbl = item.user_label?.trim();
-      if (lbl) labels.add(lbl);
+      if (!lbl) return;
+      // Exibe o nome real em vez de "Você" para o usuário atual
+      if (lbl === "Você" && currentUserLabel !== "Você") {
+        labels.add(currentUserLabel);
+      } else {
+        labels.add(lbl);
+      }
     });
     return Array.from(labels).sort();
-  }, [expenses, incomes]);
+  }, [expenses, incomes, currentUserLabel]);
 
   // ── "all" — items in the selected window ──
   const all = useMemo(() => {
@@ -1935,7 +1941,13 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     if (showDupsOnly && !dupIds.has(item.id)) return false;
     if (paymentFilter!=="all" && item._type==="expense" && item.type!==paymentFilter) return false;
     if (categoryFilter!=="all" && item._type==="expense" && item.category!==categoryFilter) return false;
-    if (memberFilter!=="all" && (item.user_label?.trim()||"") !== memberFilter) return false;
+    if (memberFilter !== "all") {
+      const lbl = item.user_label?.trim() || "";
+      const matchExact = lbl === memberFilter;
+      // "Você" salvo = usuário que estava logado; bate com o nome atual desse usuário
+      const matchVoce = lbl === "Você" && memberFilter === currentUserLabel;
+      if (!matchExact && !matchVoce) return false;
+    }
     return true;
   }), [all, filter, search, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
 
@@ -4310,6 +4322,12 @@ export default function App() {
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT") || user?.id === "demo";
 
+  const currentUserLabel = useMemo(() => {
+    if (user?.id === "demo") return "Você";
+    const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
+    return name || user?.email || "Você";
+  }, [profile, user]);
+
   const addToast = useCallback((message, type="info") => {
     const id=Date.now();
     setToasts(p=>[...p,{id,message,type}]);
@@ -4838,7 +4856,7 @@ export default function App() {
                 <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
               </div>
             )}
-            {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} />}
+            {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} />}
             {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
           </main>
 
@@ -4899,10 +4917,10 @@ export default function App() {
 
       {/* Expense / Income modals */}
       <Modal open={modal==="expense"} onClose={()=>setModal(null)} title="💸 Registrar Gasto" t={t} darkMode={darkMode}>
-        <ExpenseForm t={t} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} cards={cards} />
+        <ExpenseForm t={t} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} cards={cards} currentUserLabel={currentUserLabel} />
       </Modal>
       <Modal open={modal==="income"} onClose={()=>setModal(null)} title="💰 Registrar Receita" t={t} darkMode={darkMode}>
-        <IncomeForm t={t} onSave={saveIncome} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} />
+        <IncomeForm t={t} onSave={saveIncome} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} currentUserLabel={currentUserLabel} />
       </Modal>
 
       {/* Invite code modal */}
