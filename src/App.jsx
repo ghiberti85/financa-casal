@@ -239,23 +239,25 @@ function autoCategory(description) {
 }
 
 // ─── BILLING MONTH UTILITY ───────────────────────────────────────────────────
-// Compra em 20/abr (≤ fechamento 28) → fatura Abril (vence 06/mai)
-// Compra em 29/abr (> fechamento 28) → fatura Maio  (vence 06/jun)
+// Primário: busca período exato na tabela billing_periods (period_start ≤ dateStr ≤ period_end)
+// Fallback: dia > closingDay → próximo mês de fechamento → +1 mês de vencimento (padrão BR)
 // PIX e Débito: NUNCA passam por esta função — usar sempre e.date original
-function getBillingMonth(dateStr, closingDay = 28) {
+function getBillingMonth(dateStr, billingPeriods = [], closingDay = 28) {
+  if (!dateStr) return null;
+  if (billingPeriods.length > 0) {
+    const period = billingPeriods.find(p => dateStr >= p.period_start && dateStr <= p.period_end);
+    if (period) return { month: period.fatura_month, year: period.fatura_year, fromPeriod: true };
+  }
   const d = new Date(dateStr + "T12:00:00");
   const day = d.getDate(), month = d.getMonth() + 1, year = d.getFullYear();
-  if (day <= closingDay) return { month, year };
-  return month === 12 ? { month: 1, year: year + 1 } : { month: month + 1, year };
-}
-// Retorna o mês em que o pagamento é devido (fechamento + 1 quando vencimento < fechamento, que é o padrão de cartões BR)
-function getBillingDueMonth(dateStr, closingDay = 28, dueDay = 5) {
-  const bm = getBillingMonth(dateStr, closingDay);
-  if ((dueDay ?? 5) < (closingDay ?? 28)) {
-    if (bm.month === 12) return { month: 1, year: bm.year + 1 };
-    return { month: bm.month + 1, year: bm.year };
+  let closeMonth = month, closeYear = year;
+  if (day > closingDay) {
+    closeMonth = month === 12 ? 1 : month + 1;
+    closeYear  = month === 12 ? year + 1 : year;
   }
-  return bm;
+  const dueMonth = closeMonth === 12 ? 1 : closeMonth + 1;
+  const dueYear  = closeMonth === 12 ? closeYear + 1 : closeYear;
+  return { month: dueMonth, year: dueYear, fromPeriod: false };
 }
 
 // ─── DEMO DATA ────────────────────────────────────────────────────────────────
@@ -1046,7 +1048,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 }
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
-function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers, cards = [], recurringRules = [] }) {
+function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers, cards = [], recurringRules = [], billingPeriods = [] }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
@@ -1111,27 +1113,33 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
   }, [expenses, selectedYear, selectedMonth]);
 
-  // ── Billing chart: crédito (compras + parcelas + recorrentes) → mês de VENCIMENTO (fechamento+1) ──
+  // ── Billing chart: crédito (compras + parcelas + recorrentes) → mês de VENCIMENTO via billing_periods ou fallback ──
   const billingChartData = useMemo(() => {
     const result = {};
     for (let i=0;i<12;i++) {
       const d=new Date(selectedYear, selectedMonth+i, 1);
       result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0, items:[], yr:d.getFullYear(), mo:d.getMonth() };
     }
-    // Compras e parcelas confirmadas → mês de vencimento do cartão
+    // Compras e parcelas confirmadas — cada parcela tem sua própria data e billing month
     expenses.forEach(e => {
       if (e.type !== "credito" || !e.date) return;
       const p = parseInt(e.parcelas) || 1;
       const iv = parseFloat(e.amount) || 0;
       const card = cards.find(c => c.id === e.card_id);
       const closingDay = card?.closing_day ?? 28;
-      const dueDay = card?.due_day ?? 5;
-      const bm = getBillingDueMonth(e.date, closingDay, dueDay);
-      const baseYr = bm.year, baseMo = bm.month - 1;
+      const cardPeriods = billingPeriods.filter(bp => bp.card_id === e.card_id);
+      const [dYr, dMoStr, dDayStr] = e.date.slice(0,10).split("-");
+      const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
       for (let i=0; i<p; i++) {
-        const mo = (baseMo + i) % 12;
-        const yr = baseYr + Math.floor((baseMo + i) / 12);
-        const k = `${yr}-${mo}`;
+        const totalMo = purMo + i;
+        const instMo  = totalMo % 12;
+        const instYr  = purYr + Math.floor(totalMo / 12);
+        const maxDay  = new Date(instYr, instMo + 1, 0).getDate();
+        const instDay = Math.min(purDay, maxDay);
+        const instDate = `${instYr}-${String(instMo+1).padStart(2,"0")}-${String(instDay).padStart(2,"0")}`;
+        const bm = getBillingMonth(instDate, cardPeriods, closingDay);
+        if (!bm) continue;
+        const k = `${bm.year}-${bm.month - 1}`;
         if (result[k]) { result[k].value += iv; result[k].items.push({ ...e, _installNum: i+1, _installTotal: p }); }
       }
     });
@@ -1142,10 +1150,9 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       if (ruleAmt <= 0) return;
       for (let i=0; i<12; i++) {
         const d = new Date(selectedYear, selectedMonth+i, 1);
-        const targetYr = d.getFullYear(), targetMo = d.getMonth() + 1; // 1-indexed
+        const targetYr = d.getFullYear(), targetMo = d.getMonth() + 1;
         if (rule.frequency === "yearly" && rule.month_of_year !== targetMo) continue;
         if (rule.end_date && new Date(rule.end_date + "T12:00:00") < d) continue;
-        // Evita dupla contagem se já confirmada como gasto neste mês
         const mPrefix = `${targetYr}-${String(targetMo).padStart(2,"0")}`;
         const alreadyConfirmed = expenses.some(e =>
           e.type === "credito" &&
@@ -1155,7 +1162,8 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         if (alreadyConfirmed) continue;
         const day = rule.day_of_month || 1;
         const dateStr = `${targetYr}-${String(targetMo).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-        const bm = getBillingDueMonth(dateStr, 28, 5);
+        const bm = getBillingMonth(dateStr, [], 28);
+        if (!bm) continue;
         const k = `${bm.year}-${bm.month - 1}`;
         if (result[k]) {
           result[k].value += ruleAmt;
@@ -1164,7 +1172,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, cards, recurringRules, selectedMonth, selectedYear]);
+  }, [expenses, cards, recurringRules, billingPeriods, selectedMonth, selectedYear]);
 
   const CTip = ({ active, payload, label }) => {
     if (!active||!payload?.length) return null;
@@ -1838,7 +1846,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
 }
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
-function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você" }) {
+function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você", billingPeriods = [] }) {
   // ── Period / window state ──
   // anchorMonth/anchorYear = the reference month shown in the period header
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
@@ -1946,7 +1954,9 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     const matchesExpPeriod = (e) => {
       if (billingMode === "billing" && e.type === "credito") {
         const card = cards.find(c => c.id === e.card_id);
-        const bm = getBillingMonth(e.date, card?.closing_day ?? 28);
+        const cardPeriods = billingPeriods.filter(p => p.card_id === e.card_id);
+        const bm = getBillingMonth(e.date, cardPeriods, card?.closing_day ?? 28);
+        if (!bm) return false;
         const bmStr = `${bm.year}-${String(bm.month).padStart(2,"0")}-01`;
         return bmStr >= fromStr && bmStr <= toStr;
       }
@@ -2407,8 +2417,10 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                   {isDup && <span style={{ color:t.warning, fontWeight:600 }}> · sugerido para remoção</span>}
                   {billingMode==="billing" && isExp && item.type==="credito" && (() => {
                     const card = cards.find(c=>c.id===item.card_id);
-                    const bm = getBillingMonth(item.date, card?.closing_day??28);
-                    return <span style={{ color:t.accent,fontWeight:600 }}> · → Fatura {MONTH_FULL[bm.month-1]}/{bm.year}</span>;
+                    const cardPeriods = billingPeriods.filter(p=>p.card_id===item.card_id);
+                    const bm = getBillingMonth(item.date, cardPeriods, card?.closing_day??28);
+                    if (!bm) return null;
+                    return <span style={{ color:bm.fromPeriod?t.accent:t.textMuted, fontWeight:bm.fromPeriod?700:500, borderBottom:bm.fromPeriod?"none":`1px dashed ${t.textMuted}` }}> · → Fatura {MONTH_FULL[bm.month-1]}/{bm.year}</span>;
                   })()}
                 </div>
               </div>
@@ -4198,13 +4210,21 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
 }
 
 // ─── CARDS MANAGER ───────────────────────────────────────────────────────────
-function CardsManager({ t, family, isDemo, addToast }) {
+function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBillingPeriods = ()=>{} }) {
   const [cards, setCards] = useState([]);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name:"", holder:"", closing_day:28, due_day:6, color:"#7c6af7" });
   const [loading, setLoading] = useState(false);
   const CARD_COLORS = ["#7c6af7","#10b981","#ef4444","#3b82f6","#f97316","#ec4899"];
   const sf = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  // Billing periods form state
+  const bpEmpty = { card_id:"", fatura_month: new Date().getMonth()+1, fatura_year: new Date().getFullYear(), period_start:"", period_end:"", due_date:"", total_pdf:"" };
+  const [bpForm, setBpForm] = useState(bpEmpty);
+  const [bpEditId, setBpEditId] = useState(null);
+  const [bpLoading, setBpLoading] = useState(false);
+  const [showBpForm, setShowBpForm] = useState(false);
+  const sbp = (k,v) => setBpForm(p=>({...p,[k]:v}));
 
   useEffect(()=>{
     if(isDemo||!family?.family_id) return;
@@ -4245,6 +4265,57 @@ function CardsManager({ t, family, isDemo, addToast }) {
 
   const startEdit=(c)=>{ setEditId(c.id); setForm({name:c.name,holder:c.holder,closing_day:c.closing_day,due_day:c.due_day,color:c.color}); };
 
+  // Billing periods CRUD
+  const resetBpForm = () => { setBpForm(bpEmpty); setBpEditId(null); setShowBpForm(false); };
+
+  const saveBp = async () => {
+    if (!bpForm.card_id || !bpForm.period_start || !bpForm.period_end || !bpForm.due_date) {
+      addToast("Preencha cartão, datas do período e vencimento.","error"); return;
+    }
+    setBpLoading(true);
+    const payload = {
+      card_id: bpForm.card_id,
+      family_id: family?.family_id,
+      fatura_month: parseInt(bpForm.fatura_month),
+      fatura_year: parseInt(bpForm.fatura_year),
+      period_start: bpForm.period_start,
+      period_end: bpForm.period_end,
+      due_date: bpForm.due_date,
+      total_pdf: bpForm.total_pdf ? parseFloat(bpForm.total_pdf) : null,
+    };
+    try {
+      if (bpEditId) {
+        await supabaseFetch(`/billing_periods?id=eq.${bpEditId}`,{method:"PATCH",body:JSON.stringify(payload)});
+        setBillingPeriods(p => p.map(bp => bp.id===bpEditId ? {...bp,...payload} : bp));
+        addToast("Período atualizado!","success");
+      } else {
+        const cr = await supabaseFetch("/billing_periods",{method:"POST",body:JSON.stringify(payload)});
+        if (cr?.[0]) setBillingPeriods(p => [...p, cr[0]]);
+        addToast("Período adicionado!","success");
+      }
+      resetBpForm();
+    } catch(err) { addToast(err.message,"error"); }
+    finally { setBpLoading(false); }
+  };
+
+  const delBp = async (id) => {
+    if (!window.confirm("Excluir este período?")) return;
+    try {
+      await supabaseFetch(`/billing_periods?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
+      setBillingPeriods(p => p.filter(bp => bp.id !== id));
+      addToast("Período excluído.","info");
+    } catch(err) { addToast(err.message,"error"); }
+  };
+
+  const startEditBp = (bp) => {
+    setBpEditId(bp.id);
+    setBpForm({ card_id:bp.card_id, fatura_month:bp.fatura_month, fatura_year:bp.fatura_year, period_start:bp.period_start, period_end:bp.period_end, due_date:bp.due_date, total_pdf:bp.total_pdf||"" });
+    setShowBpForm(true);
+  };
+
+  const fmtDate = (iso) => { if (!iso) return "—"; const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; };
+  const bpYears = Array.from({length:5},(_,i)=>new Date().getFullYear()-1+i);
+
   return(
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       {cards.map(c=>(
@@ -4282,53 +4353,137 @@ function CardsManager({ t, family, isDemo, addToast }) {
           <Btn t={t} onClick={save} disabled={loading}>{loading?"Salvando...":(editId?"Salvar alterações":"Criar cartão")}</Btn>
         </div>
       </div>
+
+      {/* ── Períodos de Fatura ── */}
+      {!isDemo && cards.length > 0 && (
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:8,borderTop:`1px solid ${t.border}`}}>
+            <span style={{fontSize:13,fontWeight:700,color:t.text}}>📅 Períodos de Fatura</span>
+            {!showBpForm && <button onClick={()=>setShowBpForm(true)} style={{fontSize:12,fontWeight:600,color:t.accent,background:"transparent",border:`1px solid ${t.accent}44`,borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>+ Adicionar</button>}
+          </div>
+          {billingPeriods.length === 0 && !showBpForm && (
+            <div style={{fontSize:12,color:t.textMuted,padding:"10px 0"}}>Nenhum período cadastrado. Adicione para que o gráfico de faturas reflita exatamente o extrato do banco.</div>
+          )}
+          {billingPeriods.map(bp => {
+            const card = cards.find(c => c.id === bp.card_id);
+            return (
+              <div key={bp.id} style={{padding:"10px 14px",borderRadius:12,background:t.surface,border:`1px solid ${t.border}`,display:"flex",alignItems:"center",gap:10}}>
+                {card && <span style={{width:8,height:8,borderRadius:"50%",background:card.color,flexShrink:0}}/>}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:t.text}}>{MONTH_FULL[(bp.fatura_month||1)-1]} {bp.fatura_year}</div>
+                  <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{fmtDate(bp.period_start)} → {fmtDate(bp.period_end)} · Vence {fmtDate(bp.due_date)}{bp.total_pdf?` · R$ ${Number(bp.total_pdf).toLocaleString("pt-BR",{minimumFractionDigits:2})}`:""}</div>
+                </div>
+                <div style={{display:"flex",gap:4,flexShrink:0}}>
+                  <button onClick={()=>startEditBp(bp)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:12,padding:"3px 5px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
+                  <button onClick={()=>delBp(bp.id)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:12,padding:"3px 5px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.danger} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+          {showBpForm && (
+            <div style={{padding:16,borderRadius:14,background:t.surface,border:`1px solid ${t.border}`}}>
+              <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>{bpEditId?"Editar período":"Novo período de fatura"}</div>
+              <div style={{marginBottom:14}}>
+                <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>Cartão</label>
+                <select value={bpForm.card_id} onChange={e=>sbp("card_id",e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:bpForm.card_id?t.text:t.textMuted,fontSize:13,outline:"none"}}>
+                  <option value="">Selecione o cartão</option>
+                  {cards.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:4}}>
+                <div>
+                  <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>Mês da fatura</label>
+                  <select value={bpForm.fatura_month} onChange={e=>sbp("fatura_month",parseInt(e.target.value))} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none"}}>
+                    {MONTH_FULL.map((mn,i)=><option key={i+1} value={i+1}>{mn}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>Ano da fatura</label>
+                  <select value={bpForm.fatura_year} onChange={e=>sbp("fatura_year",parseInt(e.target.value))} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none"}}>
+                    {bpYears.map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <DateInput label="Início do período" t={t} value={bpForm.period_start} onChange={v=>sbp("period_start",v)} />
+                <DateInput label="Fim do período" t={t} value={bpForm.period_end} onChange={v=>sbp("period_end",v)} />
+              </div>
+              <DateInput label="Data de vencimento" t={t} value={bpForm.due_date} onChange={v=>sbp("due_date",v)} />
+              <Input label="Total do extrato PDF (opcional)" t={t} type="number" value={bpForm.total_pdf} onChange={e=>sbp("total_pdf",e.target.value)} placeholder="Ex: 1250.00" />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Btn t={t} variant="ghost" onClick={resetBpForm}>Cancelar</Btn>
+                <Btn t={t} onClick={saveBp} disabled={bpLoading}>{bpLoading?"Salvando...":(bpEditId?"Salvar alterações":"Adicionar período")}</Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
-function BillingCard({ expenses, cards, t }) {
-  const curMo = today.getMonth()+1, curYr = today.getFullYear();
+function BillingCard({ expenses, cards, billingPeriods = [], t }) {
+  const todayStr = today.toISOString().slice(0,10);
 
-  const items = useMemo(()=>
-    expenses.filter(e=>{
-      if(e.type!=="credito"||!e.date) return false;
-      const card=cards.find(c=>c.id===e.card_id);
-      const {month,year}=getBillingMonth(e.date,card?.closing_day??28);
-      return month===curMo&&year===curYr;
+  const items = useMemo(() =>
+    expenses.filter(e => {
+      if (e.type !== "credito" || !e.date) return false;
+      const card = cards.find(c => c.id === e.card_id);
+      const cardPeriods = billingPeriods.filter(p => p.card_id === e.card_id);
+      const activePeriod = cardPeriods.find(p => todayStr >= p.period_start && todayStr <= p.period_end);
+      if (activePeriod) return e.date >= activePeriod.period_start && e.date <= activePeriod.period_end;
+      const closingDay = card?.closing_day ?? 28;
+      const curFatura = getBillingMonth(todayStr, [], closingDay);
+      const eFatura   = getBillingMonth(e.date,   [], closingDay);
+      return eFatura && curFatura && eFatura.month === curFatura.month && eFatura.year === curFatura.year;
     })
-  ,[expenses,cards,curMo,curYr]);
+  , [expenses, cards, billingPeriods, todayStr]);
 
-  if(!items.length) return null;
+  if (!items.length) return null;
 
-  const total=items.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  const total = items.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
 
-  // Group by card
-  const byCard={};
-  items.forEach(e=>{
-    const k=e.card_id||"__none__";
-    if(!byCard[k]) byCard[k]={card:cards.find(c=>c.id===e.card_id),total:0,count:0};
-    byCard[k].total+=parseFloat(e.amount)||0;
+  const byCard = {};
+  items.forEach(e => {
+    const k = e.card_id || "__none__";
+    if (!byCard[k]) byCard[k] = { card: cards.find(c => c.id === e.card_id), total:0, count:0 };
+    byCard[k].total += parseFloat(e.amount) || 0;
     byCard[k].count++;
   });
-  const groups=Object.values(byCard);
-  const dueDay=groups.find(g=>g.card)?.card?.due_day??6;
-  const vencMo=curMo===12?1:curMo+1;
-  const vencYr=curMo===12?curYr+1:curYr;
+  const groups = Object.values(byCard);
 
-  return(
+  // Due date: prefer DB period, fallback to card.due_day
+  const firstCard = groups.find(g => g.card)?.card;
+  const firstCardPeriods = billingPeriods.filter(p => p.card_id === firstCard?.id);
+  const activePeriod = firstCardPeriods.find(p => todayStr >= p.period_start && todayStr <= p.period_end);
+  let dueLabel, faturaMo, faturaYr;
+  if (activePeriod) {
+    const [dy, dm, dd] = activePeriod.due_date.split("-");
+    dueLabel = `Vence ${dd}/${dm}/${dy}`;
+    faturaMo = activePeriod.fatura_month;
+    faturaYr = activePeriod.fatura_year;
+  } else {
+    const dueDay = firstCard?.due_day ?? 6;
+    const bm = getBillingMonth(todayStr, [], firstCard?.closing_day ?? 28);
+    faturaMo = bm?.month ?? today.getMonth()+1;
+    faturaYr = bm?.year ?? today.getFullYear();
+    dueLabel = `Vence dia ${dueDay}/${String(faturaMo).padStart(2,"0")}/${faturaYr}`;
+  }
+
+  return (
     <div style={{background:t.glassModal,border:`1px solid ${t.accent}33`,backdropFilter:"blur(16px)",borderRadius:20,padding:20,animation:"fadeInUp 0.3s ease"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
         <h3 style={{margin:0,fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em"}}>💳 Fatura em Aberto</h3>
-        <span style={{fontSize:11,color:t.textMuted,whiteSpace:"nowrap"}}>Vence dia {dueDay}/{String(vencMo).padStart(2,"0")}/{vencYr}</span>
+        <span style={{fontSize:11,color:t.textMuted,whiteSpace:"nowrap"}}>{dueLabel}</span>
       </div>
       <div style={{fontSize:26,fontWeight:800,color:t.accent,marginBottom:groups.length>1?12:8}}>{fmt(total)}</div>
-      {groups.length>1&&(
+      {groups.length>1 && (
         <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-          {groups.map((g,i)=>(
+          {groups.map((g,i) => (
             <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:10,background:t.surface}}>
               <div style={{display:"flex",alignItems:"center",gap:7}}>
-                {g.card&&<span style={{width:8,height:8,borderRadius:"50%",background:g.card.color,display:"inline-block"}}/>}
+                {g.card && <span style={{width:8,height:8,borderRadius:"50%",background:g.card.color,display:"inline-block"}}/>}
                 <span style={{fontSize:12,color:t.text,fontWeight:600}}>{g.card?.name||"Sem cartão"}</span>
               </div>
               <span style={{fontSize:12,fontWeight:700,color:t.accent}}>{fmt(g.total)}</span>
@@ -4336,7 +4491,7 @@ function BillingCard({ expenses, cards, t }) {
           ))}
         </div>
       )}
-      <div style={{fontSize:11,color:t.textMuted}}>{items.length} lançamento{items.length>1?"s":""} · {MONTH_FULL[curMo-1]} {curYr}</div>
+      <div style={{fontSize:11,color:t.textMuted}}>{items.length} lançamento{items.length>1?"s":""} · {MONTH_FULL[faturaMo-1]} {faturaYr}</div>
     </div>
   );
 }
@@ -4354,6 +4509,7 @@ export default function App() {
   const [incomes, setIncomes] = useState([]);
   const [cards, setCards] = useState([]);
   const [recurringRules, setRecurringRules] = useState([]);
+  const [billingPeriods, setBillingPeriods] = useState([]);
   const [showCardsManager, setShowCardsManager] = useState(false);
   const [modal, setModal] = useState(null);
   const [calendarDate, setCalendarDate] = useState(null); // date selected in CalendarView
@@ -4431,13 +4587,14 @@ export default function App() {
   const loadData = useCallback(async () => {
     if (isDemo||!user||!family) return;
     try {
-      const [exp,inc,cds,rec]=await Promise.all([
+      const [exp,inc,cds,rec,bps]=await Promise.all([
         supabaseFetch(`/expenses?family_id=eq.${family.family_id}&select=*&order=date.desc`),
         supabaseFetch(`/incomes?family_id=eq.${family.family_id}&select=*&order=date.desc`),
         supabaseFetch(`/cards?family_id=eq.${family.family_id}&active=eq.true&order=created_at`),
         supabaseFetch(`/recurring_expenses?family_id=eq.${family.family_id}&active=eq.true&select=*`),
+        supabaseFetch(`/billing_periods?family_id=eq.${family.family_id}&order=due_date.asc`),
       ]);
-      setExpenses(exp||[]); setIncomes(inc||[]); setCards(cds||[]); setRecurringRules(rec||[]);
+      setExpenses(exp||[]); setIncomes(inc||[]); setCards(cds||[]); setRecurringRules(rec||[]); setBillingPeriods(bps||[]);
     } catch { addToast("Erro ao carregar dados","error"); }
   }, [user, family, isDemo, addToast]);
 
@@ -4475,7 +4632,7 @@ export default function App() {
 
   const handleLogout=()=>{
     setAuthToken(null); setUser(null); setFamily(null); setProfile(null); setFamilyMembers([]);
-    setExpenses([]); setIncomes([]); setCards([]); setRecurringRules([]);
+    setExpenses([]); setIncomes([]); setCards([]); setRecurringRules([]); setBillingPeriods([]);
     addToast("Saiu com sucesso","info");
   };
 
@@ -4863,7 +5020,7 @@ export default function App() {
                 <SummaryCards expenses={expenses} incomes={incomes} t={t} />
                 <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
-                <BillingCard expenses={expenses} cards={cards} t={t} />
+                <BillingCard expenses={expenses} cards={cards} billingPeriods={billingPeriods} t={t} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                   <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>📊 Últimos 6 meses</h3>
                   <ResponsiveContainer width="100%" height={200}>
@@ -4880,7 +5037,7 @@ export default function App() {
               </div>
             )}
             {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
-            {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} />}
+            {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} billingPeriods={billingPeriods} />}
             {tab==="recurring"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
@@ -4899,7 +5056,7 @@ export default function App() {
                 <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
               </div>
             )}
-            {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} />}
+            {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />}
             {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
           </main>
 
@@ -4976,7 +5133,7 @@ export default function App() {
       </Modal>
 
       <Modal open={showCardsManager} onClose={()=>setShowCardsManager(false)} title="💳 Meus Cartões" t={t} darkMode={darkMode}>
-        {showCardsManager && <CardsManager t={t} family={family} isDemo={isDemo} addToast={addToast} />}
+        {showCardsManager && <CardsManager t={t} family={family} isDemo={isDemo} addToast={addToast} billingPeriods={billingPeriods} setBillingPeriods={setBillingPeriods} />}
       </Modal>
 
       <Toast toasts={toasts} remove={removeToast} />
