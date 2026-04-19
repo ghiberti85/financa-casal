@@ -4717,25 +4717,20 @@ export default function App() {
               </button>
             ))}
           </div>
-          {/* Dark mode toggle */}
-          <div style={{ padding:"8px 12px",borderTop:`1px solid ${t.border}` }}>
-            <button onClick={()=>setDarkMode(!darkMode)}
-              className="sidebar-btn"
-              style={{ width:"100%",height:40,borderRadius:12,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:"0 12px",background:"transparent",color:t.textMuted }}>
-              <span style={{ fontSize:18,flexShrink:0,width:24,textAlign:"center" }}>{darkMode?"☀️":"🌙"}</span>
-              <span className="nav-label" style={{ fontSize:13,fontWeight:500,whiteSpace:"nowrap" }}>{darkMode?"Modo claro":"Modo escuro"}</span>
-            </button>
-          </div>
-          {/* User avatar */}
+          {/* User avatar + name */}
           {!isDemo && user && (
-            <div style={{ position:"relative" }}>
+            <div style={{ position:"relative",padding:"8px 8px 0",borderTop:`1px solid ${t.border}` }}>
               <button onClick={e=>{e.stopPropagation();setShowUserMenu(v=>!v);}} title={profile?.first_name||"Conta"}
-                style={{ width:38,height:38,borderRadius:"50%",border:`2px solid ${t.accent}55`,cursor:"pointer",background:t.accent,color:"#fff",fontSize:14,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center" }}>
-                {(profile?.first_name||"U")[0].toUpperCase()}
+                className="sidebar-btn"
+                style={{ width:"100%",height:44,borderRadius:12,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:"0 12px",background:showUserMenu?t.accentSoft:"transparent",color:t.text }}>
+                <div style={{ width:28,height:28,borderRadius:"50%",background:t.accent,color:"#fff",fontSize:12,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                  {(profile?.first_name||"U")[0].toUpperCase()}
+                </div>
+                <span className="nav-label" style={{ fontSize:13,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{profile?.first_name||"Conta"}</span>
               </button>
               {showUserMenu&&<div onClick={()=>setShowUserMenu(false)} style={{ position:"fixed",inset:0,zIndex:9998 }} />}
               {showUserMenu&&(
-                <div onClick={e=>e.stopPropagation()} style={{ position:"absolute",bottom:"calc(100% + 8px)",left:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:195,boxShadow:t.shadow,zIndex:9999,animation:"fadeInUp 0.15s ease" }}>
+                <div onClick={e=>e.stopPropagation()} style={{ position:"absolute",bottom:"calc(100% + 8px)",left:0,background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:14,padding:8,minWidth:210,boxShadow:t.shadow,zIndex:9999,animation:"fadeInUp 0.15s ease" }}>
                   <div style={{ padding:"8px 12px",borderBottom:`1px solid ${t.border}`,marginBottom:6 }}>
                     <div style={{ fontSize:12,fontWeight:700,color:t.text }}>{profile?.first_name} {profile?.last_name}</div>
                     <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
@@ -4743,6 +4738,8 @@ export default function App() {
                   {[{label:"👤 Meu Perfil",action:()=>{setShowProfile(true);setShowUserMenu(false);}},{label:"👥 Família",action:()=>{setShowInvite(true);setShowUserMenu(false);}},{label:"💳 Cartões",action:()=>{setShowCardsManager(true);setShowUserMenu(false);}}].map(item=>(
                     <button key={item.label} onClick={item.action} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{item.label}</button>
                   ))}
+                  <div style={{ height:1,background:t.border,margin:"6px 0" }} />
+                  <button onClick={()=>{setDarkMode(!darkMode);setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
                   <div style={{ height:1,background:t.border,margin:"6px 0" }} />
                   <button onClick={()=>{handleLogout();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.danger }} onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>🚪 Sair</button>
                 </div>
