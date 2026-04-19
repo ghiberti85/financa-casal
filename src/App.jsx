@@ -1864,27 +1864,15 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     else setAnchorMonth(m => m + 1);
   };
 
-  // Derive unique member labels — prefer familyMembers as authoritative source
+  // Derive unique member labels from actual data — garantia de match exato com user_label salvo
   const memberOptions = useMemo(() => {
-    const seen = new Set();
-    const opts = [];
-    // 1) Names from familyMembers prop (authoritative — shows all members even without transactions)
-    if (familyMembers && familyMembers.length > 0) {
-      familyMembers.forEach(m => {
-        const name = [m.first_name, m.last_name].filter(Boolean).join(" ").trim()
-                  || m.user_label
-                  || m.email
-                  || "";
-        if (name && !seen.has(name)) { seen.add(name); opts.push(name); }
-      });
-    }
-    // 2) Any additional labels found in actual data (handles legacy/imported data)
+    const labels = new Set();
     [...expenses, ...incomes].forEach(item => {
       const lbl = item.user_label?.trim();
-      if (lbl && !seen.has(lbl)) { seen.add(lbl); opts.push(lbl); }
+      if (lbl) labels.add(lbl);
     });
-    return opts.sort();
-  }, [familyMembers, expenses, incomes]);
+    return Array.from(labels).sort();
+  }, [expenses, incomes]);
 
   // ── "all" — items in the selected window ──
   const all = useMemo(() => {
@@ -2195,7 +2183,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               </select>
             )}
             {/* Pessoa */}
-            {(memberOptions.length > 1 || (familyMembers && familyMembers.length > 1)) && (
+            {memberOptions.length > 1 && (
               <select value={memberFilter} onChange={e=>setMemberFilter(e.target.value)}
                 style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 8px", borderRadius:999,
                   fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
