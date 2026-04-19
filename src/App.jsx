@@ -1144,6 +1144,8 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       }
     });
     // Recorrentes no crédito ainda não confirmadas como gasto naquele mês
+    // Projeção é suprimida para billing_periods já fechados (period_end < hoje)
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
     recurringRules.forEach(rule => {
       if (rule.type !== "credito" || !rule.active || rule.amount_type === "variable") return;
       const ruleAmt = parseFloat(rule.amount) || 0;
@@ -1164,6 +1166,11 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         const dateStr = `${targetYr}-${String(targetMo).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
         const bm = getBillingMonth(dateStr, [], 28);
         if (!bm) continue;
+        // Não projetar em períodos já fechados (billing_period cadastrado com period_end < hoje)
+        const matchingPeriod = billingPeriods.find(bp =>
+          bp.fatura_month === bm.month && bp.fatura_year === bm.year
+        );
+        if (matchingPeriod && new Date(matchingPeriod.period_end + "T23:59:59") < todayMidnight) continue;
         const k = `${bm.year}-${bm.month - 1}`;
         if (result[k]) {
           result[k].value += ruleAmt;
