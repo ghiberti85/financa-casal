@@ -1864,12 +1864,27 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     else setAnchorMonth(m => m + 1);
   };
 
-  // Derive unique member labels
+  // Derive unique member labels — prefer familyMembers as authoritative source
   const memberOptions = useMemo(() => {
-    const labels = new Set();
-    [...expenses, ...incomes].forEach(item => { if (item.user_label) labels.add(item.user_label); });
-    return Array.from(labels).sort();
-  }, [expenses, incomes]);
+    const seen = new Set();
+    const opts = [];
+    // 1) Names from familyMembers prop (authoritative — shows all members even without transactions)
+    if (familyMembers && familyMembers.length > 0) {
+      familyMembers.forEach(m => {
+        const name = [m.first_name, m.last_name].filter(Boolean).join(" ").trim()
+                  || m.user_label
+                  || m.email
+                  || "";
+        if (name && !seen.has(name)) { seen.add(name); opts.push(name); }
+      });
+    }
+    // 2) Any additional labels found in actual data (handles legacy/imported data)
+    [...expenses, ...incomes].forEach(item => {
+      const lbl = item.user_label?.trim();
+      if (lbl && !seen.has(lbl)) { seen.add(lbl); opts.push(lbl); }
+    });
+    return opts.sort();
+  }, [familyMembers, expenses, incomes]);
 
   // ── "all" — items in the selected window ──
   const all = useMemo(() => {
@@ -1932,7 +1947,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     if (showDupsOnly && !dupIds.has(item.id)) return false;
     if (paymentFilter!=="all" && item._type==="expense" && item.type!==paymentFilter) return false;
     if (categoryFilter!=="all" && item._type==="expense" && item.category!==categoryFilter) return false;
-    if (memberFilter!=="all" && item.user_label!==memberFilter) return false;
+    if (memberFilter!=="all" && (item.user_label?.trim()||"") !== memberFilter) return false;
     return true;
   }), [all, filter, search, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
 
@@ -2183,7 +2198,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               </select>
             )}
             {/* Pessoa */}
-            {memberOptions.length > 1 && (
+            {(memberOptions.length > 1 || (familyMembers && familyMembers.length > 1)) && (
               <select value={memberFilter} onChange={e=>setMemberFilter(e.target.value)}
                 style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 8px", borderRadius:999,
                   fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
