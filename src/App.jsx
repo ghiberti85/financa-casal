@@ -4628,11 +4628,17 @@ export default function App() {
       .mobile-bottombar{display:none!important;}
       .mobile-fab-sheet{display:none!important;}
       .summary-grid{grid-template-columns:repeat(4,1fr);}
-      .main-content-wrap{margin-left:64px;}
       .main-content{padding-bottom:100px!important;}
     }
-    @media(max-width:900px){
+    @media(min-width:601px) and (max-width:900px){
+      .desktop-sidebar{width:64px!important;}
       .nav-label{display:none!important;}
+      .sidebar-appname{display:none!important;}
+      .main-content-wrap{margin-left:64px!important;}
+    }
+    @media(min-width:901px){
+      .desktop-sidebar{width:210px!important;}
+      .main-content-wrap{margin-left:210px!important;}
     }
   `;
 
@@ -4643,9 +4649,9 @@ export default function App() {
     `}</style>
     <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'DM Sans',sans-serif" }}>
       {/* Skeleton sidebar (desktop) */}
-      <div className="desktop-sidebar" style={{ position:"fixed",left:0,top:0,bottom:0,width:64,background:t.bg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",alignItems:"center",padding:"14px 0",gap:8 }}>
-        <div className="sk" style={{ width:36,height:36,borderRadius:10 }} />
-        {[1,2,3,4,5,6,7].map(i=><div key={i} className="sk" style={{ width:40,height:40,borderRadius:12 }} />)}
+      <div className="desktop-sidebar" style={{ position:"fixed",left:0,top:0,bottom:0,background:t.bg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",alignItems:"flex-start",padding:"14px 0",gap:8 }}>
+        <div className="sk" style={{ width:120,height:28,borderRadius:8,margin:"0 12px 8px" }} />
+        {[1,2,3,4,5,6,7].map(i=><div key={i} className="sk" style={{ width:"80%",height:40,borderRadius:12,margin:"0 8px" }} />)}
       </div>
       {/* Skeleton top header */}
       <div className="main-content-wrap" style={{ marginLeft:0 }}>
@@ -4689,20 +4695,33 @@ export default function App() {
         <div style={{ position:"fixed",width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle, ${t.successSoft} 0%, transparent 70%)`,bottom:50,left:-50,pointerEvents:"none",zIndex:0 }} />
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="desktop-sidebar" style={{ position:"fixed",left:0,top:0,bottom:0,width:64,zIndex:100,display:"flex",flexDirection:"column",alignItems:"center",padding:"14px 0 12px",background:t.bg,borderRight:`1px solid ${t.border}` }}>
-          {/* Logo */}
-          <div style={{ width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,marginBottom:12 }}>💎</div>
+        <aside className="desktop-sidebar" style={{ position:"fixed",left:0,top:0,bottom:0,zIndex:100,display:"flex",flexDirection:"column",alignItems:"stretch",padding:"14px 0 12px",background:t.bg,borderRight:`1px solid ${t.border}`,overflowX:"hidden" }}>
+          {/* App name */}
+          <div style={{ display:"flex",alignItems:"center",gap:8,padding:"0 14px",marginBottom:16,flexShrink:0 }}>
+            <span style={{ fontSize:22,flexShrink:0 }}>💎</span>
+            <span className="sidebar-appname" style={{ fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:14,color:t.text,letterSpacing:"-0.02em",whiteSpace:"nowrap",overflow:"hidden" }}>Finanças Casal</span>
+          </div>
           {/* Nav items */}
-          <div style={{ flex:1,display:"flex",flexDirection:"column",gap:2,width:"100%",alignItems:"center" }}>
+          <div style={{ flex:1,display:"flex",flexDirection:"column",gap:2,width:"100%",paddingBottom:8 }}>
             {tabs.map(tb=>(
               <button key={tb.id} onClick={()=>setTab(tb.id)} title={tb.label}
                 className="sidebar-btn"
-                style={{ width:44,height:44,borderRadius:14,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
+                style={{ width:"100%",height:44,borderRadius:12,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:"0 12px",
                   background:tab===tb.id?t.accentSoft:"transparent",
                   color:tab===tb.id?t.accent:t.textMuted }}>
-                {tb.icon}
+                <span style={{ fontSize:20,flexShrink:0,width:24,textAlign:"center" }}>{tb.icon}</span>
+                <span className="nav-label" style={{ fontSize:13,fontWeight:tab===tb.id?700:500,whiteSpace:"nowrap" }}>{tb.label}</span>
               </button>
             ))}
+          </div>
+          {/* Dark mode toggle */}
+          <div style={{ padding:"8px 12px",borderTop:`1px solid ${t.border}` }}>
+            <button onClick={()=>setDarkMode(!darkMode)}
+              className="sidebar-btn"
+              style={{ width:"100%",height:40,borderRadius:12,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:"0 12px",background:"transparent",color:t.textMuted }}>
+              <span style={{ fontSize:18,flexShrink:0,width:24,textAlign:"center" }}>{darkMode?"☀️":"🌙"}</span>
+              <span className="nav-label" style={{ fontSize:13,fontWeight:500,whiteSpace:"nowrap" }}>{darkMode?"Modo claro":"Modo escuro"}</span>
+            </button>
           </div>
           {/* User avatar */}
           {!isDemo && user && (
@@ -4722,7 +4741,6 @@ export default function App() {
                     <button key={item.label} onClick={item.action} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{item.label}</button>
                   ))}
                   <div style={{ height:1,background:t.border,margin:"6px 0" }} />
-                  <button onClick={()=>{setDarkMode(!darkMode);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
                   <button onClick={()=>{handleLogout();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.danger }} onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>🚪 Sair</button>
                 </div>
               )}
@@ -4790,18 +4808,8 @@ export default function App() {
         <div className="main-content-wrap" style={{ display:"flex",flexDirection:"column",minHeight:"100vh" }}>
 
           {/* ── Desktop top header ── */}
-          <div className="desktop-topbar" style={{ position:"sticky",top:0,height:60,zIndex:50,display:"flex",alignItems:"center",padding:"0 28px",gap:16,background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
-            <h1 style={{ fontSize:19,fontWeight:800,fontFamily:"'Sora',sans-serif",color:t.text,margin:0,flex:1,letterSpacing:"-0.02em" }}>{currentTabLabel}</h1>
-            {/* Cosmetic search */}
-            <div style={{ display:"flex",alignItems:"center",gap:8,height:36,padding:"0 14px",borderRadius:999,background:t.surface,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13,minWidth:200,cursor:"default",userSelect:"none" }}>
-              <span style={{ fontSize:13 }}>🔍</span>
-              <span style={{ flex:1 }}>Buscar ou navegar...</span>
-              <span style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:6,padding:"2px 6px",fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.02em" }}>⌘K</span>
-            </div>
-            <button onClick={()=>setDarkMode(!darkMode)} title={darkMode?"Modo claro":"Modo escuro"}
-              style={{ width:36,height:36,borderRadius:10,border:`1px solid ${t.border}`,background:t.surface,cursor:"pointer",color:t.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-              {darkMode?"☀️":"🌙"}
-            </button>
+          <div className="desktop-topbar" style={{ position:"sticky",top:0,height:60,zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 28px",background:`${t.bg}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}` }}>
+            <h1 style={{ fontSize:19,fontWeight:800,fontFamily:"'Sora',sans-serif",color:t.text,margin:0,letterSpacing:"-0.02em",textAlign:"center" }}>{currentTabLabel}</h1>
           </div>
 
           {/* ── Main content ── */}
