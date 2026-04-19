@@ -28,7 +28,7 @@ Cada membro registra gastos e receitas, visualiza calendário, gráficos e impor
 
 ```
 src/
-  App.jsx     ← aplicação INTEIRA em um único arquivo (~4000 linhas)
+  App.jsx     ← aplicação INTEIRA em um único arquivo (~4924 linhas)
 public/
   favicon.svg
   og-image.svg
@@ -71,24 +71,38 @@ async function supabaseAuth(action, email, password)
 ### Tabelas
 
 ```sql
-families        (id, name, invite_code, created_at)
-family_members  (id, family_id, user_id, role, joined_at)
-               role: 'admin' | 'member'
+families            (id, name, invite_code, created_at)
+family_members      (id, family_id, user_id, role, joined_at)
+                   role: 'admin' | 'member'
 
-expenses        (id, family_id, user_id, description, amount, date,
-                 category, type, parcelas, user_label, created_at)
-               type: 'pix' | 'debit' | 'credit'
-               amount: SEMPRE o valor da PARCELA, nunca o total
-               parcelas: número total de parcelas (null para não-parcelado)
+expenses            (id, family_id, user_id, description, amount, date,
+                     category, type, parcelas, user_label, card_id, created_at)
+                   type: 'pix' | 'debito' | 'credito'
+                   amount: SEMPRE o valor da PARCELA, nunca o total
+                   parcelas: número total de parcelas (null para não-parcelado)
+                   card_id: FK para cards (nullable)
 
-incomes         (id, family_id, user_id, description, amount, date,
-                 source, category, user_label, created_at)
+incomes             (id, family_id, user_id, description, amount, date,
+                     source, category, user_label, created_at)
 
-profiles        (id, first_name, last_name, phone, updated_at)
+profiles            (id, first_name, last_name, phone, updated_at)
 
-budgets         (id, family_id, category, amount, month — YYYY-MM)
-recurring       (id, family_id, user_id, description, amount, category,
-                 day_of_month, active, created_at)
+budgets             (id, family_id, category, amount, month — YYYY-MM)
+
+cards               (id, family_id, name, holder, closing_day, due_day,
+                     color, active, created_at)
+                   closing_day: dia de fechamento da fatura
+                   due_day: dia de vencimento da fatura
+
+recurring_expenses  (id, family_id, user_id, description, amount, category,
+                     type, frequency, day_of_month, month_of_year,
+                     amount_type, active, end_date, created_at)
+                   frequency: 'monthly' | 'weekly' | 'yearly'
+                   amount_type: 'fixed' | 'variable'
+
+recurring_reminders (id, family_id, recurring_id, month, year,
+                     amount, status, expense_id, created_at)
+                   status: 'pending' | 'confirmed' | 'skipped'
 ```
 
 ### Convenção crítica — crédito parcelado
@@ -124,9 +138,11 @@ Importação usa `ON CONFLICT DO NOTHING` — reimportar nunca cria duplicatas.
 ```javascript
 const themes = { light: {...}, dark: {...} }
 // Objeto 't' passado como prop para todos os componentes
-// Contém: text, textMuted, surface, surfaceHover, accent, accentGlow,
-//         accentSoft, border, success, danger, glass, glassModal,
-//         glassBorder, tooltipBg, shadowSm, chartCursorFill
+// Contém: bg, surface, surfaceHover, glass, glassModal, glassBorder,
+//         text, textMuted, textSecondary, accent, accentGlow, accentSoft,
+//         success, successSoft, danger, dangerSoft, warning, warningSoft,
+//         border, shadow, shadowSm, inputBg, tooltipBg,
+//         chartColors, chartCursorFill, innerGlow
 ```
 
 Todos os componentes recebem `t` como prop e usam inline styles.
@@ -139,32 +155,41 @@ Não existe classe CSS — tudo é `style={{ color: t.text }}`.
 | Componente | Descrição |
 |---|---|
 | `App` | Root — auth, estado global, roteamento por tabs |
-| `LoginPage` | Login/cadastro + fluxo de perfil e família |
+| `LoginPage` | Login/cadastro + fluxo de perfil e família (3 etapas) |
+| `LoginCard` | Wrapper visual do card de login (subcomponente) |
+| `LoginLogo` | Logo + título da tela de login (subcomponente) |
 | `SummaryCards` | Cards: Receitas, Gastos, Saldo, Parcelas Futuras |
 | `CalendarView` | Calendário mensal com indicadores e painel de detalhes |
+| `CalendarPickerModal` | Seletor de data customizado (sem input[type=date] nativo) |
+| `DateInput` | Input de data que abre CalendarPickerModal |
 | `ChartsView` | Gráficos: receitas×gastos, donut categorias, linha parcelas |
 | `TransactionsList` | Lista com filtros, seleção em massa, duplicatas |
 | `ImportView` | Upload CSV/XLSX/PDF + preview + detecção de duplicatas |
-| `ExpenseForm` | Gasto: PIX/Débito/Crédito parcelado |
+| `ExpenseForm` | Gasto: PIX/Débito/Crédito parcelado + opção recorrente |
 | `IncomeForm` | Receita: descrição, quem recebeu, categoria, valor, data |
 | `EditModal` | Edição de gasto ou receita existente |
 | `BudgetView` | Orçamento por categoria com barra de progresso |
-| `RecurringView` | Gastos recorrentes (aluguel, assinaturas) |
+| `BudgetAlertCard` | Alerta no dashboard quando orçamento > 80% |
+| `RecurringView` | Lembretes mensais e confirmação de pagamentos |
+| `RecurringForm` | Cadastro/edição de regra recorrente |
+| `RecurringAlertCard` | Alerta de gastos recorrentes pendentes no dashboard |
+| `CardsManager` | CRUD de cartões de crédito (nome, titular, fechamento, vencimento) |
+| `BillingCard` | Card no dashboard com total da fatura do mês atual por cartão |
 | `FamilyModal` | Código de convite, membros, papéis |
 | `ProfileModal` | Edição de perfil com telefone e DDI |
 | `MemberSelect` | Dropdown de membros da família |
 | `Modal` | Wrapper de modal reutilizável |
-| `Btn` | Botão com variantes (accent, success, danger) |
+| `Input` | Input estilizado com label e foco no tema |
+| `Select` | Select estilizado com label e tema |
+| `Btn` | Botão com variantes: primary, ghost, danger, success |
 | `Toast` | Sistema de notificações temporárias |
-| `BudgetAlertCard` | Alerta no dashboard quando orçamento > 80% |
-| `RecurringAlertCard` | Alerta de gastos recorrentes no dashboard |
 
 ---
 
 ## Tabs da Aplicação
 
 ```
-dashboard    → SummaryCards + gráfico 6 meses + alertas
+dashboard    → SummaryCards + BillingCard + alertas + gráfico 6 meses
 calendar     → CalendarView
 charts       → ChartsView (receitas×gastos, categorias, parcelas)
 budget       → BudgetView (orçamento por categoria)
@@ -173,7 +198,20 @@ transactions → TransactionsList
 import       → ImportView
 ```
 
-FAB (botões flutuantes) com "+ Gasto" e "+ Receita" visíveis em todas as tabs exceto `import`.
+### Layout de Navegação
+
+**Desktop (≥ 601px):**
+- Sidebar rail fixa de 64px na esquerda com todos os 7 tabs como ícones
+- Topbar horizontal sticky com título da aba atual, busca cosmética e toggle de tema
+- FABs fixos no canto inferior direito: "+ Receita" e "+ Gasto"
+- User avatar no rodapé da sidebar → menu dropdown (Perfil, Família, Cartões, Tema, Sair)
+
+**Mobile (≤ 600px):**
+- Topbar fixa (56px + safe-area-inset-top) com logo, badge DEMO e botão `···` (drawer)
+- Bottom bar fixa com 4 abas primárias (`dashboard`, `calendar`, `charts`, `recurring`) + botão FAB central ("+")
+- Abas secundárias (`budget`, `transactions`, `import`) acessíveis via drawer lateral direito
+- FAB central abre sheet com "➕ Gasto" e "💚 Receita"
+- `env(safe-area-inset-bottom)` garante que a bottom bar não fique atrás do home indicator do iPhone
 
 ---
 
@@ -227,11 +265,40 @@ if (isDemo) {
 ## Categorias de Gastos
 
 ```javascript
-const EXPENSE_CATEGORIES = [
-  "Alimentação", "Transporte", "Moradia", "Saúde", "Educação",
-  "Lazer", "Roupas", "Tecnologia", "Viagem", "Pets",
-  "Assinaturas", "Presente", "Beleza", "Outros"
-]
+const CATEGORIES = [
+  { id: "alimentacao", label: "Alimentação",  emoji: "🍽️" },
+  { id: "supermercado",label: "Supermercado", emoji: "🛒" },
+  { id: "moradia",     label: "Moradia",      emoji: "🏠" },
+  { id: "transporte",  label: "Transporte",   emoji: "🚗" },
+  { id: "saude",       label: "Saúde",        emoji: "💊" },
+  { id: "farmacia",    label: "Farmácia",     emoji: "💉" },
+  { id: "filho",       label: "Filho",        emoji: "👶" },
+  { id: "educacao",    label: "Educação",     emoji: "📚" },
+  { id: "beleza",      label: "Beleza",       emoji: "💅" },
+  { id: "vestuario",   label: "Vestuário",    emoji: "👕" },
+  { id: "lazer",       label: "Lazer",        emoji: "🎬" },
+  { id: "assinaturas", label: "Assinaturas",  emoji: "📱" },
+  { id: "presentes",   label: "Presentes",    emoji: "🎁" },
+  { id: "tecnologia",  label: "Tecnologia",   emoji: "💻" },
+  { id: "outros",      label: "Outros",       emoji: "📦" },
+];
+
+const INCOME_SOURCES = [
+  { id: "salario",     label: "Salário",      emoji: "💼" },
+  { id: "freelance",   label: "Freelance",    emoji: "💡" },
+  { id: "investimento",label: "Investimento", emoji: "📈" },
+  { id: "aluguel",     label: "Aluguel",      emoji: "🏘️" },
+  { id: "outros",      label: "Outros",       emoji: "💰" },
+];
+```
+
+## Utilitário de Mês de Fatura
+
+```javascript
+// Retorna { month, year } da fatura correspondente a uma data de compra
+// Compra ≤ closingDay → fatura do mesmo mês; > closingDay → fatura do próximo mês
+// Usado apenas para crédito; PIX e débito usam sempre e.date original
+function getBillingMonth(dateStr, closingDay = 28)
 ```
 
 ---

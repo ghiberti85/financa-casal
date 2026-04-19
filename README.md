@@ -137,13 +137,20 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 - Para crédito parcelado: exibe o valor da parcela e calcula o total automaticamente
 - Após salvar, re-busca o registro do banco para garantir sincronização perfeita
 
+### 💳 Cartões de Crédito
+- Cadastro de múltiplos cartões com nome, titular, dia de fechamento e dia de vencimento
+- Cor customizável por cartão para fácil identificação
+- Ao registrar um gasto de crédito, selecionar o cartão (opcional)
+- **BillingCard no Dashboard** — exibe o total da fatura do mês atual agrupado por cartão, com data de vencimento
+
 ### 📱 PWA / Mobile
 - Instalável na tela inicial do iPhone e Android
-- **Barra de navegação inferior fixa** com todos os 7 tabs: Início, Agenda, Gráficos, Orçamento, Recorr., Lançam., Importar
-- `env(safe-area-inset-bottom)` — botões não ficam atrás do indicador home do iPhone
-- `env(safe-area-inset-top)` — conteúdo não conflita com a status bar do iOS no modo standalone
-- Barra superior simplificada no mobile: logo, modo escuro, perfil e família
-- Botões FAB (+ Gasto / + Receita) reposicionados acima da barra inferior no mobile
+- **Bottom bar com 4 abas primárias** (Início, Agenda, Gráficos, Recorrentes) + botão FAB central
+- **Drawer lateral** para abas secundárias (Orçamento, Lançamentos, Importar)
+- **Desktop sidebar rail** de 64px com todos os 7 tabs como ícones + avatar de usuário
+- `env(safe-area-inset-bottom)` — bottom bar não fica atrás do home indicator do iPhone
+- `env(safe-area-inset-top)` — topbar não conflita com a status bar do iOS no modo standalone
+- Botão de sair do modo Demo visível tanto no sidebar desktop quanto no drawer mobile
 
 ---
 
@@ -216,9 +223,10 @@ family_members      -- id, family_id, user_id, role, joined_at
                     --   role: 'admin' | 'member'
 
 expenses            -- id, family_id, user_id, description, amount, date,
-                    --   category, type, parcelas, user_label, created_at
-                    --   type: 'pix' | 'debit' | 'credit'
+                    --   category, type, parcelas, user_label, card_id, created_at
+                    --   type: 'pix' | 'debito' | 'credito'
                     --   amount: SEMPRE o valor da parcela, nunca o total
+                    --   card_id: FK para cards (nullable)
 
 incomes             -- id, family_id, user_id, description, amount, date,
                     --   source, category, user_label, created_at
@@ -227,9 +235,13 @@ profiles            -- id, first_name, last_name, phone, updated_at
 
 budgets             -- id, family_id, category, amount, month (YYYY-MM)
 
+cards               -- id, family_id, name, holder, closing_day, due_day,
+                    --   color, active, created_at
+
 recurring_expenses  -- id, family_id, user_id, description, amount, category,
                     --   type, frequency, day_of_month, month_of_year,
                     --   amount_type, active, end_date, created_at
+                    --   frequency: 'monthly' | 'weekly' | 'yearly'
 
 recurring_reminders -- id, family_id, recurring_id, month, year,
                     --   amount, status, expense_id, created_at
@@ -358,7 +370,7 @@ Configure as mesmas variáveis do `.env.local` em:
 ```
 financa-casal/
 ├── src/
-│   └── App.jsx          # Aplicação completa (~4000 linhas)
+│   └── App.jsx          # Aplicação completa (~4924 linhas)
 ├── public/
 │   ├── favicon.svg      # Ícone diamante roxo
 │   └── og-image.svg     # Imagem Open Graph (1200×630)
@@ -378,12 +390,16 @@ financa-casal/
 | `LoginPage` | Login/cadastro com fluxo de perfil e família (3 etapas) |
 | `SummaryCards` | Cards: Receitas, Gastos, Saldo, Parcelas Futuras |
 | `CalendarView` | Calendário mensal com indicadores e painel de detalhes |
+| `CalendarPickerModal` | Seletor de data customizado (sem input[type=date] nativo) |
+| `DateInput` | Input de data que abre CalendarPickerModal |
 | `ChartsView` | Receitas×Gastos, donut por categoria (clicável) e linha de parcelas |
 | `BudgetView` | Orçamento por categoria com barras de progresso |
 | `BudgetAlertCard` | Alerta no Dashboard quando categoria > 80% do orçamento |
 | `RecurringView` | Lembretes mensais, confirmação de pagamentos e lista de regras |
 | `RecurringForm` | Cadastro/edição de regra recorrente |
 | `RecurringAlertCard` | Alerta no Dashboard com pagamentos recorrentes pendentes |
+| `CardsManager` | CRUD de cartões de crédito (nome, titular, fechamento, vencimento) |
+| `BillingCard` | Resumo da fatura atual no Dashboard, agrupado por cartão |
 | `TransactionsList` | Lançamentos com filtros, seleção em massa e duplicatas |
 | `ImportView` | Upload CSV/XLSX/PDF, preview e detecção de duplicatas |
 | `ExpenseForm` | Gasto: PIX/Débito/Crédito parcelado + opção recorrente |
@@ -393,6 +409,7 @@ financa-casal/
 | `ProfileModal` | Edição de perfil com telefone e DDI |
 | `MemberSelect` | Dropdown de membros da família |
 | `Modal` | Wrapper de modal reutilizável com backdrop e animação |
+| `Input` / `Select` | Inputs estilizados com label e tema |
 | `Btn` | Botão com variantes: primary, ghost, danger, success |
 | `Toast` | Sistema de notificações temporárias (success/error/info) |
 
