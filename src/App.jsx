@@ -248,6 +248,15 @@ function getBillingMonth(dateStr, closingDay = 28) {
   if (day <= closingDay) return { month, year };
   return month === 12 ? { month: 1, year: year + 1 } : { month: month + 1, year };
 }
+// Retorna o mês em que o pagamento é devido (fechamento + 1 quando vencimento < fechamento, que é o padrão de cartões BR)
+function getBillingDueMonth(dateStr, closingDay = 28, dueDay = 5) {
+  const bm = getBillingMonth(dateStr, closingDay);
+  if ((dueDay ?? 5) < (closingDay ?? 28)) {
+    if (bm.month === 12) return { month: 1, year: bm.year + 1 };
+    return { month: bm.month + 1, year: bm.year };
+  }
+  return bm;
+}
 
 // ─── DEMO DATA ────────────────────────────────────────────────────────────────
 const today = new Date();
@@ -1037,7 +1046,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 }
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
-function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers, cards = [] }) {
+function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers, cards = [], recurringRules = [] }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
@@ -1102,19 +1111,22 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
   }, [expenses, selectedYear, selectedMonth]);
 
-  // ── Billing chart: all credit expenses grouped by billing month (12 months from today) ──
+  // ── Billing chart: crédito (compras + parcelas + recorrentes) → mês de VENCIMENTO (fechamento+1) ──
   const billingChartData = useMemo(() => {
     const result = {};
     for (let i=0;i<12;i++) {
       const d=new Date(today.getFullYear(), today.getMonth()+i, 1);
       result[`${d.getFullYear()}-${d.getMonth()}`]={ name:`${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value:0, items:[], yr:d.getFullYear(), mo:d.getMonth() };
     }
+    // Compras e parcelas confirmadas → mês de vencimento do cartão
     expenses.forEach(e => {
       if (e.type !== "credito" || !e.date) return;
       const p = parseInt(e.parcelas) || 1;
       const iv = parseFloat(e.amount) || 0;
       const card = cards.find(c => c.id === e.card_id);
-      const bm = getBillingMonth(e.date, card?.closing_day ?? 28);
+      const closingDay = card?.closing_day ?? 28;
+      const dueDay = card?.due_day ?? 5;
+      const bm = getBillingDueMonth(e.date, closingDay, dueDay);
       const baseYr = bm.year, baseMo = bm.month - 1;
       for (let i=0; i<p; i++) {
         const mo = (baseMo + i) % 12;
@@ -1123,8 +1135,36 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         if (result[k]) { result[k].value += iv; result[k].items.push({ ...e, _installNum: i+1, _installTotal: p }); }
       }
     });
+    // Recorrentes no crédito ainda não confirmadas como gasto naquele mês
+    recurringRules.forEach(rule => {
+      if (rule.type !== "credito" || !rule.active || rule.amount_type === "variable") return;
+      const ruleAmt = parseFloat(rule.amount) || 0;
+      if (ruleAmt <= 0) return;
+      for (let i=0; i<12; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth()+i, 1);
+        const targetYr = d.getFullYear(), targetMo = d.getMonth() + 1; // 1-indexed
+        if (rule.frequency === "yearly" && rule.month_of_year !== targetMo) continue;
+        if (rule.end_date && new Date(rule.end_date + "T12:00:00") < d) continue;
+        // Evita dupla contagem se já confirmada como gasto neste mês
+        const mPrefix = `${targetYr}-${String(targetMo).padStart(2,"0")}`;
+        const alreadyConfirmed = expenses.some(e =>
+          e.type === "credito" &&
+          e.description?.toLowerCase().trim() === rule.description?.toLowerCase().trim() &&
+          e.date?.startsWith(mPrefix)
+        );
+        if (alreadyConfirmed) continue;
+        const day = rule.day_of_month || 1;
+        const dateStr = `${targetYr}-${String(targetMo).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+        const bm = getBillingDueMonth(dateStr, 28, 5);
+        const k = `${bm.year}-${bm.month - 1}`;
+        if (result[k]) {
+          result[k].value += ruleAmt;
+          result[k].items.push({ description:rule.description, amount:ruleAmt, date:dateStr, category:rule.category, type:"credito", parcelas:1, user_label:rule.user_label||"", _installNum:1, _installTotal:1, _isRecurring:true });
+        }
+      }
+    });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, cards]);
+  }, [expenses, cards, recurringRules]);
 
   const CTip = ({ active, payload, label }) => {
     if (!active||!payload?.length) return null;
@@ -1362,21 +1402,25 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                   {md.items.map((e,i) => {
                     const cat = CATEGORIES.find(c=>c.id===e.category);
                     return (
-                      <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.accentSoft,border:`1px solid ${t.accent}22` }}>
+                      <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:e._isRecurring?t.warningSoft:t.accentSoft,border:`1px solid ${e._isRecurring?t.warning+"33":t.accent+"22"}` }}>
                         <span style={{ fontSize:20,flexShrink:0 }}>{cat?.emoji||"💳"}</span>
                         <div style={{ flex:1,minWidth:0 }}>
                           <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.description}</div>
-                          <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>{e.user_label}{e._installTotal>1?` · Parcela ${e._installNum} de ${e._installTotal}`:""} · dia {e.date?.slice(8,10)}</div>
+                          <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
+                            {e._isRecurring ? "🔁 Recorrente" : e.user_label}
+                            {!e._isRecurring && (e._installTotal>1?` · Parcela ${e._installNum} de ${e._installTotal}`:"")}
+                            {` · compra dia ${e.date?.slice(8,10)}`}
+                          </div>
                         </div>
                         <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
-                          <span style={{ fontSize:14,fontWeight:700,color:t.accent }}>{fmt(parseFloat(e.amount)||0)}</span>
-                          {onEditExpense && (
+                          <span style={{ fontSize:14,fontWeight:700,color:e._isRecurring?t.warning:t.accent }}>{fmt(parseFloat(e.amount)||0)}</span>
+                          {!e._isRecurring && onEditExpense && (
                             <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
                               style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                               onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                               onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
                           )}
-                          {onDeleteExpense && (
+                          {!e._isRecurring && onDeleteExpense && (
                             <button onClick={()=>onDeleteExpense(e.id)} title="Remover"
                               style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                               onMouseEnter={ev=>ev.currentTarget.style.color=t.danger}
@@ -4309,6 +4353,7 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
   const [cards, setCards] = useState([]);
+  const [recurringRules, setRecurringRules] = useState([]);
   const [showCardsManager, setShowCardsManager] = useState(false);
   const [modal, setModal] = useState(null);
   const [calendarDate, setCalendarDate] = useState(null); // date selected in CalendarView
@@ -4386,12 +4431,13 @@ export default function App() {
   const loadData = useCallback(async () => {
     if (isDemo||!user||!family) return;
     try {
-      const [exp,inc,cds]=await Promise.all([
+      const [exp,inc,cds,rec]=await Promise.all([
         supabaseFetch(`/expenses?family_id=eq.${family.family_id}&select=*&order=date.desc`),
         supabaseFetch(`/incomes?family_id=eq.${family.family_id}&select=*&order=date.desc`),
         supabaseFetch(`/cards?family_id=eq.${family.family_id}&active=eq.true&order=created_at`),
+        supabaseFetch(`/recurring_expenses?family_id=eq.${family.family_id}&active=eq.true&select=*`),
       ]);
-      setExpenses(exp||[]); setIncomes(inc||[]); setCards(cds||[]);
+      setExpenses(exp||[]); setIncomes(inc||[]); setCards(cds||[]); setRecurringRules(rec||[]);
     } catch { addToast("Erro ao carregar dados","error"); }
   }, [user, family, isDemo, addToast]);
 
@@ -4429,7 +4475,7 @@ export default function App() {
 
   const handleLogout=()=>{
     setAuthToken(null); setUser(null); setFamily(null); setProfile(null); setFamilyMembers([]);
-    setExpenses([]); setIncomes([]); setCards([]);
+    setExpenses([]); setIncomes([]); setCards([]); setRecurringRules([]);
     addToast("Saiu com sucesso","info");
   };
 
@@ -4834,7 +4880,7 @@ export default function App() {
               </div>
             )}
             {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
-            {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} />}
+            {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} />}
             {tab==="recurring"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
