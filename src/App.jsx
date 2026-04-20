@@ -1357,18 +1357,20 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       </Card>
 
       <Card title={`📈 Evolução por Categoria — 6 meses até ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16, marginTop:-8 }}>
+        <p style={{ fontSize:12, color:t.textMuted, marginTop:-12, marginBottom:10 }}>Selecione as categorias que deseja visualizar:</p>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
           {availableCatsEvolution.map(cat => {
             const isActive = activeCatIdsForEvolution.includes(cat.id);
             const color = catColorEvolution(cat.id);
             return (
               <button key={cat.id} onClick={() => toggleCatEvolution(cat.id)}
-                style={{ padding:"4px 11px", borderRadius:20,
-                  border:`1.5px solid ${isActive ? color : t.border}`,
-                  background: isActive ? color+"22" : "transparent",
-                  color: isActive ? color : t.textMuted,
-                  fontSize:12, fontWeight: isActive ? 700 : 400,
-                  cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap", lineHeight:"1.6" }}>
+                style={{ padding:"5px 13px", borderRadius:20,
+                  border:`1.5px solid ${isActive ? color : t.glassBorder}`,
+                  background: isActive ? color+"28" : t.inputBg,
+                  color: isActive ? color : t.textSecondary,
+                  fontSize:12, fontWeight: isActive ? 700 : 500,
+                  cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap", lineHeight:"1.6",
+                  boxShadow: isActive ? `0 0 0 1px ${color}44` : "none" }}>
                 {cat.label}
               </button>
             );
