@@ -1056,6 +1056,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const [selectedBillingMonth, setSelectedBillingMonth] = useState(null);
   const [selectedPieCategory, setSelectedPieCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
+  const [selectedCatIds, setSelectedCatIds] = useState(new Set());
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -1080,35 +1081,59 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
     return { name:MONTHS[mn], Receitas:Math.round(inc), Gastos:Math.round(exp), Saldo:Math.round(inc-exp) };
   }), [expenses, incomes, refYear, refMonth]);
 
-  // ── Category evolution: top 3 categories over 6 months ──
-  const { catEvolutionData, top3Categories } = useMemo(() => {
-    const months6 = Array.from({length:6}, (_,i) => {
+  // ── Category evolution: all categories available in the 6-month window ──
+  const availableCatsEvolution = useMemo(() => {
+    const prefixes = Array.from({length:6}, (_,i) => {
       const d = new Date(refYear, refMonth - 5 + i, 1);
-      const yr = d.getFullYear(), mn = d.getMonth();
-      return { yr, mn, prefix:`${yr}-${String(mn+1).padStart(2,"0")}`, label:MONTHS[mn] };
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
     });
     const totals = {};
     expenses.forEach(e => {
       if (!e.category || !e.date) return;
-      if (!months6.find(m => e.date.startsWith(m.prefix))) return;
+      if (!prefixes.some(p => e.date.startsWith(p))) return;
       totals[e.category] = (totals[e.category] || 0) + (parseFloat(e.amount) || 0);
     });
-    const top3 = Object.entries(totals)
+    return Object.entries(totals)
       .sort((a,b) => b[1] - a[1])
-      .slice(0,3)
-      .map(([id]) => { const cat = CATEGORIES.find(c => c.id === id); return { id, label:`${cat?.emoji||""} ${cat?.label||id}`.trim() }; });
-    const data = months6.map(({prefix, label}) => {
+      .map(([id, total]) => {
+        const cat = CATEGORIES.find(c => c.id === id);
+        return { id, label:`${cat?.emoji||""} ${cat?.label||id}`.trim(), total };
+      });
+  }, [expenses, refYear, refMonth]);
+
+  const activeCatIdsForEvolution = useMemo(() => {
+    const valid = availableCatsEvolution.map(c => c.id);
+    const filtered = [...selectedCatIds].filter(id => valid.includes(id));
+    return filtered.length > 0 ? filtered : valid.slice(0, 2);
+  }, [selectedCatIds, availableCatsEvolution]);
+
+  const catEvolutionData = useMemo(() => {
+    const months6 = Array.from({length:6}, (_,i) => {
+      const d = new Date(refYear, refMonth - 5 + i, 1);
+      const yr = d.getFullYear(), mn = d.getMonth();
+      return { prefix:`${yr}-${String(mn+1).padStart(2,"0")}`, label:MONTHS[mn] };
+    });
+    return months6.map(({prefix, label}) => {
       const row = { name: label };
-      top3.forEach(cat => {
+      activeCatIdsForEvolution.forEach(id => {
+        const cat = availableCatsEvolution.find(c => c.id === id);
+        if (!cat) return;
         row[cat.label] = Math.round(
-          expenses.filter(e => e.category===cat.id && e.date?.startsWith(prefix))
+          expenses.filter(e => e.category===id && e.date?.startsWith(prefix))
             .reduce((s,e) => s + (parseFloat(e.amount)||0), 0)
         );
       });
       return row;
     });
-    return { catEvolutionData: data, top3Categories: top3 };
-  }, [expenses, refYear, refMonth]);
+  }, [expenses, activeCatIdsForEvolution, availableCatsEvolution, refYear, refMonth]);
+
+  const toggleCatEvolution = (id) => setSelectedCatIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const catColorEvolution = (id) => t.chartColors[CATEGORIES.findIndex(c => c.id === id) % t.chartColors.length];
 
   // ── Pie: filtered by selected period (always by purchase date) ──
   const pieData = useMemo(() => {
@@ -1332,6 +1357,23 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
       </Card>
 
       <Card title={`📈 Evolução por Categoria — 6 meses até ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16, marginTop:-8 }}>
+          {availableCatsEvolution.map(cat => {
+            const isActive = activeCatIdsForEvolution.includes(cat.id);
+            const color = catColorEvolution(cat.id);
+            return (
+              <button key={cat.id} onClick={() => toggleCatEvolution(cat.id)}
+                style={{ padding:"4px 11px", borderRadius:20,
+                  border:`1.5px solid ${isActive ? color : t.border}`,
+                  background: isActive ? color+"22" : "transparent",
+                  color: isActive ? color : t.textMuted,
+                  fontSize:12, fontWeight: isActive ? 700 : 400,
+                  cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap", lineHeight:"1.6" }}>
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={catEvolutionData}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
@@ -1339,12 +1381,16 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted, fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ stroke:t.accent, strokeWidth:1, strokeDasharray:"4 4" }} />
             <Legend wrapperStyle={{ fontSize:13, color:t.textSecondary }} />
-            {top3Categories.map((cat, i) => (
-              <Line key={cat.id} type="monotone" dataKey={cat.label}
-                stroke={t.chartColors[i % t.chartColors.length]} strokeWidth={2.5}
-                dot={{ fill:t.chartColors[i % t.chartColors.length], r:4 }}
-                activeDot={{ r:6 }} />
-            ))}
+            {activeCatIdsForEvolution.map(id => {
+              const cat = availableCatsEvolution.find(c => c.id === id);
+              if (!cat) return null;
+              const color = catColorEvolution(id);
+              return (
+                <Line key={id} type="monotone" dataKey={cat.label}
+                  stroke={color} strokeWidth={2.5}
+                  dot={{ fill:color, r:4 }} activeDot={{ r:6 }} />
+              );
+            })}
           </LineChart>
         </ResponsiveContainer>
       </Card>
