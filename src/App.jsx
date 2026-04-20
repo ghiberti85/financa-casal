@@ -1208,21 +1208,6 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           {availableYears.map(yr=><option key={yr} value={yr}>{yr}</option>)}
         </select>
       </div>
-      <Card title={`📊 Receitas × Gastos — 6 meses até ${period==="month" ? MONTH_FULL[selectedMonth] : "Dez"}/${selectedYear}`}>
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={barData} barGap={4} barCategoryGap="25%">
-            <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
-            <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
-            <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
-            <Legend wrapperStyle={{ fontSize:13,color:t.textSecondary }} />
-            <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
-            <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
-            <Bar dataKey="Saldo" fill={t.accent} radius={[6,6,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-
       <Card title={`🥧 Gastos por categoria — ${period==="month" ? MONTH_FULL[selectedMonth] : "Ano"} ${selectedYear}`}>
         <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma fatia ou categoria para ver os lançamentos.</p>
         <div style={{ display:"flex",flexWrap:"wrap",gap:24,alignItems:"center" }}>
@@ -1316,7 +1301,22 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         })()}
       </Card>
 
-      <Card title={`💳 Parcelas de Crédito — 12 meses a partir de ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
+      <Card title="📊 Receitas × Gastos — Últimos 6 meses">
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={barData} barGap={4} barCategoryGap="25%">
+            <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
+            <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
+            <Legend wrapperStyle={{ fontSize:13,color:t.textSecondary }} />
+            <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
+            <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
+            <Bar dataKey="Saldo" fill={t.accent} radius={[6,6,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card title="💳 Parcelas de Crédito — Próximos 12 meses">
         <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em um ponto para ver e editar as parcelas daquele mês.</p>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={creditData}>
@@ -1386,7 +1386,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         })()}
       </Card>
 
-      <Card title="💳 Gráfico de Faturas — próximos 12 meses">
+      <Card title="💳 Gráfico de Faturas — Próximos 12 meses">
           <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma barra para ver os lançamentos daquela fatura.</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={billingChartData} barCategoryGap="30%"
