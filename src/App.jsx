@@ -1331,21 +1331,6 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         })()}
       </Card>
 
-      <Card title="📊 Receitas × Gastos — Últimos 6 meses">
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={barData} barGap={4} barCategoryGap="25%">
-            <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
-            <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
-            <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
-            <Legend wrapperStyle={{ fontSize:13,color:t.textSecondary }} />
-            <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
-            <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
-            <Bar dataKey="Saldo" fill={t.accent} radius={[6,6,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-
       <Card title={`📈 Evolução por Categoria — 6 meses até ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={catEvolutionData}>
@@ -1361,6 +1346,21 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                 activeDot={{ r:6 }} />
             ))}
           </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card title="📊 Receitas × Gastos — Últimos 6 meses">
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={barData} barGap={4} barCategoryGap="25%">
+            <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
+            <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
+            <Legend wrapperStyle={{ fontSize:13,color:t.textSecondary }} />
+            <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
+            <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
+            <Bar dataKey="Saldo" fill={t.accent} radius={[6,6,0,0]} />
+          </BarChart>
         </ResponsiveContainer>
       </Card>
 
