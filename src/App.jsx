@@ -1080,6 +1080,36 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
     return { name:MONTHS[mn], Receitas:Math.round(inc), Gastos:Math.round(exp), Saldo:Math.round(inc-exp) };
   }), [expenses, incomes, refYear, refMonth]);
 
+  // ── Category evolution: top 3 categories over 6 months ──
+  const { catEvolutionData, top3Categories } = useMemo(() => {
+    const months6 = Array.from({length:6}, (_,i) => {
+      const d = new Date(refYear, refMonth - 5 + i, 1);
+      const yr = d.getFullYear(), mn = d.getMonth();
+      return { yr, mn, prefix:`${yr}-${String(mn+1).padStart(2,"0")}`, label:MONTHS[mn] };
+    });
+    const totals = {};
+    expenses.forEach(e => {
+      if (!e.category || !e.date) return;
+      if (!months6.find(m => e.date.startsWith(m.prefix))) return;
+      totals[e.category] = (totals[e.category] || 0) + (parseFloat(e.amount) || 0);
+    });
+    const top3 = Object.entries(totals)
+      .sort((a,b) => b[1] - a[1])
+      .slice(0,3)
+      .map(([id]) => { const cat = CATEGORIES.find(c => c.id === id); return { id, label:`${cat?.emoji||""} ${cat?.label||id}`.trim() }; });
+    const data = months6.map(({prefix, label}) => {
+      const row = { name: label };
+      top3.forEach(cat => {
+        row[cat.label] = Math.round(
+          expenses.filter(e => e.category===cat.id && e.date?.startsWith(prefix))
+            .reduce((s,e) => s + (parseFloat(e.amount)||0), 0)
+        );
+      });
+      return row;
+    });
+    return { catEvolutionData: data, top3Categories: top3 };
+  }, [expenses, refYear, refMonth]);
+
   // ── Pie: filtered by selected period (always by purchase date) ──
   const pieData = useMemo(() => {
     const filtered = period==="month"
@@ -1313,6 +1343,24 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
             <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
             <Bar dataKey="Saldo" fill={t.accent} radius={[6,6,0,0]} />
           </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card title={`📈 Evolução por Categoria — 6 meses até ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={catEvolutionData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
+            <XAxis dataKey="name" tick={{ fill:t.textMuted, fontSize:12 }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted, fontSize:11 }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CTip/>} cursor={{ stroke:t.accent, strokeWidth:1, strokeDasharray:"4 4" }} />
+            <Legend wrapperStyle={{ fontSize:13, color:t.textSecondary }} />
+            {top3Categories.map((cat, i) => (
+              <Line key={cat.id} type="monotone" dataKey={cat.label}
+                stroke={t.chartColors[i % t.chartColors.length]} strokeWidth={2.5}
+                dot={{ fill:t.chartColors[i % t.chartColors.length], r:4 }}
+                activeDot={{ r:6 }} />
+            ))}
+          </LineChart>
         </ResponsiveContainer>
       </Card>
 
