@@ -4526,9 +4526,12 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
 }
 
 // ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
-function BillingCard({ expenses, cards, billingPeriods = [], t }) {
+function BillingCard({ expenses, cards, billingPeriods = [], recurringRules = [], t }) {
   // Local date (avoids UTC timezone shift for Brazil UTC-3)
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+
+  // Target fatura for recurring projections — same algo the chart uses (no periods, closing_day=28)
+  const recurringTargetFatura = getBillingMonth(todayStr, [], 28);
 
   const items = useMemo(() =>
     expenses.filter(e => {
@@ -4536,11 +4539,8 @@ function BillingCard({ expenses, cards, billingPeriods = [], t }) {
       const card = cards.find(c => c.id === e.card_id);
       const cardPeriods = billingPeriods.filter(p => p.card_id === e.card_id);
       const closingDay = card?.closing_day ?? 28;
-      // Current fatura month — same getBillingMonth used by the billing chart
       const curFatura = getBillingMonth(todayStr, cardPeriods, closingDay);
       if (!curFatura) return false;
-      // Iterate each installment (same logic as billingChartData) to find if
-      // any installment of this expense lands in the current fatura month
       const p = parseInt(e.parcelas) || 1;
       const [dYr, dMoStr, dDayStr] = e.date.slice(0,10).split("-");
       const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
@@ -4558,9 +4558,44 @@ function BillingCard({ expenses, cards, billingPeriods = [], t }) {
     })
   , [expenses, cards, billingPeriods, todayStr]);
 
-  if (!items.length) return null;
+  // Recurring credit projections for the current fatura — same logic as billingChartData
+  const recurringTotal = useMemo(() => {
+    if (!recurringTargetFatura) return 0;
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+    // Matching period suppression: if the fatura period is already closed, skip
+    const matchingPeriod = billingPeriods.find(bp =>
+      bp.fatura_month === recurringTargetFatura.month && bp.fatura_year === recurringTargetFatura.year
+    );
+    if (matchingPeriod && new Date(matchingPeriod.period_end + "T23:59:59") < todayMidnight) return 0;
+    // Iterate the current month (same starting point as chart's selectedMonth=today.getMonth())
+    const targetYr = today.getFullYear(), targetMo = today.getMonth() + 1;
+    const mPrefix = `${targetYr}-${String(targetMo).padStart(2,"0")}`;
+    let total = 0;
+    recurringRules.forEach(rule => {
+      if (rule.type !== "credito" || !rule.active || rule.amount_type === "variable") return;
+      const ruleAmt = parseFloat(rule.amount) || 0;
+      if (ruleAmt <= 0) return;
+      if (rule.frequency === "yearly" && rule.month_of_year !== targetMo) return;
+      if (rule.end_date && new Date(rule.end_date + "T12:00:00") < new Date(targetYr, targetMo-1, 1)) return;
+      const alreadyConfirmed = expenses.some(e =>
+        e.type === "credito" &&
+        e.description?.toLowerCase().trim() === rule.description?.toLowerCase().trim() &&
+        e.date?.startsWith(mPrefix)
+      );
+      if (alreadyConfirmed) return;
+      const day = rule.day_of_month || 1;
+      const dateStr = `${targetYr}-${String(targetMo).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+      const bm = getBillingMonth(dateStr, [], 28);
+      if (!bm || bm.month !== recurringTargetFatura.month || bm.year !== recurringTargetFatura.year) return;
+      total += ruleAmt;
+    });
+    return total;
+  }, [recurringRules, expenses, billingPeriods, recurringTargetFatura]);
 
-  const total = items.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+  if (!items.length && recurringTotal === 0) return null;
+
+  const realTotal = items.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
+  const total = realTotal + recurringTotal;
 
   const byCard = {};
   items.forEach(e => {
@@ -4575,8 +4610,8 @@ function BillingCard({ expenses, cards, billingPeriods = [], t }) {
   const firstCard = groups.find(g => g.card)?.card;
   const firstCardPeriods = billingPeriods.filter(p => p.card_id === firstCard?.id);
   const curFaturaInfo = getBillingMonth(todayStr, firstCardPeriods, firstCard?.closing_day ?? 28);
-  const faturaMo = curFaturaInfo?.month ?? today.getMonth()+2;
-  const faturaYr = curFaturaInfo?.year ?? today.getFullYear();
+  const faturaMo = curFaturaInfo?.month ?? recurringTargetFatura?.month ?? today.getMonth()+2;
+  const faturaYr = curFaturaInfo?.year ?? recurringTargetFatura?.year ?? today.getFullYear();
 
   // Due date label: prefer DB period due_date, fallback to card.due_day
   const activePeriod = firstCardPeriods.find(p => todayStr >= p.period_start && todayStr <= p.period_end);
@@ -4609,7 +4644,7 @@ function BillingCard({ expenses, cards, billingPeriods = [], t }) {
           ))}
         </div>
       )}
-      <div style={{fontSize:11,color:t.textMuted}}>{items.length} lançamento{items.length>1?"s":""} · {MONTH_FULL[faturaMo-1]} {faturaYr}</div>
+      <div style={{fontSize:11,color:t.textMuted}}>{items.length} lançamento{items.length>1?"s":""}{recurringTotal>0?` + projeções recorrentes`:""} · {MONTH_FULL[faturaMo-1]} {faturaYr}</div>
     </div>
   );
 }
@@ -5141,7 +5176,7 @@ export default function App() {
                 <SummaryCards expenses={expenses} incomes={incomes} t={t} />
                 <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
-                <BillingCard expenses={expenses} cards={cards} billingPeriods={billingPeriods} t={t} />
+                <BillingCard expenses={expenses} cards={cards} billingPeriods={billingPeriods} recurringRules={recurringRules} t={t} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                   <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>📊 Últimos 6 meses</h3>
                   <ResponsiveContainer width="100%" height={200}>
