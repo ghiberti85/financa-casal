@@ -5001,6 +5001,7 @@ export default function App() {
     @media(min-width:901px){
       .desktop-sidebar{width:210px!important;}
       .main-content-wrap{margin-left:210px!important;}
+      .main-content{margin-left:max(0px,calc(50vw - 690px))!important;margin-right:0!important;}
     }
   `;
 
