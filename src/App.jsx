@@ -3446,7 +3446,7 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
 }
 
 // ─── SUMMARY CARDS ────────────────────────────────────────────────────────────
-function SummaryCards({ expenses, incomes, t }) {
+function SummaryCards({ expenses, incomes, t, only = null }) {
   const prefix=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
   // Use monthlyAmount: for credit installments, amount is already the monthly value
   const monthExp=expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
@@ -3477,9 +3477,13 @@ function SummaryCards({ expenses, incomes, t }) {
     { label:"Saldo",value:fmt(balance),color:balance>=0?t.success:t.danger,bg:balance>=0?t.successSoft:t.dangerSoft,border:`${balance>=0?t.success:t.danger}33`,icon:balance>=0?"📈":"📉" },
     { label:"Parcelas Futuras",value:fmt(creditPending),color:t.warning,bg:t.warningSoft,border:`${t.warning}33`,icon:"💳" },
   ];
+  const visibleCards = only ? cards.filter(c => only.includes(c.label)) : cards;
+  const gridClass = only
+    ? (only.length === 3 ? "summary-grid-3" : only.length === 1 ? "summary-grid-1" : "summary-grid")
+    : "summary-grid";
   return (
-    <div className="summary-grid">
-      {cards.map(c=>(
+    <div className={gridClass}>
+      {visibleCards.map(c=>(
         <div key={c.label} style={{ background:c.bg,border:`1px solid ${c.border}`,backdropFilter:"blur(12px)",borderRadius:18,padding:"20px 22px",transition:"transform 0.2s" }}
           onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
           onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}
@@ -4954,6 +4958,9 @@ export default function App() {
     input[type=date]{width:100%!important;max-width:100%!important;box-sizing:border-box!important;text-align:left!important;-webkit-appearance:none!important;appearance:none!important;padding:11px 14px!important;}
     input[type=date]::-webkit-date-and-time-value{text-align:left!important;}
     .summary-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+    .summary-grid-3{display:grid;grid-template-columns:1fr;gap:12px;}
+    .summary-grid-1{display:grid;grid-template-columns:1fr;gap:12px;}
+    .dashboard-row2{display:flex;flex-direction:column;gap:12px;}
     .sidebar-btn{transition:background 0.15s,color 0.15s;}
     .sidebar-btn:hover{background:${t.surfaceHover}!important;color:${t.text}!important;}
     @media(max-width:600px){
@@ -4967,6 +4974,9 @@ export default function App() {
       .mobile-bottombar{display:none!important;}
       .mobile-fab-sheet{display:none!important;}
       .summary-grid{grid-template-columns:repeat(4,1fr);}
+      .summary-grid-3{grid-template-columns:repeat(3,1fr);}
+      .summary-grid-1{grid-template-columns:1fr;}
+      .dashboard-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
       .main-content{padding-bottom:100px!important;}
     }
     @media(min-width:601px) and (max-width:900px){
@@ -5150,10 +5160,13 @@ export default function App() {
                   </h2>
                   <p style={{ color:t.textMuted,fontSize:13 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
                 </div>
-                <SummaryCards expenses={expenses} incomes={incomes} t={t} />
+                <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Receitas do Mês","Gastos do Mês","Saldo"]} />
+                <div className="dashboard-row2">
+                  <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} />
+                  <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Parcelas Futuras"]} />
+                </div>
                 <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
-                <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                   <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>📊 Últimos 6 meses</h3>
                   <ResponsiveContainer width="100%" height={200}>
