@@ -3454,28 +3454,36 @@ function SummaryCards({ expenses, incomes, t, only = null }) {
   const balance=monthInc-monthExp;
   // Parcelas futuras: amount = valor de cada parcela, parcelas = total de parcelas
   // Calcular quantas parcelas ainda faltam (a partir do mês atual inclusive)
-  const creditPending = (() => {
+  const { creditPending, lastInstallmentDate } = (() => {
     const nowYr = today.getFullYear(), nowMo = today.getMonth();
-    return expenses.reduce((sum, e) => {
+    let total = 0, lastDate = null;
+    expenses.forEach(e => {
       const p = parseInt(e.parcelas) || 1;
-      // Defensive: trim and lowercase to avoid type mismatch
-      if ((e.type||"").trim().toLowerCase() !== "credito" || p <= 1) return sum;
+      if ((e.type||"").trim().toLowerCase() !== "credito" || p <= 1) return;
       const installment = parseFloat(e.amount) || 0;
-      if (!e.date || installment <= 0) return sum;
+      if (!e.date || installment <= 0) return;
       const parts = e.date.slice(0,7).split("-");
       const startYr = parseInt(parts[0]), startMo = parseInt(parts[1]) - 1;
-      // How many installments have already been charged (months before current month)
       const elapsed = (nowYr - startYr) * 12 + (nowMo - startMo);
-      // Remaining = installments not yet paid (current month onward)
       const remaining = Math.max(0, p - elapsed);
-      return sum + installment * remaining;
-    }, 0);
+      total += installment * remaining;
+      const lastMoTotal = startMo + (p - 1);
+      const lastYr = startYr + Math.floor(lastMoTotal / 12);
+      const lastMo = lastMoTotal % 12;
+      const lastDay = parseInt(e.date.slice(8, 10)) || 1;
+      const candidate = new Date(lastYr, lastMo, lastDay);
+      if (!lastDate || candidate > lastDate) lastDate = candidate;
+    });
+    return { creditPending: total, lastInstallmentDate: lastDate };
   })();
+  const lastInstallmentLabel = lastInstallmentDate
+    ? `Última parcela em ${String(lastInstallmentDate.getDate()).padStart(2,'0')}/${String(lastInstallmentDate.getMonth()+1).padStart(2,'0')}/${lastInstallmentDate.getFullYear()}`
+    : null;
   const cards=[
     { label:"Receitas do Mês",value:fmt(monthInc),color:t.success,bg:t.successSoft,border:`${t.success}33`,icon:"💰" },
     { label:"Gastos do Mês",value:fmt(monthExp),color:t.danger,bg:t.dangerSoft,border:`${t.danger}33`,icon:"💸" },
     { label:"Saldo",value:fmt(balance),color:balance>=0?t.success:t.danger,bg:balance>=0?t.successSoft:t.dangerSoft,border:`${balance>=0?t.success:t.danger}33`,icon:balance>=0?"📈":"📉" },
-    { label:"Parcelas Futuras",value:fmt(creditPending),color:t.warning,bg:t.warningSoft,border:`${t.warning}33`,icon:"💳" },
+    { label:"Parcelas Futuras",value:fmt(creditPending),color:t.warning,bg:t.warningSoft,border:`${t.warning}33`,icon:"💳",subtitle:lastInstallmentLabel },
   ];
   const visibleCards = only ? cards.filter(c => only.includes(c.label)) : cards;
   const gridClass = only
@@ -3489,7 +3497,8 @@ function SummaryCards({ expenses, incomes, t, only = null }) {
           onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}
         >
           <div style={{ fontSize:26,marginBottom:10 }}>{c.icon}</div>
-          <div style={{ fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:6,textTransform:"uppercase" }}>{c.label}</div>
+          <div style={{ fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:4,textTransform:"uppercase" }}>{c.label}</div>
+          {c.subtitle && <div style={{ fontSize:11,color:t.textMuted,marginBottom:6 }}>{c.subtitle}</div>}
           <div style={{ fontSize:22,fontWeight:800,color:c.color,letterSpacing:"-0.02em" }}>{c.value}</div>
         </div>
       ))}
