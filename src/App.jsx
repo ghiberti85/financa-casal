@@ -1356,7 +1356,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
         })()}
       </Card>
 
-      <Card title={`📈 Evolução por Categoria — 6 meses até ${MONTH_FULL[selectedMonth]}/${selectedYear}`}>
+      <Card title="📈 Gastos por Categoria — Últimos 6 meses">
         <p style={{ fontSize:12, color:t.textMuted, marginTop:-12, marginBottom:10 }}>Selecione as categorias que deseja visualizar:</p>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
           {availableCatsEvolution.map(cat => {
@@ -4566,8 +4566,7 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t }) {
         <h3 style={{margin:"0 0 4px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em"}}>💳 Fatura em Aberto</h3>
         <span style={{fontSize:11,color:t.textMuted}}>{dueLabel}</span>
       </div>
-      <div style={{fontSize:26,fontWeight:800,color:t.accent,marginBottom:8,textAlign:"center"}}>{fmt(total)}</div>
-      <div style={{fontSize:11,color:t.textMuted,textAlign:"center"}}>{MONTH_FULL[faturaMo-1]} {faturaYr}</div>
+      <div style={{fontSize:26,fontWeight:800,color:t.accent,textAlign:"center"}}>{fmt(total)}</div>
     </div>
   );
 }
