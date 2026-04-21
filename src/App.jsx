@@ -4527,7 +4527,7 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
 
 // ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
 function BillingCard({ expenses, cards, billingPeriods = [], t }) {
-  // Use local date to avoid UTC shift (Brazil UTC-3 at 11 PM would otherwise show tomorrow)
+  // Local date (avoids UTC timezone shift for Brazil UTC-3)
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
   const items = useMemo(() =>
@@ -4535,23 +4535,26 @@ function BillingCard({ expenses, cards, billingPeriods = [], t }) {
       if (e.type !== "credito" || !e.date) return false;
       const card = cards.find(c => c.id === e.card_id);
       const cardPeriods = billingPeriods.filter(p => p.card_id === e.card_id);
-
-      // 1. Active period: today falls within a registered period → use its boundaries
-      const activePeriod = cardPeriods.find(p => todayStr >= p.period_start && todayStr <= p.period_end);
-      if (activePeriod) return e.date >= activePeriod.period_start && e.date <= activePeriod.period_end;
-
-      // 2. Periods registered but none active (e.g. current cycle not yet registered):
-      //    show expenses after the last registered period ended = accumulating for next bill
-      if (cardPeriods.length > 0) {
-        const lastPeriod = cardPeriods.reduce((a,b) => a.period_end >= b.period_end ? a : b);
-        return e.date > lastPeriod.period_end;
-      }
-
-      // 3. No periods at all: algorithmic fallback via closing_day
       const closingDay = card?.closing_day ?? 28;
-      const curFatura = getBillingMonth(todayStr, [], closingDay);
-      const eFatura   = getBillingMonth(e.date,   [], closingDay);
-      return eFatura && curFatura && eFatura.month === curFatura.month && eFatura.year === curFatura.year;
+      // Current fatura month — same getBillingMonth used by the billing chart
+      const curFatura = getBillingMonth(todayStr, cardPeriods, closingDay);
+      if (!curFatura) return false;
+      // Iterate each installment (same logic as billingChartData) to find if
+      // any installment of this expense lands in the current fatura month
+      const p = parseInt(e.parcelas) || 1;
+      const [dYr, dMoStr, dDayStr] = e.date.slice(0,10).split("-");
+      const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
+      for (let i = 0; i < p; i++) {
+        const totalMo = purMo + i;
+        const instMo  = totalMo % 12;
+        const instYr  = purYr + Math.floor(totalMo / 12);
+        const maxDay  = new Date(instYr, instMo + 1, 0).getDate();
+        const instDay = Math.min(purDay, maxDay);
+        const instDate = `${instYr}-${String(instMo+1).padStart(2,"0")}-${String(instDay).padStart(2,"0")}`;
+        const bm = getBillingMonth(instDate, cardPeriods, closingDay);
+        if (bm && bm.month === curFatura.month && bm.year === curFatura.year) return true;
+      }
+      return false;
     })
   , [expenses, cards, billingPeriods, todayStr]);
 
@@ -4568,21 +4571,21 @@ function BillingCard({ expenses, cards, billingPeriods = [], t }) {
   });
   const groups = Object.values(byCard);
 
-  // Due date: prefer DB period, fallback to card.due_day
+  // Fatura info — use getBillingMonth (same as chart) so label matches
   const firstCard = groups.find(g => g.card)?.card;
   const firstCardPeriods = billingPeriods.filter(p => p.card_id === firstCard?.id);
+  const curFaturaInfo = getBillingMonth(todayStr, firstCardPeriods, firstCard?.closing_day ?? 28);
+  const faturaMo = curFaturaInfo?.month ?? today.getMonth()+2;
+  const faturaYr = curFaturaInfo?.year ?? today.getFullYear();
+
+  // Due date label: prefer DB period due_date, fallback to card.due_day
   const activePeriod = firstCardPeriods.find(p => todayStr >= p.period_start && todayStr <= p.period_end);
-  let dueLabel, faturaMo, faturaYr;
-  if (activePeriod) {
+  let dueLabel;
+  if (activePeriod?.due_date) {
     const [dy, dm, dd] = activePeriod.due_date.split("-");
     dueLabel = `Vence ${dd}/${dm}/${dy}`;
-    faturaMo = activePeriod.fatura_month;
-    faturaYr = activePeriod.fatura_year;
   } else {
     const dueDay = firstCard?.due_day ?? 6;
-    const bm = getBillingMonth(todayStr, [], firstCard?.closing_day ?? 28);
-    faturaMo = bm?.month ?? today.getMonth()+1;
-    faturaYr = bm?.year ?? today.getFullYear();
     dueLabel = `Vence dia ${dueDay}/${String(faturaMo).padStart(2,"0")}/${faturaYr}`;
   }
 
