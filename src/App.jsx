@@ -4527,15 +4527,27 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
 
 // ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
 function BillingCard({ expenses, cards, billingPeriods = [], t }) {
-  const todayStr = today.toISOString().slice(0,10);
+  // Use local date to avoid UTC shift (Brazil UTC-3 at 11 PM would otherwise show tomorrow)
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
   const items = useMemo(() =>
     expenses.filter(e => {
       if (e.type !== "credito" || !e.date) return false;
       const card = cards.find(c => c.id === e.card_id);
       const cardPeriods = billingPeriods.filter(p => p.card_id === e.card_id);
+
+      // 1. Active period: today falls within a registered period → use its boundaries
       const activePeriod = cardPeriods.find(p => todayStr >= p.period_start && todayStr <= p.period_end);
       if (activePeriod) return e.date >= activePeriod.period_start && e.date <= activePeriod.period_end;
+
+      // 2. Periods registered but none active (e.g. current cycle not yet registered):
+      //    show expenses after the last registered period ended = accumulating for next bill
+      if (cardPeriods.length > 0) {
+        const lastPeriod = cardPeriods.reduce((a,b) => a.period_end >= b.period_end ? a : b);
+        return e.date > lastPeriod.period_end;
+      }
+
+      // 3. No periods at all: algorithmic fallback via closing_day
       const closingDay = card?.closing_day ?? 28;
       const curFatura = getBillingMonth(todayStr, [], closingDay);
       const eFatura   = getBillingMonth(e.date,   [], closingDay);
@@ -4690,14 +4702,17 @@ export default function App() {
   const loadData = useCallback(async () => {
     if (isDemo||!user||!family) return;
     try {
-      const [exp,inc,cds,rec,bps]=await Promise.all([
+      const [exp,inc,cds,rec]=await Promise.all([
         supabaseFetch(`/expenses?family_id=eq.${family.family_id}&select=*&order=date.desc`),
         supabaseFetch(`/incomes?family_id=eq.${family.family_id}&select=*&order=date.desc`),
         supabaseFetch(`/cards?family_id=eq.${family.family_id}&active=eq.true&order=created_at`),
         supabaseFetch(`/recurring_expenses?family_id=eq.${family.family_id}&active=eq.true&select=*`),
-        supabaseFetch(`/billing_periods?family_id=eq.${family.family_id}&order=due_date.asc`),
       ]);
-      setExpenses(exp||[]); setIncomes(inc||[]); setCards(cds||[]); setRecurringRules(rec||[]); setBillingPeriods(bps||[]);
+      setExpenses(exp||[]); setIncomes(inc||[]); setCards(cds||[]); setRecurringRules(rec||[]);
+      // billing_periods is optional — fetch separately so a missing table never breaks the main load
+      supabaseFetch(`/billing_periods?family_id=eq.${family.family_id}&order=due_date.asc`)
+        .then(bps => setBillingPeriods(bps||[]))
+        .catch(() => {});
     } catch { addToast("Erro ao carregar dados","error"); }
   }, [user, family, isDemo, addToast]);
 
