@@ -4558,12 +4558,12 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t }) {
 
   return (
     <div style={{background:t.glassModal,border:`1px solid ${t.accent}33`,backdropFilter:"blur(16px)",borderRadius:20,padding:20,animation:"fadeInUp 0.3s ease"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-        <h3 style={{margin:0,fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em",textAlign:"center"}}>💳 Fatura em Aberto</h3>
-        <span style={{fontSize:11,color:t.textMuted,whiteSpace:"nowrap"}}>{dueLabel}</span>
+      <div style={{textAlign:"center",marginBottom:12}}>
+        <h3 style={{margin:"0 0 4px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em"}}>💳 Fatura em Aberto</h3>
+        <span style={{fontSize:11,color:t.textMuted}}>{dueLabel}</span>
       </div>
-      <div style={{fontSize:26,fontWeight:800,color:t.accent,marginBottom:8}}>{fmt(total)}</div>
-      <div style={{fontSize:11,color:t.textMuted}}>{MONTH_FULL[faturaMo-1]} {faturaYr}</div>
+      <div style={{fontSize:26,fontWeight:800,color:t.accent,marginBottom:8,textAlign:"center"}}>{fmt(total)}</div>
+      <div style={{fontSize:11,color:t.textMuted,textAlign:"center"}}>{MONTH_FULL[faturaMo-1]} {faturaYr}</div>
     </div>
   );
 }
