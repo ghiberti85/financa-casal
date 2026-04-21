@@ -4561,12 +4561,13 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t }) {
   }
 
   return (
-    <div style={{background:t.glassModal,border:`1px solid ${t.accent}33`,backdropFilter:"blur(16px)",borderRadius:20,padding:20,animation:"fadeInUp 0.3s ease"}}>
-      <div style={{textAlign:"center",marginBottom:12}}>
-        <h3 style={{margin:"0 0 4px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em"}}>💳 Fatura em Aberto</h3>
-        <span style={{fontSize:11,color:t.textMuted}}>{dueLabel}</span>
-      </div>
-      <div style={{fontSize:26,fontWeight:800,color:t.accent,textAlign:"center"}}>{fmt(total)}</div>
+    <div style={{background:t.accentSoft,border:`1px solid ${t.accent}33`,backdropFilter:"blur(12px)",borderRadius:18,padding:"20px 22px",transition:"transform 0.2s"}}
+      onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+      onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
+      <div style={{fontSize:26,marginBottom:10}}>💳</div>
+      <div style={{fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:4,textTransform:"uppercase"}}>Fatura em Aberto</div>
+      <div style={{fontSize:11,color:t.textMuted,marginBottom:6}}>{dueLabel}</div>
+      <div style={{fontSize:22,fontWeight:800,color:t.accent,letterSpacing:"-0.02em"}}>{fmt(total)}</div>
     </div>
   );
 }
