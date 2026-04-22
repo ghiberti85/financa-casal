@@ -3036,6 +3036,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                   </div>
                 </div>
               );
+            })}
           </div>
         )}
       </div>
