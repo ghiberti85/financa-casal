@@ -2979,8 +2979,9 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
               const hasReminder = reminders.find(r => r.recurring_id === rule.id);
               const freqLabel = rule.frequency==="monthly" ? "Mensal" : rule.frequency==="weekly" ? "Semanal" : "Anual";
               const typeLabel = rule.type==="pix" ? "PIX" : rule.type==="debito" ? "Débito" : "Crédito";
+              const rIsSel = rSelectedIds.has(rule.id);
+              const rIsLp = rLpId === rule.id;
               return (
-                {(() => { const rIsSel = rSelectedIds.has(rule.id); const rIsLp = rLpId === rule.id; return (
                 <div key={rule.id}
                   onClick={() => { if(rSelMode) rToggleSel(rule.id); }}
                   onMouseDown={() => rStartLp(rule.id)}
@@ -3034,7 +3035,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                     </button>
                   </div>
                 </div>
-                ); })()}
+              );
           </div>
         )}
       </div>
