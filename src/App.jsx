@@ -771,6 +771,20 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   const [selectedDay, setSelectedDay] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [recurringRules, setRecurringRules] = useState([]);
+  const [calSelMode, setCalSelMode] = useState(false);
+  const [calSelectedIds, setCalSelectedIds] = useState(new Set());
+  const calLpRef = useRef(null);
+  const [calLpId, setCalLpId] = useState(null);
+  const calStartLp = (id) => { calLpRef.current = setTimeout(() => { setCalSelMode(true); setCalSelectedIds(new Set([id])); setCalLpId(null); }, 500); setCalLpId(id); };
+  const calCancelLp = () => { clearTimeout(calLpRef.current); setCalLpId(null); };
+  const calToggleSel = (id) => setCalSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
+  const calExitSel = () => { setCalSelMode(false); setCalSelectedIds(new Set()); };
+  const calDeleteSelected = async () => {
+    const arr = Array.from(calSelectedIds);
+    if (!window.confirm(`Remover ${arr.length} lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.`)) return;
+    await Promise.all(arr.map(id => { const isInc = incomes.some(i=>i.id===id); return isInc?onDeleteIncome(id):onDeleteExpense(id); }));
+    calExitSel();
+  };
 
   useEffect(() => {
     if (isDemo || !family?.family_id) return;
@@ -953,31 +967,40 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
               })}
               {sInc.map((inc) => {
                 const incCat = INCOME_SOURCES.find(s=>s.id===(inc.source||inc.category));
+                const calIsSel = calSelectedIds.has(inc.id);
+                const calIsLp = calLpId === inc.id;
                 return (
-                  <div key={inc.id} style={{
-                    display:"flex",alignItems:"center",justifyContent:"space-between",
-                    padding:"12px 16px",borderRadius:14,transition:"all 0.2s",
-                    background:t.successSoft, border:`1px solid ${t.success}22`,
-                  }}>
-                    <div style={{ display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1 }}>
-                      <span style={{ fontSize:22,flexShrink:0 }}>{incCat?.emoji||"💰"}</span>
-                      <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
-                        <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{inc.description}</div>
-                        <div style={{ fontSize:11,color:t.textMuted,marginTop:1,textAlign:"left" }}>
-                          {inc.user_label} · {(inc.date||"").slice(8,10)+"/"+(inc.date||"").slice(5,7)+"/"+(inc.date||"").slice(2,4)}{incCat ? ` · ${incCat.label}` : ""}
-                        </div>
+                  <div key={inc.id}
+                    onClick={() => { if(calSelMode) calToggleSel(inc.id); }}
+                    onMouseDown={() => calStartLp(inc.id)}
+                    onMouseUp={calCancelLp} onMouseLeave={calCancelLp}
+                    onTouchStart={() => calStartLp(inc.id)} onTouchEnd={calCancelLp} onTouchCancel={calCancelLp}
+                    style={{
+                      display:"flex",alignItems:"center",gap:10,
+                      padding:"12px 16px",borderRadius:14,transition:"all 0.2s",cursor:"pointer",userSelect:"none",
+                      background: calIsSel ? "rgba(124,92,255,0.12)" : t.successSoft,
+                      border: `1px solid ${calIsSel?"rgba(124,92,255,0.4)":t.success+"22"}`,
+                      transform: calIsLp ? "scale(1.015)" : "none",
+                      boxShadow: calIsLp ? "0 8px 24px rgba(124,92,255,0.3)" : "none",
+                    }}>
+                    {calSelMode && (
+                      <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSel?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSel?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                        {calIsSel && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                    )}
+                    <span style={{ fontSize:22,flexShrink:0 }}>{incCat?.emoji||"💰"}</span>
+                    <div style={{ minWidth:0,flex:1,textAlign:"center" }}>
+                      <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{inc.description}</div>
+                      <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>
+                        {inc.user_label} · {(inc.date||"").slice(8,10)+"/"+(inc.date||"").slice(5,7)+"/"+(inc.date||"").slice(2,4)}{incCat ? ` · ${incCat.label}` : ""}
                       </div>
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
                       <span style={{ fontWeight:700,fontSize:14,color:t.success }}>{fmt(parseFloat(inc.amount)||0)}</span>
-                      <button onClick={e=>{ e.stopPropagation(); setEditItem({...inc,_type:"income"}); }} title="Editar"
+                      {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...inc,_type:"income"}); }} title="Editar"
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
-                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
-                      <button onClick={e=>{ e.stopPropagation(); onDeleteIncome(inc.id); }} title="Remover"
-                        style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
-                        onMouseEnter={e=>e.currentTarget.style.color=t.danger}
-                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
+                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>}
                     </div>
                   </div>
                 );
@@ -994,37 +1017,57 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                   subtitleExtra = ` · ${typeLabel}`;
                 }
                 if(cat?.label) subtitleExtra += ` · ${cat.label}`;
+                const calIsSelExp = calSelectedIds.has(exp.id);
+                const calIsLpExp = calLpId === exp.id;
                 return (
-                  <div key={exp.id} style={{
-                    display:"flex",alignItems:"center",justifyContent:"space-between",
-                    padding:"12px 16px",borderRadius:14,transition:"all 0.2s",
-                    background:t.dangerSoft, border:`1px solid ${t.danger}22`,
-                  }}>
-                    <div style={{ display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1 }}>
-                      <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||"📦"}</span>
-                      <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
-                        <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{exp.description}</div>
-                        <div style={{ fontSize:11,color:t.textMuted,marginTop:1,textAlign:"left" }}>
-                          {exp.user_label} · {(exp.date||"").slice(8,10)+"/"+(exp.date||"").slice(5,7)+"/"+(exp.date||"").slice(2,4)}{subtitleExtra}
-                        </div>
+                  <div key={exp.id}
+                    onClick={() => { if(calSelMode) calToggleSel(exp.id); }}
+                    onMouseDown={() => calStartLp(exp.id)}
+                    onMouseUp={calCancelLp} onMouseLeave={calCancelLp}
+                    onTouchStart={() => calStartLp(exp.id)} onTouchEnd={calCancelLp} onTouchCancel={calCancelLp}
+                    style={{
+                      display:"flex",alignItems:"center",gap:10,
+                      padding:"12px 16px",borderRadius:14,transition:"all 0.2s",cursor:"pointer",userSelect:"none",
+                      background: calIsSelExp ? "rgba(124,92,255,0.12)" : t.dangerSoft,
+                      border: `1px solid ${calIsSelExp?"rgba(124,92,255,0.4)":t.danger+"22"}`,
+                      transform: calIsLpExp ? "scale(1.015)" : "none",
+                      boxShadow: calIsLpExp ? "0 8px 24px rgba(124,92,255,0.3)" : "none",
+                    }}>
+                    {calSelMode && (
+                      <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSelExp?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSelExp?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                        {calIsSelExp && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                    )}
+                    <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||"📦"}</span>
+                    <div style={{ minWidth:0,flex:1,textAlign:"center" }}>
+                      <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{exp.description}</div>
+                      <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>
+                        {exp.user_label} · {(exp.date||"").slice(8,10)+"/"+(exp.date||"").slice(5,7)+"/"+(exp.date||"").slice(2,4)}{subtitleExtra}
                       </div>
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
                       <span style={{ fontWeight:700,fontSize:14,color:t.danger }}>{fmt(parseFloat(exp.amount)||0)}</span>
-                      <button onClick={e=>{ e.stopPropagation(); setEditItem({...exp,_type:"expense"}); }} title="Editar"
+                      {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...exp,_type:"expense"}); }} title="Editar"
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
-                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
-                      <button onClick={e=>{ e.stopPropagation(); onDeleteExpense(exp.id); }} title="Remover"
-                        style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
-                        onMouseEnter={e=>e.currentTarget.style.color=t.danger}
-                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
+                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>}
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Floating delete bar — CalendarView */}
+      {calSelMode && calSelectedIds.size > 0 && (
+        <div style={{ position:"fixed",bottom:84,left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
+          <button onClick={calExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>Cancelar</button>
+          <button onClick={calDeleteSelected} style={{ flex:1,height:40,borderRadius:12,background:"rgba(255,107,107,0.18)",border:"1px solid rgba(255,107,107,0.35)",color:"#FF9B9B",fontSize:13.5,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Excluir {calSelectedIds.size}
+          </button>
         </div>
       )}
 
@@ -1340,12 +1383,6 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                             onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
                         )}
-                        {onDeleteExpense && (
-                          <button onClick={()=>onDeleteExpense(e.id)} title="Remover"
-                            style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
-                            onMouseEnter={ev=>ev.currentTarget.style.color=t.danger}
-                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>🗑</button>
-                        )}
                       </div>
                     </div>
                   );
@@ -1466,12 +1503,6 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                             onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
                         )}
-                        {onDeleteExpense && (
-                          <button onClick={()=>onDeleteExpense(e.id)} title="Remover"
-                            style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
-                            onMouseEnter={ev=>ev.currentTarget.style.color=t.danger}
-                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>🗑</button>
-                        )}
                       </div>
                     </div>
                   );
@@ -1531,12 +1562,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                               onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                               onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
                           )}
-                          {!e._isRecurring && onDeleteExpense && (
-                            <button onClick={()=>onDeleteExpense(e.id)} title="Remover"
-                              style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
-                              onMouseEnter={ev=>ev.currentTarget.style.color=t.danger}
-                              onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>🗑</button>
-                          )}
+
                         </div>
                       </div>
                     );
@@ -2478,9 +2504,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                     </svg>
                   )}
                 </div>
-              ) : (
-                <div style={{ width:20, height:20, borderRadius:6, border:`1.5px solid ${t.border}`, flexShrink:0 }} />
-              )}
+              ) : null}
 
               {/* Emoji */}
               <div style={{ fontSize:20, width:28, textAlign:"center", flexShrink:0 }}>
@@ -2488,8 +2512,8 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               </div>
 
               {/* Text */}
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+              <div style={{ flex:1, minWidth:0, textAlign:"center" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, flexWrap:"wrap" }}>
                   <span style={{ fontWeight:700, fontSize:14, color:t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing:0.2 }}>
                     {item.description}
                   </span>
@@ -2542,14 +2566,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                     onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>
                     ✏️
                   </button>
-                  <button
-                    onClick={e=>{ e.stopPropagation(); isExp?onDeleteExpense(item.id):onDeleteIncome(item.id); }}
-                    title="Remover"
-                    style={{ background:"transparent",border:"none",cursor:"pointer",color:isDup?t.warning:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
-                    onMouseEnter={e=>e.currentTarget.style.color=t.danger}
-                    onMouseLeave={e=>e.currentTarget.style.color=isDup?t.warning:t.textMuted}>
-                    🗑
-                  </button>
+
                 </>}
               </div>
 
@@ -2676,6 +2693,20 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
   const [editRule, setEditRule]   = useState(null);      // rule being edited
   const [pendingAmt, setPendingAmt] = useState({});      // { reminderId: "210" }
   const [confirmingId, setConfirmingId] = useState(null);
+  const [rSelMode, setRSelMode] = useState(false);
+  const [rSelectedIds, setRSelectedIds] = useState(new Set());
+  const rLpRef = useRef(null);
+  const [rLpId, setRLpId] = useState(null);
+  const rStartLp = (id) => { rLpRef.current = setTimeout(() => { setRSelMode(true); setRSelectedIds(new Set([id])); setRLpId(null); }, 500); setRLpId(id); };
+  const rCancelLp = () => { clearTimeout(rLpRef.current); setRLpId(null); };
+  const rToggleSel = (id) => setRSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
+  const rExitSel = () => { setRSelMode(false); setRSelectedIds(new Set()); };
+  const rDeleteSelected = async () => {
+    const arr = Array.from(rSelectedIds);
+    if (!window.confirm(`Remover ${arr.length} regra(s) recorrente(s)? Os lançamentos já feitos não serão afetados.`)) return;
+    await Promise.all(arr.map(id => { const rule = rules.find(r=>r.id===id); return rule ? deleteRule(rule, true) : Promise.resolve(); }));
+    rExitSel();
+  };
 
   const curMonth = today.getMonth() + 1;
   const curYear  = today.getFullYear();
@@ -2819,8 +2850,8 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
     } catch (e) { addToast("Erro: " + e.message, "error"); }
   };
 
-  const deleteRule = async (rule) => {
-    if (!window.confirm(`Remover "${rule.description}"? Os lançamentos já feitos não serão afetados.`)) return;
+  const deleteRule = async (rule, silent = false) => {
+    if (!silent && !window.confirm(`Remover "${rule.description}"? Os lançamentos já feitos não serão afetados.`)) return;
     try {
       await supabaseFetch(`/recurring_expenses?id=eq.${rule.id}`, { method: "DELETE" });
       setRules(p => p.filter(r => r.id !== rule.id));
@@ -2949,11 +2980,27 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
               const freqLabel = rule.frequency==="monthly" ? "Mensal" : rule.frequency==="weekly" ? "Semanal" : "Anual";
               const typeLabel = rule.type==="pix" ? "PIX" : rule.type==="debito" ? "Débito" : "Crédito";
               return (
-                <div key={rule.id} style={{
-                  display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
-                  borderRadius:14,background:t.surface,border:`1px solid ${rule.active ? t.border : t.border}`,
-                  opacity: rule.active ? 1 : 0.55,
-                }}>
+                {(() => { const rIsSel = rSelectedIds.has(rule.id); const rIsLp = rLpId === rule.id; return (
+                <div key={rule.id}
+                  onClick={() => { if(rSelMode) rToggleSel(rule.id); }}
+                  onMouseDown={() => rStartLp(rule.id)}
+                  onMouseUp={rCancelLp} onMouseLeave={rCancelLp}
+                  onTouchStart={() => rStartLp(rule.id)} onTouchEnd={rCancelLp} onTouchCancel={rCancelLp}
+                  style={{
+                    display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
+                    borderRadius:14,background:rIsSel?"rgba(124,92,255,0.1)":t.surface,
+                    border:`1px solid ${rIsSel?"rgba(124,92,255,0.4)":t.border}`,
+                    opacity: rule.active ? 1 : 0.55,
+                    cursor:"pointer",userSelect:"none",
+                    transform: rIsLp?"scale(1.015)":"none",
+                    boxShadow: rIsLp?"0 8px 24px rgba(124,92,255,0.3)":"none",
+                    transition:"all 0.15s",
+                  }}>
+                  {rSelMode && (
+                    <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:rIsSel?"none":"1.8px solid rgba(255,255,255,0.35)",background:rIsSel?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                      {rIsSel && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                  )}
                   <span style={{ fontSize:20,flexShrink:0 }}>{rule.active ? (cat?.emoji || "📦") : "⏸️"}</span>
                   <div style={{ flex:1,minWidth:0 }}>
                     <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
@@ -2985,17 +3032,23 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                       style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}>
                       {rule.active ? "⏸" : "▶"}
                     </button>
-                    <button onClick={() => deleteRule(rule)} title="Remover"
-                      style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}
-                      onMouseEnter={e=>e.currentTarget.style.color=t.danger}
-                      onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
                   </div>
                 </div>
-              );
-            })}
+                ); })()}
           </div>
         )}
       </div>
+
+      {/* Floating delete bar — RecurringView */}
+      {rSelMode && rSelectedIds.size > 0 && (
+        <div style={{ position:"fixed",bottom:84,left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
+          <button onClick={rExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>Cancelar</button>
+          <button onClick={rDeleteSelected} style={{ flex:1,height:40,borderRadius:12,background:"rgba(255,107,107,0.18)",border:"1px solid rgba(255,107,107,0.35)",color:"#FF9B9B",fontSize:13.5,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Excluir {rSelectedIds.size}
+          </button>
+        </div>
+      )}
 
       {/* ── Form modal (create / edit) ── */}
       {showForm && (
