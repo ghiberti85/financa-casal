@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
@@ -520,10 +521,11 @@ function DateInput({ label, t, value, onChange, placeholder }) {
         />
         <span style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:16,pointerEvents:"none",color:t.textMuted }}>📅</span>
       </div>
-      {open && (
+      {open && createPortal(
         <CalendarPickerModal value={value} t={t}
           onChange={e=>{ onChange(e); setOpen(false); }}
-          onClose={()=>setOpen(false)} />
+          onClose={()=>setOpen(false)} />,
+        document.body
       )}
     </div>
   );
