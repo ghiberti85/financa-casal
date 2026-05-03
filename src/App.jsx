@@ -4576,10 +4576,10 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <DateInput label="Início do período" t={t} value={bpForm.period_start} onChange={v=>sbp("period_start",v)} />
-                <DateInput label="Fim do período" t={t} value={bpForm.period_end} onChange={v=>sbp("period_end",v)} />
+                <DateInput label="Início do período" t={t} value={bpForm.period_start} onChange={e=>sbp("period_start",e.target.value)} />
+                <DateInput label="Fim do período" t={t} value={bpForm.period_end} onChange={e=>sbp("period_end",e.target.value)} />
               </div>
-              <DateInput label="Data de vencimento" t={t} value={bpForm.due_date} onChange={v=>sbp("due_date",v)} />
+              <DateInput label="Data de vencimento" t={t} value={bpForm.due_date} onChange={e=>sbp("due_date",e.target.value)} />
               <Input label="Total do extrato PDF (opcional)" t={t} type="number" value={bpForm.total_pdf} onChange={e=>sbp("total_pdf",e.target.value)} placeholder="Ex: 1250.00" />
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <Btn t={t} variant="ghost" onClick={resetBpForm}>Cancelar</Btn>
