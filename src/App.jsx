@@ -4388,6 +4388,7 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name:"", holder:"", closing_day:28, due_day:6, color:"#7c6af7" });
   const [loading, setLoading] = useState(false);
+  const [showCardForm, setShowCardForm] = useState(false);
   const CARD_COLORS = ["#7c6af7","#10b981","#ef4444","#3b82f6","#f97316","#ec4899"];
   const sf = (k,v) => setForm(p=>({...p,[k]:v}));
 
@@ -4405,7 +4406,7 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
       .then(d=>setCards(d||[])).catch(()=>{});
   },[family?.family_id,isDemo]);
 
-  const resetForm = ()=>{ setForm({name:"",holder:"",closing_day:28,due_day:6,color:"#7c6af7"}); setEditId(null); };
+  const resetForm = ()=>{ setForm({name:"",holder:"",closing_day:28,due_day:6,color:"#7c6af7"}); setEditId(null); setShowCardForm(false); };
 
   const save = async()=>{
     if(!form.name.trim()||!form.holder.trim()){ addToast("Preencha nome e titular.","error"); return; }
@@ -4426,6 +4427,8 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
     finally{setLoading(false);}
   };
 
+
+
   const del = async(id)=>{
     if(cards.length<=1){addToast("Não é possível excluir o único cartão.","error");return;}
     if(!window.confirm("Excluir este cartão?")) return;
@@ -4436,7 +4439,7 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
     }catch(err){addToast(err.message,"error");}
   };
 
-  const startEdit=(c)=>{ setEditId(c.id); setForm({name:c.name,holder:c.holder,closing_day:c.closing_day,due_day:c.due_day,color:c.color}); };
+  const startEdit=(c)=>{ setEditId(c.id); setForm({name:c.name,holder:c.holder,closing_day:c.closing_day,due_day:c.due_day,color:c.color}); setShowCardForm(true); };
 
   // Billing periods CRUD
   const resetBpForm = () => { setBpForm(bpEmpty); setBpEditId(null); setShowBpForm(false); };
@@ -4504,27 +4507,42 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
           </div>
         </div>
       ))}
-      <div style={{padding:16,borderRadius:16,background:t.surface,border:`1px solid ${t.border}`}}>
-        <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>{editId?"Editar cartão":"Novo cartão"}</div>
-        <Input label="Nome do cartão" t={t} value={form.name} onChange={e=>sf("name",e.target.value)} placeholder="Ex: Santander Casal" />
-        <Input label="Titular" t={t} value={form.holder} onChange={e=>sf("holder",e.target.value)} placeholder="Ex: Casal, Fernando" />
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Input label="Dia fechamento" t={t} type="number" min={1} max={31} value={form.closing_day} onChange={e=>sf("closing_day",e.target.value)} />
-          <Input label="Dia vencimento" t={t} type="number" min={1} max={31} value={form.due_day} onChange={e=>sf("due_day",e.target.value)} />
-        </div>
-        <div style={{marginBottom:16}}>
-          <label style={{display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary}}>Cor</label>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {CARD_COLORS.map(col=>(
-              <button key={col} onClick={()=>sf("color",col)}
-                style={{width:28,height:28,borderRadius:"50%",background:col,border:form.color===col?"3px solid white":"2px solid transparent",outline:form.color===col?`2px solid ${col}`:"none",cursor:"pointer",transition:"all 0.15s"}}/>
-            ))}
+      <div style={{borderRadius:16,background:t.surface,border:`1px solid ${showCardForm ? t.accent+"66" : t.border}`,overflow:"hidden",transition:"border-color 0.2s"}}>
+        <button
+          onClick={()=>{ if(!editId) setShowCardForm(v=>!v); }}
+          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"transparent",border:"none",cursor:editId?"default":"pointer",gap:8}}
+        >
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:15,lineHeight:1}}>{editId?"✏️":"➕"}</span>
+            <span style={{fontSize:13,fontWeight:700,color:t.text}}>{editId?"Editar cartão":"Novo cartão"}</span>
           </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:editId?"1fr 1fr":"1fr",gap:10}}>
-          {editId&&<Btn t={t} variant="ghost" onClick={resetForm}>Cancelar</Btn>}
-          <Btn t={t} onClick={save} disabled={loading}>{loading?"Salvando...":(editId?"Salvar alterações":"Criar cartão")}</Btn>
-        </div>
+          {!editId && (
+            <span style={{color:t.textMuted,fontSize:12,transform:showCardForm?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.25s",lineHeight:1}}>▼</span>
+          )}
+        </button>
+        {showCardForm && (
+          <div style={{padding:"0 16px 16px"}}>
+            <Input label="Nome do cartão" t={t} value={form.name} onChange={e=>sf("name",e.target.value)} placeholder="Ex: Santander Casal" />
+            <Input label="Titular" t={t} value={form.holder} onChange={e=>sf("holder",e.target.value)} placeholder="Ex: Casal, Fernando" />
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <Input label="Dia fechamento" t={t} type="number" min={1} max={31} value={form.closing_day} onChange={e=>sf("closing_day",e.target.value)} />
+              <Input label="Dia vencimento" t={t} type="number" min={1} max={31} value={form.due_day} onChange={e=>sf("due_day",e.target.value)} />
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary}}>Cor</label>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {CARD_COLORS.map(col=>(
+                  <button key={col} onClick={()=>sf("color",col)}
+                    style={{width:28,height:28,borderRadius:"50%",background:col,border:form.color===col?"3px solid white":"2px solid transparent",outline:form.color===col?`2px solid ${col}`:"none",cursor:"pointer",transition:"all 0.15s"}}/>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:editId?"1fr 1fr":"1fr",gap:10}}>
+              {editId&&<Btn t={t} variant="ghost" onClick={resetForm}>Cancelar</Btn>}
+              <Btn t={t} onClick={save} disabled={loading}>{loading?"Salvando...":(editId?"Salvar alterações":"Criar cartão")}</Btn>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Períodos de Fatura ── */}
