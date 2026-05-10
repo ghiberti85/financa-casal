@@ -2200,6 +2200,39 @@ function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
   );
 }
 
+// ─── DATE GROUPING HELPERS ────────────────────────────────────────────────────
+const WEEK_DAYS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+function formatDateHeader(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0,10).split("-").map(Number);
+  const date = new Date(y, m-1, d);
+  const now = new Date();
+  const todayD = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((date - todayD) / 86400000);
+  if (diff === 0) return "Hoje";
+  if (diff === -1) return "Ontem";
+  if (diff === 1) return "Amanhã";
+  return `${WEEK_DAYS[date.getDay()]}, ${d} de ${MONTH_FULL[m-1]}`;
+}
+
+function groupByDate(items) {
+  const map = new Map();
+  items.forEach(item => {
+    const key = (item.date||"").slice(0,10);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(item);
+  });
+  return Array.from(map.entries())
+    .sort((a,b) => b[0].localeCompare(a[0]))
+    .map(([date, its]) => ({
+      date,
+      label: formatDateHeader(date),
+      items: its,
+      net: its.reduce((s,i) => s + (i._type==="income"?1:-1)*(parseFloat(i.amount)||0), 0),
+    }));
+}
+
 // ─── USE LONG PRESS HOOK ──────────────────────────────────────────────────────
 function useLongPress(onTrigger, ms = 500) {
   const [pressingId, setPressingId] = useState(null);
@@ -2387,6 +2420,8 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const totalInc = filtered.filter(i=>i._type==="income").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const dupCount = dupIds.size;
   const dupIdsArray = Array.from(dupIds);
+
+  const grouped = useMemo(() => groupByDate(filtered), [filtered]);
 
   const hasActiveChipFilters = paymentFilter!=="all" || categoryFilter!=="all" || memberFilter!=="all";
 
@@ -2714,7 +2749,24 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           <div style={{ textAlign:"center", padding:"40px 0", color:t.textMuted, fontSize:14 }}>
             {showDupsOnly ? "Nenhuma duplicata encontrada neste período" : "Nenhum lançamento encontrado"}
           </div>
-        ) : filtered.map(item => {
+        ) : grouped.map(group => (
+          <React.Fragment key={group.date}>
+            {/* Sticky date header */}
+            <div style={{
+              position:"sticky", top:0, zIndex:10,
+              background:`${t.bg}cc`, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
+              borderBottom:`1px solid ${t.border}`,
+              display:"flex", justifyContent:"space-between", alignItems:"center",
+              padding:"6px 4px", marginBottom:4, marginTop:8,
+            }}>
+              <span style={{ fontSize:11, fontWeight:700, color:t.textSecondary, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                {group.label}
+              </span>
+              <span style={{ fontSize:12, fontWeight:700, color: group.net >= 0 ? t.success : t.danger }}>
+                {group.net >= 0 ? "+" : ""}{fmt(Math.abs(group.net))}
+              </span>
+            </div>
+            {group.items.map(item => {
           const isExp  = item._type === "expense";
           const isDup  = dupIds.has(item.id);
           const isSel  = selectedIds.has(item.id);
@@ -2829,8 +2881,9 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 </svg>
               )}
             </div>
-          );
-        })}
+          );})}
+          </React.Fragment>
+        ))}
       </div>
 
       {/* ══ FLOATING SELECTION ACTION BAR ══ */}
