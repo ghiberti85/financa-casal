@@ -1198,7 +1198,8 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       background: calIsSel ? "rgba(124,92,255,0.12)" : t.successSoft,
                       border: `1px solid ${calIsSel?"rgba(124,92,255,0.4)":t.success+"22"}`,
                       transform: calIsLp ? "scale(1.015)" : "none",
-                      boxShadow: calIsLp ? "0 8px 24px rgba(124,92,255,0.3)" : "none",
+                      boxShadow: calIsLp ? undefined : "none",
+                      animation: calIsLp ? "lpGlow 500ms linear forwards" : undefined,
                     }}>
                     {calSelMode && (
                       <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSel?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSel?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
@@ -1248,7 +1249,8 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       background: calIsSelExp ? "rgba(124,92,255,0.12)" : t.dangerSoft,
                       border: `1px solid ${calIsSelExp?"rgba(124,92,255,0.4)":t.danger+"22"}`,
                       transform: calIsLpExp ? "scale(1.015)" : "none",
-                      boxShadow: calIsLpExp ? "0 8px 24px rgba(124,92,255,0.3)" : "none",
+                      boxShadow: calIsLpExp ? undefined : "none",
+                      animation: calIsLpExp ? "lpGlow 500ms linear forwards" : undefined,
                     }}>
                     {calSelMode && (
                       <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSelExp?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSelExp?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
@@ -2871,7 +2873,8 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 background: isSel ? "rgba(124,92,255,0.1)" : isDup ? "rgba(217,119,6,0.08)" : t.surface,
                 border: `1px solid ${isSel?"rgba(124,92,255,0.4)":isDup?"rgba(217,119,6,0.35)":t.border}`,
                 transform: isLong ? "scale(1.015)" : "none",
-                boxShadow: isLong ? "0 8px 24px rgba(124,92,255,0.35), 0 0 0 2px rgba(124,92,255,0.5)" : "none",
+                boxShadow: isLong ? undefined : "none",
+                animation: isLong ? "lpGlow 500ms linear forwards" : undefined,
                 cursor: "pointer",
                 userSelect:"none",
               }}
@@ -2961,13 +2964,6 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 </>}
               </div>
 
-              {/* Long-press progress ring */}
-              {isLong && (
-                <svg className="lp-ring-svg" viewBox="0 0 100 100" fill="none">
-                  <rect className="lp-ring-path" x="1" y="1" width="98" height="98" rx="15"
-                    stroke={t.accent} strokeWidth="2.5" />
-                </svg>
-              )}
             </div>
           );})}
           </Fragment>
@@ -3399,7 +3395,8 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                     opacity: rule.active ? 1 : 0.55,
                     cursor:"pointer",userSelect:"none",
                     transform: rIsLp?"scale(1.015)":"none",
-                    boxShadow: rIsLp?"0 8px 24px rgba(124,92,255,0.3)":"none",
+                    boxShadow: rIsLp ? undefined : "none",
+                    animation: rIsLp ? "lpGlow 500ms linear forwards" : undefined,
                     transition:"all 0.15s",
                   }}>
                   {rSelMode && (
@@ -5590,9 +5587,7 @@ export default function App() {
       .main-content-wrap{margin-left:210px!important;}
     }
     @keyframes sheetUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
-    @keyframes lpFill{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
-    .lp-ring-svg{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);pointer-events:none;border-radius:inherit;}
-    .lp-ring-path{stroke-dasharray:100;stroke-dashoffset:100;animation:lpFill 500ms linear forwards;}
+    @keyframes lpGlow{from{box-shadow:0 2px 8px rgba(124,92,255,0),0 0 0 0px rgba(124,92,255,0)}to{box-shadow:0 8px 24px rgba(124,92,255,0.35),0 0 0 2.5px rgba(124,92,255,0.85)}}
     @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
     .sk{border-radius:10px;background:linear-gradient(90deg,${t.surface} 25%,${t.surfaceHover} 50%,${t.surface} 75%);background-size:800px 100%;animation:shimmer 1.5s infinite linear;}
     @media(prefers-reduced-motion:reduce){*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
