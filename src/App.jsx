@@ -5,37 +5,55 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-let _authToken = localStorage.getItem("sb_token") || null;
 
-let _refreshToken = localStorage.getItem("sb_refresh") || null;
+// Access token lives only in memory — never persisted to localStorage in production.
+// In dev, localStorage is used for convenience (no Vercel API routes available).
+let _authToken = import.meta.env.DEV ? (localStorage.getItem("sb_token") || null) : null;
+let _refreshToken = import.meta.env.DEV ? (localStorage.getItem("sb_refresh") || null) : null;
 
 function setAuthToken(token, refreshToken = null) {
   _authToken = token;
-  if (token) localStorage.setItem("sb_token", token);
-  else localStorage.removeItem("sb_token");
-  if (refreshToken) {
-    _refreshToken = refreshToken;
-    localStorage.setItem("sb_refresh", refreshToken);
-  } else if (!token) {
-    _refreshToken = null;
-    localStorage.removeItem("sb_refresh");
+  if (import.meta.env.DEV) {
+    // Dev: persist to localStorage for convenience
+    if (token) localStorage.setItem("sb_token", token);
+    else localStorage.removeItem("sb_token");
+    if (refreshToken) {
+      _refreshToken = refreshToken;
+      localStorage.setItem("sb_refresh", refreshToken);
+    } else if (!token) {
+      _refreshToken = null;
+      localStorage.removeItem("sb_refresh");
+    }
   }
+  // Production: tokens stay in memory only; refresh token is in HttpOnly cookie (set by /api/auth/*)
 }
 
-// Silently refresh the access token using the refresh token
+// Silently refresh the access token
 async function refreshAccessToken() {
-  const rt = _refreshToken || localStorage.getItem("sb_refresh");
-  if (!rt) return false;
+  if (import.meta.env.DEV) {
+    // Dev: use localStorage refresh token directly
+    const rt = _refreshToken || localStorage.getItem("sb_refresh");
+    if (!rt) return false;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: rt }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data.access_token) return false;
+      setAuthToken(data.access_token, data.refresh_token);
+      return true;
+    } catch { return false; }
+  }
+  // Production: HttpOnly cookie is sent automatically by the browser
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-      method: "POST",
-      headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: rt }),
-    });
+    const res = await fetch("/api/auth/refresh", { method: "POST" });
     if (!res.ok) return false;
     const data = await res.json();
     if (!data.access_token) return false;
-    setAuthToken(data.access_token, data.refresh_token);
+    _authToken = data.access_token;
     return true;
   } catch { return false; }
 }
@@ -72,19 +90,35 @@ async function supabaseFetch(path, options = {}, _retry = true) {
 }
 
 async function supabaseAuth(action, email, password) {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/${action}`, {
+  if (import.meta.env.DEV) {
+    // Dev: call Supabase directly (Vercel API routes not available in dev server)
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/${action}`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error_description || data.error);
+    return data;
+  }
+  // Production: proxy through Vercel API route, which sets the HttpOnly cookie
+  const endpoint = action.startsWith("token") ? "/api/auth/login" : "/api/auth/signup";
+  const res = await fetch(endpoint, {
     method: "POST",
-    headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error_description || data.error);
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
 
 // ─── FAMILY HELPERS (via Supabase RPC — bypasses RLS safely) ─────────────────
 function genCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => chars[b % chars.length]).join("");
 }
 
 async function supabaseRpc(fn, params = {}) {
@@ -377,10 +411,14 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
 
 // ─── INPUT / SELECT / BTN ─────────────────────────────────────────────────────
 function Input({ label, t, ...props }) {
+  const defaultMaxLength = props.type === "email" ? 254
+    : props.type === "password" ? 128
+    : props.type === "number" ? undefined
+    : 200;
   return (
     <div style={{ marginBottom: 16, minWidth: 0 }}>
       {label && <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600, color: t.textSecondary, letterSpacing: "0.02em", textAlign: "left" }}>{label}</label>}
-      <input {...props} style={{ width: "100%", maxWidth: "100%", padding: "11px 14px", borderRadius: 12, fontSize: 14, fontFamily: "'DM Sans', sans-serif", background: t.inputBg, border: `1px solid ${t.border}`, color: t.text, outline: "none", transition: "border-color 0.2s", boxSizing: "border-box", minWidth: 0, ...(props.style||{}) }}
+      <input maxLength={defaultMaxLength} {...props} style={{ width: "100%", maxWidth: "100%", padding: "11px 14px", borderRadius: 12, fontSize: 14, fontFamily: "'DM Sans', sans-serif", background: t.inputBg, border: `1px solid ${t.border}`, color: t.text, outline: "none", transition: "border-color 0.2s", boxSizing: "border-box", minWidth: 0, ...(props.style||{}) }}
         onFocus={(e) => { e.target.style.borderColor = t.accent; }}
         onBlur={(e) => { e.target.style.borderColor = t.border; }}
       />
@@ -595,10 +633,24 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
+  const [loginCooldown, setLoginCooldown] = useState(0);
+  const failedAttemptsRef = useRef(0);
+  const cooldownTimerRef = useRef(null);
+
+  const startCooldown = (seconds) => {
+    setLoginCooldown(seconds);
+    cooldownTimerRef.current = setInterval(() => {
+      setLoginCooldown(prev => {
+        if (prev <= 1) { clearInterval(cooldownTimerRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const enterDemo = () => onLogin(DEMO_USER, null, DEMO_FAMILY);
 
   const handleAuth = async () => {
+    if (loginCooldown > 0) return;
     // Intercepta credenciais demo — sem tocar no Supabase
     if (email.trim().toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD) {
       enterDemo();
@@ -630,7 +682,14 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
         setPendingUser({ user, token: data.access_token });
         setStep(mode === "signup" ? "profile" : "family_setup");
       }
-    } catch (err) { addToast(err.message, "error"); }
+    } catch (err) {
+      failedAttemptsRef.current += 1;
+      if (failedAttemptsRef.current >= 3) {
+        failedAttemptsRef.current = 0;
+        startCooldown(30);
+      }
+      addToast(err.message, "error");
+    }
     finally { setLoading(false); }
   };
 
@@ -691,8 +750,8 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:28,marginTop:-16 }}>Gerencie juntos, cresçam juntos</p>
     <Input label="E-mail" t={t} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@email.com" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
     <Input label="Senha" t={t} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
-    <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading}>
-      {loading ? "Aguarde..." : mode==="login" ? "🔐 Entrar" : "✨ Criar conta"}
+    <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading || loginCooldown > 0}>
+      {loginCooldown > 0 ? `⏳ Aguarde ${loginCooldown}s` : loading ? "Aguarde..." : mode==="login" ? "🔐 Entrar" : "✨ Criar conta"}
     </Btn>
     <p style={{ textAlign:"center",marginTop:18,fontSize:14,color:t.textMuted }}>
       {mode==="login"?"Não tem conta? ":"Já tem conta? "}
@@ -750,7 +809,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     <div style={{ background:t.successSoft,border:`1.5px solid ${t.success}33`,borderRadius:16,padding:20 }}>
       <div style={{ fontSize:15,fontWeight:700,color:t.text,marginBottom:4 }}>🔗 Entrar em uma família</div>
       <div style={{ fontSize:13,color:t.textMuted,marginBottom:14 }}>Peça o código de convite para quem criou a família.</div>
-      <Input label="Código de convite (6 dígitos)" t={t} value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder="Ex: AB12CD" style={{ letterSpacing:"0.2em",fontWeight:700 }} />
+      <Input label="Código de convite (6 dígitos)" t={t} value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder="Ex: AB12CD" maxLength={6} style={{ letterSpacing:"0.2em",fontWeight:700 }} />
       <Btn t={t} variant="success" type="button" onClick={handleJoinFamily} style={{ width:"100%" }} disabled={loading}>{loading?"Entrando...":"🔗 Entrar com código"}</Btn>
     </div>
   </>);
@@ -3584,37 +3643,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
     );
   };
 
-  // ── Extract text from PDF using AI ──
-  const extractPDF = async (file) => {
-    setLoading(true); setLoadingMsg("📄 Lendo PDF...");
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const base64 = e.target.result.split(",")[1];
-          const res = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 4000,
-              messages: [{
-                role: "user",
-                content: [
-                  { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-                  { type: "text", text: "Extraia todas as transações financeiras deste extrato bancário e retorne como CSV com colunas: data,descricao,valor,tipo. Retorne APENAS o CSV sem explicações." }
-                ]
-              }]
-            }),
-          });
-          const data = await res.json();
-          resolve(data.content?.[0]?.text || "");
-        } catch(err) { reject(err); }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+  // PDF processing is handled server-side by the Supabase Edge Function via analyzeWithAI
 
   // ── CSV parser helpers ──────────────────────────────────────────────────────
   const cleanBRL = (v) => {
@@ -3775,10 +3804,28 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
   };
 
   // ── Handle file ──
+  const ALLOWED_EXTENSIONS = ["csv", "txt", "xlsx", "xls", "pdf"];
+  const ALLOWED_MIME_TYPES = [
+    "text/csv", "text/plain", "application/pdf",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "",  // alguns sistemas não enviam MIME — validar pela extensão
+  ];
+  const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+
   const handleFile = async (file) => {
     if (!file) return;
-    setFileName(file.name);
     const ext = file.name.split(".").pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      addToast("Formato não suportado. Use CSV, XLSX ou PDF.", "error"); return;
+    }
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      addToast("Tipo de arquivo inválido.", "error"); return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      addToast("Arquivo muito grande. Limite: 10 MB.", "error"); return;
+    }
+    setFileName(file.name);
     setStep("mapping"); setLoading(true);
 
     try {
@@ -3789,12 +3836,34 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
       } else if (ext === "xlsx" || ext === "xls") {
         setLoadingMsg("📊 Lendo planilha Excel...");
         const buf = await file.arrayBuffer();
-        const { read, utils } = await import("https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs");
-        const wb = read(buf);
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        textData = utils.sheet_to_csv(ws);
+        const ExcelJS = (await import("exceljs")).default;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buf);
+        const worksheet = workbook.worksheets[0];
+        const csvRows = [];
+        worksheet.eachRow({ includeEmpty: false }, (row) => {
+          const vals = [];
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            let v = "";
+            if (cell.value === null || cell.value === undefined) v = "";
+            else if (typeof cell.value === "object" && cell.value.text) v = cell.value.text;
+            else if (typeof cell.value === "object" && cell.value.result !== undefined) v = String(cell.value.result);
+            else if (cell.value instanceof Date) v = cell.value.toISOString().slice(0, 10);
+            else v = String(cell.value);
+            vals.push(v.includes(",") || v.includes("\n") ? `"${v.replace(/"/g, '""')}"` : v);
+          });
+          csvRows.push(vals.join(","));
+        });
+        textData = csvRows.join("\n");
       } else if (ext === "pdf") {
-        textData = await extractPDF(file);
+        setLoadingMsg("📄 Enviando PDF para análise...");
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        const pdfBase64 = btoa(binary);
+        await analyzeWithAI("", file.name, pdfBase64);
+        return;
       } else {
         throw new Error("Formato não suportado. Use CSV, XLSX ou PDF.");
       }
@@ -3824,12 +3893,15 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
     }
   };
 
-  // ── AI mapping via Supabase Edge Function (avoids CORS/auth issues) ──
-  const analyzeWithAI = async (textData, filename) => {
+  // ── AI mapping via Supabase Edge Function (Anthropic API key stays server-side) ──
+  const analyzeWithAI = async (textData, filename, pdfBase64 = null) => {
     setLoadingMsg("🤖 Mapeando dados com IA...");
 
     try {
-      // Call our Edge Function — it holds the Anthropic API key server-side
+      const body = pdfBase64
+        ? { pdfBase64, filename }
+        : { textData, filename };
+
       const res = await fetch(`${SUPABASE_URL}/functions/v1/analyze-import`, {
         method: "POST",
         headers: {
@@ -3837,7 +3909,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
           "Authorization": `Bearer ${_authToken || SUPABASE_ANON_KEY}`,
           "apikey": SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ textData, filename }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -3932,8 +4004,8 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
       } catch(e) { addToast("Erro ao salvar: " + e.message, "error"); setLoading(false); return; }
     }
     // Add local IDs for in-memory state (not sent to Supabase)
-    const expensesWithId = expenses.map(e => ({ ...e, id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}` }));
-    const incomesWithId  = incomes.map(i => ({ ...i, id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}` }));
+    const expensesWithId = expenses.map(e => ({ ...e, id: crypto.randomUUID() }));
+    const incomesWithId  = incomes.map(i => ({ ...i, id: crypto.randomUUID() }));
     onImported(expensesWithId, incomesWithId);
     setStats({ expenses: expenses.length, incomes: incomes.length, skipped: mapped.filter(r => !r._selected).length, duplicates: mapped.filter(r => r._duplicate).length });
     setStep("done"); setLoading(false);
@@ -4659,7 +4731,9 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t }) {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [darkMode, setDarkMode] = useState(true);
-  const [initializing, setInitializing] = useState(() => !!localStorage.getItem("sb_token"));
+  const [initializing, setInitializing] = useState(
+    () => import.meta.env.DEV ? !!localStorage.getItem("sb_token") : true
+  );
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [family, setFamily] = useState(null);
@@ -4773,23 +4847,19 @@ export default function App() {
     };
   }, []);
 
-  // Restore session from localStorage on page load
+  // Restore session on page load
   useEffect(() => {
-    const token = localStorage.getItem("sb_token");
-    if (!token || isDemo) { setInitializing(false); return; }
-    fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${token}` }
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(async u => {
-      if (!u?.id) { setInitializing(false); return; }
-      setAuthToken(token, localStorage.getItem("sb_refresh"));
-      const fam = await getOrCreateFamily(u.id).catch(() => null);
+    if (isDemo) { setInitializing(false); return; }
+
+    const restoreSession = async (accessToken, user) => {
+      if (!accessToken || !user?.id) { setInitializing(false); return; }
+      setAuthToken(accessToken);
+      const fam = await getOrCreateFamily(user.id).catch(() => null);
       if (!fam) { setInitializing(false); return; }
-      setUser(u);
+      setUser(user);
       setFamily(fam);
       try {
-        const rows = await supabaseFetch(`/profiles?id=eq.${u.id}&select=first_name,last_name,phone`);
+        const rows = await supabaseFetch(`/profiles?id=eq.${user.id}&select=first_name,last_name,phone`);
         if (rows?.[0]) setProfile(rows[0]);
       } catch {}
       try {
@@ -4797,8 +4867,25 @@ export default function App() {
         setFamilyMembers(Array.isArray(members) ? members : []);
       } catch {}
       setInitializing(false);
-    })
-    .catch(() => { setAuthToken(null); setInitializing(false); });
+    };
+
+    if (import.meta.env.DEV) {
+      // Dev: restore from localStorage token
+      const token = localStorage.getItem("sb_token");
+      if (!token) { setInitializing(false); return; }
+      fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${token}` }
+      })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(u => restoreSession(token, u))
+      .catch(() => { setAuthToken(null); setInitializing(false); });
+    } else {
+      // Production: restore using HttpOnly cookie via Vercel API route
+      fetch("/api/auth/refresh", { method: "POST" })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(data => restoreSession(data.access_token, data.user))
+        .catch(() => setInitializing(false));
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -4851,10 +4938,15 @@ export default function App() {
     }
   };
 
-  const handleLogout=()=>{
-    setAuthToken(null); setUser(null); setFamily(null); setProfile(null); setFamilyMembers([]);
+  const handleLogout = () => {
+    setAuthToken(null);
+    setUser(null); setFamily(null); setProfile(null); setFamilyMembers([]);
     setExpenses([]); setIncomes([]); setCards([]); setRecurringRules([]); setBillingPeriods([]);
-    addToast("Saiu com sucesso","info");
+    if (!import.meta.env.DEV) {
+      // Production: clear the HttpOnly refresh token cookie server-side
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    }
+    addToast("Saiu com sucesso", "info");
   };
 
   const handleRegenCode = async () => {

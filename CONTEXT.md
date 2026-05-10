@@ -14,25 +14,34 @@ Cada membro registra gastos e receitas, visualiza calendário, gráficos e impor
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 18, Vite 5, JSX (sem TypeScript) |
-| Gráficos | Recharts (PieChart, BarChart, LineChart) |
+| Frontend | React 19, Vite 8, JSX (sem TypeScript) |
+| Gráficos | Recharts 3 (PieChart, BarChart, LineChart) |
 | Estilo | Inline styles + glassmorphism — sem Tailwind nem CSS modules |
 | Backend | Supabase REST API (sem SDK — fetch direto com headers manuais) |
-| Auth | Supabase Auth via JWT — token em localStorage |
+| Auth | Supabase Auth via JWT — access token em memória, refresh token em cookie HttpOnly via `/api/auth/*` |
+| Planilhas | exceljs (bundle local, sem vulnerabilidades) para CSV/XLSX; PDF via Edge Function |
 | IA | Claude Sonnet via Supabase Edge Function (Deno) para importação |
-| Deploy | Vercel (auto-deploy no push para main) |
+| Deploy | Vercel (auto-deploy no push para main) + API Routes serverless |
 
 ---
 
 ## Arquitetura
 
 ```
+api/auth/
+  login.js    ← POST /api/auth/login (Vercel serverless)
+  signup.js   ← POST /api/auth/signup
+  refresh.js  ← POST /api/auth/refresh (lê cookie HttpOnly)
+  logout.js   ← POST /api/auth/logout (apaga cookie)
 src/
-  App.jsx     ← aplicação INTEIRA em um único arquivo (~4924 linhas)
+  App.jsx     ← aplicação INTEIRA em um único arquivo (~5390 linhas)
+  index.css   ← estilos globais base
+  main.jsx    ← entry point React
 public/
   favicon.svg
   og-image.svg
 index.html    ← SEO, Open Graph, PWA meta tags
+vercel.json   ← headers HTTP de segurança e CSP
 vite.config.js
 ```
 
@@ -48,9 +57,9 @@ vite.config.js
 ## Sistema de Autenticação
 
 ```javascript
-// Token armazenado em localStorage
-let _authToken = localStorage.getItem("sb_token") || null;
-let _refreshToken = localStorage.getItem("sb_refresh") || null;
+// Access token: apenas em memória (nunca em localStorage em produção)
+let _authToken = null; // produção
+// Desenvolvimento: localStorage para conveniência (sem rotas Vercel disponíveis)
 
 // Refresh automático quando token expira (401 → refreshAccessToken() → retry)
 async function supabaseFetch(path, options, _retry = true)
@@ -58,11 +67,27 @@ async function supabaseRpc(fn, params)  // para funções SECURITY DEFINER
 async function supabaseAuth(action, email, password)
 ```
 
-**Fluxo de auth:**
-1. Login → JWT salvo em localStorage
-2. Toda requisição usa Bearer token
-3. 401 → tenta refresh token automaticamente → retry
-4. Refresh falha → dispara evento `sb-session-expired` → volta para login
+**Fluxo de auth em produção:**
+1. Login → `/api/auth/login` (Vercel) → refresh token em cookie `HttpOnly; Secure; SameSite=Strict`
+2. Access token retornado no body → salvo apenas em `_authToken` (memória)
+3. Toda requisição usa Bearer token da memória
+4. 401 → `refreshAccessToken()` chama `/api/auth/refresh` → cookie HttpOnly enviado automaticamente → novo access token
+5. Refresh falha → dispara evento `sb-session-expired` → volta para login
+6. Logout → `/api/auth/logout` apaga o cookie server-side
+
+**Fluxo de auth em desenvolvimento (`import.meta.env.DEV`):**
+1. Login → Supabase Auth direto (sem rotas Vercel)
+2. Tokens salvos em `localStorage` para conveniência local
+3. Restore de sessão via `localStorage.getItem("sb_token")`
+
+**Rotas Vercel (`api/auth/`):**
+
+| Rota | Função |
+|---|---|
+| `POST /api/auth/login` | Autentica, define cookie HttpOnly, retorna access token |
+| `POST /api/auth/signup` | Cadastra, define cookie HttpOnly, retorna access token |
+| `POST /api/auth/refresh` | Lê cookie HttpOnly, renova sessão, rotaciona token |
+| `POST /api/auth/logout` | Apaga o cookie de sessão |
 
 ---
 

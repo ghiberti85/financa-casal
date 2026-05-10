@@ -162,6 +162,7 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 | React | 19 | UI e gerenciamento de estado |
 | Vite | 8 | Build tool e dev server |
 | Recharts | 3 | Gráficos (barras, rosca, linha) |
+| exceljs | — | Leitura de planilhas Excel (bundle local, sem vulnerabilidades conhecidas) |
 
 ### Backend / Infraestrutura
 | Tecnologia | Uso |
@@ -180,27 +181,27 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 ## Arquitetura
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   Browser / PWA                  │
-│  React SPA (Vite)  ──── localStorage (token)    │
-│       │                                          │
-│  supabaseFetch()   ──── Supabase REST API       │
-│  supabaseRpc()     ──── Supabase RPC (SECURITY  │
-│                         DEFINER functions)       │
-└─────────────────────────────────────────────────┘
-         │                        │
-         ▼                        ▼
-┌─────────────────┐    ┌──────────────────────┐
-│  Supabase Auth  │    │  Supabase Database   │
-│  (JWT tokens)   │    │  PostgreSQL + RLS    │
-└─────────────────┘    └──────────────────────┘
-                                 │
-                        ┌────────▼───────┐
-                        │  Edge Function │
-                        │  analyze-import│
-                        │  (Deno + Claude│
-                        │   Sonnet API)  │
-                        └────────────────┘
+┌─────────────────────────────────────────────────────┐
+│                    Browser / PWA                     │
+│  React SPA (Vite)  ──── access token (memória)      │
+│       │                                              │
+│  supabaseFetch()   ──── Supabase REST API            │
+│  supabaseRpc()     ──── Supabase RPC (SECURITY       │
+│                         DEFINER functions)           │
+└─────────────────────────────────────────────────────┘
+         │                         │
+         ▼                         ▼
+┌─────────────────────┐  ┌──────────────────────────┐
+│  Vercel API Routes  │  │    Supabase Database     │
+│  /api/auth/*        │  │    PostgreSQL + RLS       │
+│  (HttpOnly cookie)  │  └──────────────────────────┘
+└─────────────────────┘              │
+         │                 ┌─────────▼──────────┐
+         ▼                 │   Edge Function    │
+┌─────────────────┐        │   analyze-import   │
+│  Supabase Auth  │        │   (Deno + Claude   │
+│  (JWT tokens)   │        │    Sonnet API)     │
+└─────────────────┘        └────────────────────┘
 ```
 
 **Decisões de arquitetura:**
@@ -210,6 +211,7 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 - **Sem Tailwind** — inline styles com objeto de tema `t` para suporte a dark/light mode
 - **Estado local** com React `useState` / `useMemo` — sem Redux ou Zustand
 - **RLS no banco** — segurança no nível do banco, não apenas no frontend
+- **Auth via Vercel API Routes** — refresh token em cookie `HttpOnly`; access token apenas em memória
 
 ---
 
@@ -276,7 +278,20 @@ CREATE UNIQUE INDEX idx_incomes_no_duplicates
 
 ### Políticas RLS
 
-Todas as tabelas têm RLS ativo. As políticas de SELECT, INSERT, UPDATE e DELETE verificam `family_id = get_my_family_id()` — garantindo que cada família acessa apenas seus próprios dados.
+Todas as 10 tabelas têm RLS ativo (auditado em maio/2026). O isolamento entre famílias é garantido pela função `get_my_family_id()` aplicada em todas as políticas de SELECT, INSERT, UPDATE e DELETE.
+
+| Tabela | RLS | Cobertura |
+|---|---|---|
+| `expenses` | ✅ | SELECT · INSERT · UPDATE · DELETE |
+| `incomes` | ✅ | SELECT · INSERT · UPDATE · DELETE |
+| `budgets` | ✅ | SELECT · INSERT · UPDATE · DELETE |
+| `recurring_expenses` | ✅ | SELECT · INSERT · UPDATE · DELETE |
+| `recurring_reminders` | ✅ | SELECT · INSERT · UPDATE · DELETE |
+| `cards` | ✅ | ALL (via `auth.uid() → family_members`) |
+| `billing_periods` | ✅ | ALL (via `auth.uid() → family_members`) |
+| `families` | ✅ | SELECT · INSERT · UPDATE (admin only) |
+| `family_members` | ✅ | SELECT · INSERT (`user_id = auth.uid()`) |
+| `profiles` | ✅ | SELECT (próprio + família) · INSERT · UPDATE |
 
 ---
 
@@ -369,14 +384,21 @@ Configure as mesmas variáveis do `.env.local` em:
 
 ```
 financa-casal/
+├── api/
+│   └── auth/
+│       ├── login.js     # POST /api/auth/login — autentica e define cookie HttpOnly
+│       ├── signup.js    # POST /api/auth/signup — cadastra e define cookie HttpOnly
+│       ├── refresh.js   # POST /api/auth/refresh — renova sessão via cookie HttpOnly
+│       └── logout.js    # POST /api/auth/logout — apaga o cookie de sessão
 ├── src/
-│   ├── App.jsx          # Aplicação completa (~5372 linhas)
+│   ├── App.jsx          # Aplicação completa (~5390 linhas)
 │   ├── index.css        # Estilos globais base
 │   └── main.jsx         # Entry point React
 ├── public/
 │   ├── favicon.svg      # Ícone diamante roxo
 │   └── og-image.svg     # Imagem Open Graph (1200×630)
 ├── index.html           # HTML com SEO, Open Graph e PWA meta tags
+├── vercel.json          # Headers de segurança HTTP e CSP
 ├── vite.config.js       # Configuração do Vite
 ├── CONTEXT.md           # Contexto técnico para desenvolvimento com IA
 ├── CLAUDE.md            # Instruções e padrões para o Claude Code
@@ -414,6 +436,51 @@ financa-casal/
 | `Input` / `Select` | Inputs estilizados com label e tema |
 | `Btn` | Botão com variantes: primary, ghost, danger, success |
 | `Toast` | Sistema de notificações temporárias (success/error/info) |
+
+---
+
+## Segurança
+
+### Autenticação e sessão
+- **Refresh token** armazenado em cookie `HttpOnly; Secure; SameSite=Strict` — inacessível ao JavaScript, mesmo em caso de XSS
+- **Access token** mantido apenas em memória (`_authToken`) — nunca persiste em `localStorage` em produção
+- **Rotação de refresh token** a cada uso — prevenção de token replay
+- **Rate limiting** no login: 3 tentativas falhas ativam bloqueio de 30 segundos no frontend
+
+### Proteção de dados (Supabase)
+- **RLS ativo nas 10 tabelas** — auditado em maio/2026, sem nenhuma tabela exposta
+- Toda consulta é filtrada por `get_my_family_id()` — impossível acessar dados de outra família
+- **Funções SECURITY DEFINER** para operações sensíveis (criação de família, troca de papel, convite)
+- Índices `UNIQUE` no banco garantem idempotência na importação (`ON CONFLICT DO NOTHING`)
+
+### Proteção da API Anthropic
+- A chave da API Anthropic fica **exclusivamente no Supabase Vault** (servidor)
+- O browser nunca recebe nem transmite a chave — todo processamento de IA passa pela Edge Function
+
+### Headers HTTP (`vercel.json`)
+| Header | Valor |
+|---|---|
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` — força HTTPS |
+| `Content-Security-Policy` | `script-src 'self'` — bloqueia scripts externos; `frame-ancestors 'none'` |
+| `X-Frame-Options` | `DENY` — previne clickjacking |
+| `X-Content-Type-Options` | `nosniff` — previne MIME sniffing |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | Desativa câmera, microfone e geolocalização |
+
+### Upload de arquivos
+- Tamanho máximo: **10 MB**
+- MIME type validado antes do processamento
+- Extensões permitidas: `.csv`, `.xlsx`, `.xls`, `.pdf`, `.txt`
+- Leitura de XLSX via `exceljs` (sem vulnerabilidades conhecidas — substitui o `xlsx` abandonado)
+
+### Geração de códigos e IDs
+- Código de convite gerado com `crypto.getRandomValues()` — criptograficamente seguro
+- IDs temporários gerados com `crypto.randomUUID()` — nativo do browser
+
+### Rate limiting
+- **Frontend:** 3 tentativas falhas → bloqueio de 30 segundos no botão de login
+- **Servidor:** `/api/auth/login` limita 10 tentativas por IP em janela de 15 minutos (segunda camada além da proteção nativa do Supabase)
+- **Campos de formulário:** `maxLength` aplicado em todos os inputs de texto (email: 254, senha: 128, demais: 200)
 
 ---
 
