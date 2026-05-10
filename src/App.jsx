@@ -984,11 +984,11 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   const [recurringRules, setRecurringRules] = useState([]);
   const [calSelMode, setCalSelMode] = useState(false);
   const [calSelectedIds, setCalSelectedIds] = useState(new Set());
-  const calLpRef = useRef(null);
-  const [calLpId, setCalLpId] = useState(null);
   const [calConfirmOpts, setCalConfirmOpts] = useState(null);
-  const calStartLp = (id) => { calLpRef.current = setTimeout(() => { setCalSelMode(true); setCalSelectedIds(new Set([id])); setCalLpId(null); }, 500); setCalLpId(id); };
-  const calCancelLp = () => { clearTimeout(calLpRef.current); setCalLpId(null); };
+  const { pressingId: calLpId, start: calStartLp, cancel: calCancelLp } = useLongPress(
+    useCallback((id) => { if (!calSelMode) { setCalSelMode(true); setCalSelectedIds(new Set([id])); } }, [calSelMode]),
+    500
+  );
   const calToggleSel = (id) => setCalSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
   const calExitSel = () => { setCalSelMode(false); setCalSelectedIds(new Set()); };
   const calDeleteSelected = () => {
@@ -1202,7 +1202,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                     }}>
                     {calSelMode && (
                       <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSel?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSel?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                        {calIsSel && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {calIsSel && <Icon name="check" size={12} color="#fff" />}
                       </div>
                     )}
                     <span style={{ fontSize:22,flexShrink:0 }}>{incCat?.emoji||"💰"}</span>
@@ -1252,7 +1252,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                     }}>
                     {calSelMode && (
                       <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSelExp?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSelExp?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                        {calIsSelExp && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {calIsSelExp && <Icon name="check" size={12} color="#fff" />}
                       </div>
                     )}
                     <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||"📦"}</span>
@@ -2200,6 +2200,28 @@ function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
   );
 }
 
+// ─── USE LONG PRESS HOOK ──────────────────────────────────────────────────────
+function useLongPress(onTrigger, ms = 500) {
+  const [pressingId, setPressingId] = useState(null);
+  const timerRef = useRef(null);
+
+  const start = useCallback((id) => {
+    setPressingId(id);
+    timerRef.current = setTimeout(() => {
+      setPressingId(null);
+      navigator.vibrate?.(30);
+      onTrigger(id);
+    }, ms);
+  }, [onTrigger, ms]);
+
+  const cancel = useCallback(() => {
+    clearTimeout(timerRef.current);
+    setPressingId(null);
+  }, []);
+
+  return { pressingId, start, cancel };
+}
+
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você", billingPeriods = [] }) {
   // ── Period / window state ──
@@ -2222,8 +2244,6 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   // ── Selection mode state ──
   const [selMode, setSelMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const longPressRef = useRef(null);
-  const [longPressingId, setLongPressingId] = useState(null);
   const [confirmOpts, setConfirmOpts] = useState(null);
   const openConfirm = (title, message, onConfirm) => setConfirmOpts({ title, message, onConfirm });
   const closeConfirm = () => setConfirmOpts(null);
@@ -2377,19 +2397,11 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const selectAll    = () => setSelectedIds(new Set(filtered.map(r=>r.id)));
   const isAllSel     = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id));
 
-  // Long-press handlers
-  const startLongPress = (id) => {
-    if (selMode) return; // already in selection mode — normal tap
-    longPressRef.current = setTimeout(() => {
-      setLongPressingId(null);
-      enterSelMode(id);
-    }, 500);
-    setLongPressingId(id);
-  };
-  const cancelLongPress = () => {
-    clearTimeout(longPressRef.current);
-    setLongPressingId(null);
-  };
+  // Long-press via hook
+  const { pressingId: longPressingId, start: startLongPress, cancel: cancelLongPress } = useLongPress(
+    useCallback((id) => { if (!selMode) enterSelMode(id); }, [selMode]),
+    500
+  );
 
   // Delete selected
   const handleDeleteSelected = () => {
@@ -2741,11 +2753,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                   background: isSel?t.accent:"transparent",
                   display:"flex", alignItems:"center", justifyContent:"center",
                 }}>
-                  {isSel && (
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                      <path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
+                  {isSel && <Icon name="check" size={12} color="#fff" />}
                 </div>
               ) : null}
 
@@ -2813,14 +2821,12 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 </>}
               </div>
 
-              {/* Long-press hint tooltip */}
+              {/* Long-press progress ring */}
               {isLong && (
-                <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)",
-                  background:"#000", color:"#fff", fontSize:10, fontWeight:600,
-                  padding:"4px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.15)",
-                  whiteSpace:"nowrap", pointerEvents:"none" }}>
-                  segurando…
-                </div>
+                <svg className="lp-ring-svg" viewBox="0 0 100 100" fill="none">
+                  <rect className="lp-ring-path" x="1" y="1" width="98" height="98" rx="15"
+                    stroke={t.accent} strokeWidth="2.5" />
+                </svg>
               )}
             </div>
           );
@@ -2947,11 +2953,11 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
   const [confirmingId, setConfirmingId] = useState(null);
   const [rSelMode, setRSelMode] = useState(false);
   const [rSelectedIds, setRSelectedIds] = useState(new Set());
-  const rLpRef = useRef(null);
-  const [rLpId, setRLpId] = useState(null);
   const [rConfirmOpts, setRConfirmOpts] = useState(null);
-  const rStartLp = (id) => { rLpRef.current = setTimeout(() => { setRSelMode(true); setRSelectedIds(new Set([id])); setRLpId(null); }, 500); setRLpId(id); };
-  const rCancelLp = () => { clearTimeout(rLpRef.current); setRLpId(null); };
+  const { pressingId: rLpId, start: rStartLp, cancel: rCancelLp } = useLongPress(
+    useCallback((id) => { if (!rSelMode) { setRSelMode(true); setRSelectedIds(new Set([id])); } }, [rSelMode]),
+    500
+  );
   const rToggleSel = (id) => setRSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
   const rExitSel = () => { setRSelMode(false); setRSelectedIds(new Set()); };
   const rDeleteSelected = () => {
@@ -3257,7 +3263,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                   }}>
                   {rSelMode && (
                     <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:rIsSel?"none":"1.8px solid rgba(255,255,255,0.35)",background:rIsSel?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                      {rIsSel && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      {rIsSel && <Icon name="check" size={12} color="#fff" />}
                     </div>
                   )}
                   <span style={{ fontSize:20,flexShrink:0 }}>{rule.active ? (cat?.emoji || "📦") : "⏸️"}</span>
@@ -5391,6 +5397,9 @@ export default function App() {
       .main-content-wrap{margin-left:210px!important;}
     }
     @keyframes sheetUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+    @keyframes lpFill{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+    .lp-ring-svg{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);pointer-events:none;border-radius:inherit;}
+    .lp-ring-path{stroke-dasharray:100;stroke-dashoffset:100;animation:lpFill 500ms linear forwards;}
     @media(prefers-reduced-motion:reduce){*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
     @media(max-width:600px){
       .modal-sheet{position:fixed!important;bottom:0!important;left:0!important;right:0!important;border-radius:20px 20px 0 0!important;max-width:100%!important;max-height:90vh!important;animation:sheetUp 0.25s ease!important;}
