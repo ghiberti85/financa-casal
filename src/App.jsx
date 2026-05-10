@@ -230,6 +230,55 @@ const themes = {
   },
 };
 
+// ─── ICON SYSTEM ──────────────────────────────────────────────────────────────
+const ICON_PATHS = {
+  home:         ["M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z","M9 22V12h6v10"],
+  calendar:     "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+  chart:        "M18 20V10M12 20V4M6 20v-6",
+  pieChart:     ["M21.21 15.89A10 10 0 118 2.83","M22 12A10 10 0 0012 2v10z"],
+  list:         "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  target:       ["M12 22a10 10 0 100-20 10 10 0 000 20z","M12 18a6 6 0 100-12 6 6 0 000 12z","M12 14a2 2 0 100-4 2 2 0 000 4z"],
+  repeat:       ["M17 1l4 4-4 4","M3 11V9a4 4 0 014-4h14","M7 23l-4-4 4-4","M21 13v2a4 4 0 01-4 4H3"],
+  upload:       ["M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4","M17 8l-5-5-5 5","M12 3v12"],
+  download:     ["M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4","M7 10l5 5 5-5","M12 15V3"],
+  plus:         "M12 5v14M5 12h14",
+  minus:        "M5 12h14",
+  more:         ["M12 13a1 1 0 100-2 1 1 0 000 2z","M19 13a1 1 0 100-2 1 1 0 000 2z","M5 13a1 1 0 100-2 1 1 0 000 2z"],
+  search:       "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+  x:            "M18 6L6 18M6 6l12 12",
+  trash:        ["M3 6h18","M8 6V4h8v2","M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"],
+  edit:         ["M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7","M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"],
+  check:        "M20 6L9 17l-5-5",
+  filter:       "M22 3H2l8 9.46V19l4 2v-8.54L22 3z",
+  sun:          ["M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42","M12 17a5 5 0 100-10 5 5 0 000 10z"],
+  moon:         "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
+  user:         ["M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2","M12 11a4 4 0 100-8 4 4 0 000 8z"],
+  users:        ["M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2","M9 11a4 4 0 100-8 4 4 0 000 8z","M23 21v-2a4 4 0 00-3-3.87","M16 3.13a4 4 0 010 7.75"],
+  card:         ["M1 4h22v16H1z","M1 10h22"],
+  logout:       ["M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4","M16 17l5-5-5-5","M21 12H9"],
+  chevronLeft:  "M15 18l-6-6 6-6",
+  chevronRight: "M9 18l6-6-6-6",
+  chevronDown:  "M6 9l6 6 6-6",
+  arrowUp:      ["M12 19V5","M5 12l7-7 7 7"],
+  arrowDown:    ["M12 5v14","M19 12l-7 7-7-7"],
+  wallet:       ["M21 12V7H5a2 2 0 010-4h14v4","M3 5v14a2 2 0 002 2h16v-5","M21 12a2 2 0 000 4h0"],
+  bell:         ["M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 01-3.46 0"],
+  menuLines:    "M3 12h18M3 6h18M3 18h18",
+};
+
+function Icon({ name, size = 20, color = "currentColor", style: extraStyle }) {
+  const d = ICON_PATHS[name];
+  if (!d) return null;
+  const paths = Array.isArray(d) ? d : [d];
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      style={{ display:"inline-block", flexShrink:0, verticalAlign:"middle", ...extraStyle }}>
+      {paths.map((p, i) => <path key={i} d={p} />)}
+    </svg>
+  );
+}
+
 const CATEGORIES = [
   { id: "alimentacao", label: "Alimentação", emoji: "🍽️" },
   { id: "supermercado", label: "Supermercado", emoji: "🛒" },
@@ -401,7 +450,7 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
             style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.textSecondary, fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.18s" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = t.danger+"22"; e.currentTarget.style.color = t.danger; e.currentTarget.style.borderColor = t.danger+"55"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = t.surfaceHover; e.currentTarget.style.color = t.textSecondary; e.currentTarget.style.borderColor = t.border; }}
-          >×</button>
+          ><Icon name="x" size={16} /></button>
         </div>
         {children}
       </div>
@@ -431,7 +480,7 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel 
           boxShadow: t.shadow, animation: "modalIn 0.2s ease",
         }}
       >
-        <div style={{ fontSize: 28, marginBottom: 12, lineHeight: 1 }}>🗑️</div>
+        <div style={{ marginBottom: 12, lineHeight: 1 }}><Icon name="trash" size={28} color={t.danger} /></div>
         <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: t.text, letterSpacing: "-0.02em" }}>
           {title}
         </h3>
@@ -5238,13 +5287,13 @@ export default function App() {
   };
 
   const tabs=[
-    {id:"dashboard",  label:"Início",      shortLabel:"Início",     icon:"🏠"},
-    {id:"calendar",   label:"Calendário",  shortLabel:"Calendário", icon:"📅"},
-    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos",   icon:"📊"},
-    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",  icon:"🎯"},
-    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",    icon:"🔁"},
-    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",    icon:"📋"},
-    {id:"import",     label:"Importar",    shortLabel:"Importar",   icon:"📥"},
+    {id:"dashboard",  label:"Início",      shortLabel:"Início",     icon:"home"},
+    {id:"calendar",   label:"Calendário",  shortLabel:"Calendário", icon:"calendar"},
+    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos",   icon:"chart"},
+    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",  icon:"target"},
+    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",    icon:"repeat"},
+    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",    icon:"list"},
+    {id:"import",     label:"Importar",    shortLabel:"Importar",   icon:"upload"},
   ];
   // primary tabs shown in the mobile bottom bar (4 slots + center FAB)
   const PRIMARY_MOBILE_TABS = ["calendar","charts","recurring","transactions"];
@@ -5365,7 +5414,7 @@ export default function App() {
                 style={{ width:"100%",height:44,borderRadius:12,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:"0 12px",
                   background:tab===tb.id?t.accentSoft:"transparent",
                   color:tab===tb.id?t.accent:t.textMuted }}>
-                <span style={{ fontSize:20,flexShrink:0,width:24,textAlign:"center" }}>{tb.icon}</span>
+                <Icon name={tb.icon} size={20} color={tab===tb.id?t.accent:t.textMuted} />
                 <span className="nav-label" style={{ fontSize:13,fontWeight:tab===tb.id?700:500,whiteSpace:"nowrap" }}>{tb.label}</span>
               </button>
             ))}
@@ -5534,7 +5583,7 @@ export default function App() {
             const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
             return (
               <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
-                <span style={{ fontSize:20,lineHeight:1 }}>{tb.icon}</span>
+                <Icon name={tb.icon} size={22} color={isAct?t.accent:t.textMuted} />
                 <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
                 {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
               </button>
@@ -5548,7 +5597,7 @@ export default function App() {
             const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
             return (
               <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
-                <span style={{ fontSize:20,lineHeight:1 }}>{tb.icon}</span>
+                <Icon name={tb.icon} size={22} color={isAct?t.accent:t.textMuted} />
                 <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
                 {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
               </button>
