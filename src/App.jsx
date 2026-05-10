@@ -626,10 +626,24 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
+  const [loginCooldown, setLoginCooldown] = useState(0);
+  const failedAttemptsRef = useRef(0);
+  const cooldownTimerRef = useRef(null);
+
+  const startCooldown = (seconds) => {
+    setLoginCooldown(seconds);
+    cooldownTimerRef.current = setInterval(() => {
+      setLoginCooldown(prev => {
+        if (prev <= 1) { clearInterval(cooldownTimerRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const enterDemo = () => onLogin(DEMO_USER, null, DEMO_FAMILY);
 
   const handleAuth = async () => {
+    if (loginCooldown > 0) return;
     // Intercepta credenciais demo — sem tocar no Supabase
     if (email.trim().toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD) {
       enterDemo();
@@ -661,7 +675,14 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
         setPendingUser({ user, token: data.access_token });
         setStep(mode === "signup" ? "profile" : "family_setup");
       }
-    } catch (err) { addToast(err.message, "error"); }
+    } catch (err) {
+      failedAttemptsRef.current += 1;
+      if (failedAttemptsRef.current >= 3) {
+        failedAttemptsRef.current = 0;
+        startCooldown(30);
+      }
+      addToast(err.message, "error");
+    }
     finally { setLoading(false); }
   };
 
@@ -722,8 +743,8 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:28,marginTop:-16 }}>Gerencie juntos, cresçam juntos</p>
     <Input label="E-mail" t={t} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@email.com" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
     <Input label="Senha" t={t} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
-    <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading}>
-      {loading ? "Aguarde..." : mode==="login" ? "🔐 Entrar" : "✨ Criar conta"}
+    <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading || loginCooldown > 0}>
+      {loginCooldown > 0 ? `⏳ Aguarde ${loginCooldown}s` : loading ? "Aguarde..." : mode==="login" ? "🔐 Entrar" : "✨ Criar conta"}
     </Btn>
     <p style={{ textAlign:"center",marginTop:18,fontSize:14,color:t.textMuted }}>
       {mode==="login"?"Não tem conta? ":"Já tem conta? "}
@@ -3776,10 +3797,28 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
   };
 
   // ── Handle file ──
+  const ALLOWED_EXTENSIONS = ["csv", "txt", "xlsx", "xls", "pdf"];
+  const ALLOWED_MIME_TYPES = [
+    "text/csv", "text/plain", "application/pdf",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "",  // alguns sistemas não enviam MIME — validar pela extensão
+  ];
+  const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+
   const handleFile = async (file) => {
     if (!file) return;
-    setFileName(file.name);
     const ext = file.name.split(".").pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      addToast("Formato não suportado. Use CSV, XLSX ou PDF.", "error"); return;
+    }
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      addToast("Tipo de arquivo inválido.", "error"); return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      addToast("Arquivo muito grande. Limite: 10 MB.", "error"); return;
+    }
+    setFileName(file.name);
     setStep("mapping"); setLoading(true);
 
     try {
@@ -3790,7 +3829,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
       } else if (ext === "xlsx" || ext === "xls") {
         setLoadingMsg("📊 Lendo planilha Excel...");
         const buf = await file.arrayBuffer();
-        const { read, utils } = await import("https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs");
+        const { read, utils } = await import("xlsx");
         const wb = read(buf);
         const ws = wb.Sheets[wb.SheetNames[0]];
         textData = utils.sheet_to_csv(ws);
