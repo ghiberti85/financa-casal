@@ -5170,7 +5170,6 @@ export default function App() {
   const [showInvite, setShowInvite] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [toasts, setToasts] = useState([]);
-  const [mobileMenu, setMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showFabSheet, setShowFabSheet] = useState(false);
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
@@ -5718,43 +5717,13 @@ export default function App() {
         </aside>
 
         {/* ══ MOBILE TOP HEADER ══ */}
-        <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:"calc(56px + env(safe-area-inset-top))",zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
+        <header className="mobile-topbar" style={{ position:"fixed",top:0,left:0,right:0,height:"calc(56px + env(safe-area-inset-top))",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 16px",background:`${t.bg}f0`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${t.border}`,paddingTop:"env(safe-area-inset-top)" }}>
           <button onClick={()=>setTab("dashboard")} style={{ display:"flex",alignItems:"center",gap:8,background:"none",border:"none",cursor:"pointer",padding:0 }}>
             <span style={{ fontSize:20 }}>💎</span>
             <span style={{ fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:15,color:t.text,letterSpacing:"-0.01em" }}>Finanças Casal</span>
             {isDemo&&<span style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"2px 7px",borderRadius:6,fontWeight:700 }}>DEMO</span>}
           </button>
-          <button onClick={()=>setMobileMenu(v=>!v)}
-            style={{ width:36,height:36,borderRadius:10,border:`1px solid ${t.border}`,background:mobileMenu?t.accentSoft:t.surface,color:t.text,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0 }}>
-            {mobileMenu
-              ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke={t.text} strokeWidth="2" strokeLinecap="round"/></svg>
-              : <svg width="16" height="14" viewBox="0 0 16 14" fill="none"><path d="M1 1h14M1 7h14M1 13h14" stroke={t.text} strokeWidth="1.8" strokeLinecap="round"/></svg>
-            }
-          </button>
         </header>
-
-        {/* ══ MOBILE MENU DRAWER ══ */}
-        {mobileMenu&&(
-          <>
-            <div onClick={()=>setMobileMenu(false)} style={{ position:"fixed",inset:0,zIndex:198,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(2px)" }} />
-            <div style={{ position:"fixed",top:0,right:0,bottom:0,width:280,zIndex:199,background:t.glassModal,backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",borderLeft:`1px solid ${t.glassBorder}`,display:"flex",flexDirection:"column",animation:"slideInRight 0.22s ease",paddingTop:"calc(64px + env(safe-area-inset-top))",paddingBottom:"calc(20px + env(safe-area-inset-bottom))",overflowY:"auto" }}>
-              {[{id:"dashboard",label:"🏠 Início"},{id:"budget",label:"🎯 Orçamento"},{id:"import",label:"📥 Importar"}].map(item=>(
-                <button key={item.id} onClick={()=>{setTab(item.id);setMobileMenu(false);}}
-                  style={{ padding:"14px 24px",border:"none",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",cursor:"pointer" }}>
-                  {item.label}
-                </button>
-              ))}
-              <div style={{ height:1,background:t.border,margin:"8px 20px" }} />
-              {!isDemo&&<button onClick={()=>{setShowProfile(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👤 Meu Perfil</button>}
-              {family&&!isDemo&&<button onClick={()=>{setShowInvite(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>👥 Família</button>}
-              {family&&!isDemo&&<button onClick={()=>{setShowCardsManager(true);setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>💳 Cartões</button>}
-              <div style={{ height:1,background:t.border,margin:"8px 20px" }} />
-              <button onClick={()=>{setDarkMode(!darkMode);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
-              {!isDemo&&<button onClick={()=>{handleLogout();setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.danger,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>🚪 Sair</button>}
-              {isDemo&&<button onClick={()=>{handleLogout();setMobileMenu(false);}} style={{ padding:"13px 24px",border:"none",background:"transparent",color:t.danger,fontSize:14,fontWeight:500,textAlign:"left",cursor:"pointer" }}>🚪 Sair do modo Demo</button>}
-            </div>
-          </>
-        )}
 
         {/* ══ MAIN CONTENT WRAP (margin-left set by CSS on desktop) ══ */}
         <div className="main-content-wrap" style={{ display:"flex",flexDirection:"column",minHeight:"100vh" }}>
