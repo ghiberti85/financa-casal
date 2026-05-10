@@ -28,6 +28,14 @@ Ele contém arquitetura, schema do banco, componentes e decisões técnicas.
 - **Apenas inline styles** — nunca adicionar classes Tailwind, CSS modules ou arquivos `.css`
 - Sempre usar o objeto `t` (tema) para cores: `style={{ color: t.text }}`, nunca hardcodar cores
 - O `t` é passado como prop para todos os componentes — sempre incluir `t` nas props de novos componentes
+- Exceção: `@keyframes` e classes CSS globais existem dentro da `<style>` tag no JSX do componente `App` — usá-las via `className` é permitido
+
+### Sobre ícones
+- **Sempre usar `<Icon name="..." />`** para ícones de ação da UI
+- **Nunca usar emojis como ícones de UI** (✏️ 🗑 👤 👥 💳 🌙 ☀️ 🚪)
+- Emojis de **conteúdo** são permitidos (categorias, títulos de seção, toasts, badges)
+- Lista completa de ícones disponíveis em `ICON_PATHS`: `home`, `calendar`, `chart`, `pieChart`, `list`, `target`, `repeat`, `upload`, `download`, `plus`, `minus`, `more`, `search`, `x`, `trash`, `edit`, `check`, `filter`, `sun`, `moon`, `user`, `users`, `card`, `logout`, `chevronLeft`, `chevronRight`, `chevronDown`, `arrowUp`, `arrowDown`, `wallet`, `bell`, `menuLines`
+- Para adicionar um ícone novo: inserir em `ICON_PATHS` com o path SVG do Lucide
 
 ### Sobre o Supabase
 - Usar `supabaseFetch()` para queries REST — nunca importar o SDK Supabase
@@ -37,14 +45,35 @@ Ele contém arquitetura, schema do banco, componentes e decisões técnicas.
 - `ON CONFLICT DO NOTHING` em todas as inserções da importação
 
 ### Sobre autenticação
-- Token em `localStorage` como `sb_token` e `sb_refresh`
+- Token em memória como `_authToken` (produção) ou `localStorage` como `sb_token`/`sb_refresh` (dev)
 - Refresh automático já implementado em `supabaseFetch()` — não duplicar essa lógica
 
-### Sobre commits
-- Rodar `npm run build` antes de commitar
-- Se build falhar, corrigir antes do commit
+### Sobre JSX e React
+- Usar `Fragment` (named import) — **nunca `React.Fragment`**
+- O JSX transform do Vite não injeta `React` global — `React.Fragment` causa `ReferenceError`
+- Import correto: `import { useState, useEffect, ..., Fragment } from "react"`
+
+### Sobre commits e PRs
+- Rodar `npm run build` antes de commitar — se falhar, corrigir antes
+- Criar uma branch por feature/fix: `git checkout -b feat/nome` ou `fix/nome`
 - Commit com mensagem descritiva em português ou inglês
-- Push para `origin main` após cada commit
+- Push para a branch: `git push -u origin nome-da-branch`
+- Abrir PR e mergear — **nunca** commitar direto no `main`
+- **Antes de abrir o PR:** verificar se `CLAUDE.md` e `CONTEXT.md` precisam ser atualizados
+
+---
+
+## Checklist de PR (executar sempre antes de abrir)
+
+```
+[ ] npm run build passou sem erros
+[ ] Funcionalidade testada manualmente (navegação, mobile, dark mode)
+[ ] window.confirm() substituído por ConfirmModal onde aplicável
+[ ] Emojis de UI substituídos por <Icon>
+[ ] Fragment usado em vez de React.Fragment
+[ ] CLAUDE.md atualizado (se adicionou padrões, hooks ou armadilhas)
+[ ] CONTEXT.md atualizado (se adicionou componentes, tabs ou navegação)
+```
 
 ---
 
@@ -55,7 +84,6 @@ Ele contém arquitetura, schema do banco, componentes e decisões técnicas.
 function NomeDoComponente({ t, family, user, isDemo, addToast, ...props }) {
   const [estado, setEstado] = useState(null);
 
-  // Sempre verificar demo antes de chamadas ao banco
   async function carregarDados() {
     if (isDemo) {
       setEstado(dadosFake);
@@ -78,6 +106,96 @@ function NomeDoComponente({ t, family, user, isDemo, addToast, ...props }) {
   );
 }
 ```
+
+---
+
+## Padrão de Ícones
+
+```jsx
+// Ícone simples
+<Icon name="edit" size={16} color={t.textMuted} />
+
+// Ícone em botão de ação (inline)
+<button onClick={...}
+  style={{ background:"transparent", border:"none", cursor:"pointer",
+           color:t.textMuted, padding:"4px 6px", borderRadius:6,
+           display:"flex", alignItems:"center" }}
+  onMouseEnter={e=>e.currentTarget.style.color=t.accent}
+  onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>
+  <Icon name="edit" size={14} />
+</button>
+
+// Ícone com texto em menu/botão
+<button style={{ display:"flex", alignItems:"center", gap:10, ... }}>
+  <Icon name="logout" size={15} color={t.danger} />Sair
+</button>
+```
+
+---
+
+## Padrão de Long-Press
+
+```jsx
+// Hook
+const { pressingId, start, cancel } = useLongPress(
+  useCallback((id) => { /* ação ao completar */ }, [dep]),
+  500 // ms
+);
+
+// No card
+const isLong = pressingId === item.id;
+
+<div
+  style={{
+    ...
+    transform: isLong ? "scale(1.015)" : "none",
+    boxShadow: isLong ? undefined : "none",
+    animation: isLong ? "lpGlow 500ms linear forwards" : undefined,
+    // transition deve incluir: "transform 120ms, box-shadow 120ms"
+  }}
+  onMouseDown={() => start(item.id)}
+  onMouseUp={cancel}
+  onMouseLeave={cancel}
+  onTouchStart={() => start(item.id)}
+  onTouchEnd={cancel}
+  onTouchCancel={cancel}
+>
+```
+
+> ⚠️ **NUNCA usar SVG `stroke-dashoffset` para o ring do long-press.** O `@keyframes lpGlow` anima `box-shadow`, que segue o `border-radius` do card nativamente em qualquer tamanho de tela.
+
+---
+
+## Padrão de Confirmação de Deleção
+
+```jsx
+// Estado no componente
+const [confirmOpts, setConfirmOpts] = useState(null);
+const openConfirm = (title, message, onConfirm) =>
+  setConfirmOpts({ title, message, onConfirm });
+const closeConfirm = () => setConfirmOpts(null);
+
+// Disparar
+const handleDelete = () => {
+  openConfirm(
+    "Remover lançamento",
+    "Esta ação não pode ser desfeita.",
+    () => doDelete()
+  );
+};
+
+// No return
+<ConfirmModal
+  open={!!confirmOpts}
+  title={confirmOpts?.title}
+  message={confirmOpts?.message}
+  onConfirm={() => { confirmOpts?.onConfirm(); closeConfirm(); }}
+  onCancel={closeConfirm}
+  t={t}
+/>
+```
+
+> Nunca usar `window.confirm()` — não respeita o tema e bloqueia thread.
 
 ---
 
@@ -170,7 +288,7 @@ Usar `jsPDF` + `html2canvas` para capturar os gráficos Recharts.
 Relatório mensal com: resumo, gráficos, lista de lançamentos.
 
 ### 4. Divisão do App.jsx em arquivos separados
-Apenas quando o arquivo dificultar a manutenção.
+Apenas quando o arquivo dificultar a manutenção (~6000+ linhas).
 Criar pasta `src/components/` e extrair componentes um a um.
 Manter o mesmo padrão de props e inline styles.
 
@@ -196,3 +314,11 @@ Conversão para BRL na exibição dos totais.
 6. **Inline styles e tema** — sempre `t.propDoTema`, nunca `#hexCor` hardcoded exceto para cores absolutas como `"#fff"` ou `"transparent"`.
 
 7. **Recharts e responsividade** — sempre usar `ResponsiveContainer` wrapping os gráficos.
+
+8. **`React.Fragment` não existe no escopo** — o JSX transform do Vite 8 não injeta `React` como global. Sempre importar `Fragment` pelo nome: `import { ..., Fragment } from "react"` e usar `<Fragment key={...}>`.
+
+9. **Long-press ring via box-shadow** — usar `animation: "lpGlow 500ms linear forwards"` no `style` do card. Nunca usar SVG `<rect>` com `stroke-dashoffset` — o SVG com viewBox quadrado não cobre corretamente cards retangulares.
+
+10. **ConfirmModal, nunca window.confirm()** — `window.confirm()` não respeita o tema, bloqueia a thread e não funciona em alguns browsers mobile (WebViews). Usar sempre o componente `ConfirmModal`.
+
+11. **Commits direto no main** — proibido. Sempre usar branch + PR. O Vercel faz auto-deploy no push para `main`, então um commit com erro quebra produção.

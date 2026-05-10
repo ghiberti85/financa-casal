@@ -34,7 +34,7 @@ api/auth/
   refresh.js  ← POST /api/auth/refresh (lê cookie HttpOnly)
   logout.js   ← POST /api/auth/logout (apaga cookie)
 src/
-  App.jsx     ← aplicação INTEIRA em um único arquivo (~5390 linhas)
+  App.jsx     ← aplicação INTEIRA em um único arquivo (~5920 linhas)
   index.css   ← estilos globais base
   main.jsx    ← entry point React
 public/
@@ -175,6 +175,41 @@ Não existe classe CSS — tudo é `style={{ color: t.text }}`.
 
 ---
 
+## Sistema de Ícones
+
+```javascript
+const ICON_PATHS = {
+  home, calendar, chart, pieChart, list, target, repeat,
+  upload, download, plus, minus, more, search, x, trash,
+  edit, check, filter, sun, moon, user, users, card, logout,
+  chevronLeft, chevronRight, chevronDown, arrowUp, arrowDown,
+  wallet, bell, menuLines
+}
+
+function Icon({ name, size=20, color="currentColor", style }) { ... }
+```
+
+- Todos os ícones de ação da UI usam `<Icon>` — nunca emojis
+- Emojis de conteúdo (categorias, títulos de seção, toasts) são permitidos
+- Para adicionar: inserir novo entry em `ICON_PATHS` com path SVG Lucide
+
+---
+
+## Hooks Utilitários
+
+```javascript
+// Long-press com vibração
+function useLongPress(onTrigger, ms = 500)
+// Retorna: { pressingId, start(id), cancel() }
+// Ao completar: chama onTrigger(id) e navigator.vibrate(30)
+
+// Debounce de valor para buscas
+function useDebounce(value, delay = 300)
+// Retorna: debouncedValue
+```
+
+---
+
 ## Componentes em App.jsx
 
 | Componente | Descrição |
@@ -183,12 +218,18 @@ Não existe classe CSS — tudo é `style={{ color: t.text }}`.
 | `LoginPage` | Login/cadastro + fluxo de perfil e família (3 etapas) |
 | `LoginCard` | Wrapper visual do card de login (subcomponente) |
 | `LoginLogo` | Logo + título da tela de login (subcomponente) |
+| `Icon` | Ícone SVG inline via `ICON_PATHS` (Lucide-inspired) |
+| `ConfirmModal` | Modal de confirmação glassmorphism via `createPortal` (substitui `window.confirm`) |
+| `Highlight` | Destaque de trecho de texto em resultados de busca |
 | `SummaryCards` | Cards: Receitas, Gastos, Saldo, Parcelas Futuras |
+| `SummaryCardsSkeleton` | Skeleton de carregamento para SummaryCards |
 | `CalendarView` | Calendário mensal com indicadores e painel de detalhes |
 | `CalendarPickerModal` | Seletor de data customizado (sem input[type=date] nativo) |
 | `DateInput` | Input de data que abre CalendarPickerModal |
 | `ChartsView` | Gráficos: receitas×gastos, donut categorias, linha parcelas |
-| `TransactionsList` | Lista com filtros, seleção em massa, duplicatas |
+| `ChartsViewSkeleton` | Skeleton de carregamento para ChartsView |
+| `TransactionsList` | Lista com filtros, agrupamento por data, busca, seleção em massa, duplicatas |
+| `TransactionsListSkeleton` | Skeleton de carregamento para TransactionsList |
 | `ImportView` | Upload CSV/XLSX/PDF + preview + detecção de duplicatas |
 | `ExpenseForm` | Gasto: PIX/Débito/Crédito parcelado + opção recorrente |
 | `IncomeForm` | Receita: descrição, quem recebeu, categoria, valor, data |
@@ -203,11 +244,30 @@ Não existe classe CSS — tudo é `style={{ color: t.text }}`.
 | `FamilyModal` | Código de convite, membros, papéis |
 | `ProfileModal` | Edição de perfil com telefone e DDI |
 | `MemberSelect` | Dropdown de membros da família |
-| `Modal` | Wrapper de modal reutilizável |
+| `Modal` | Wrapper de modal reutilizável (suporta bottom sheet no mobile) |
 | `Input` | Input estilizado com label e foco no tema |
 | `Select` | Select estilizado com label e tema |
 | `Btn` | Botão com variantes: primary, ghost, danger, success |
 | `Toast` | Sistema de notificações temporárias |
+
+---
+
+## Funções Utilitárias
+
+```javascript
+// Agrupa array de itens por data ISO (retorna [{date, label, items}])
+function groupByDate(items)
+
+// Formata data ISO para label relativo: "Hoje", "Ontem" ou "DD de Mês de AAAA"
+function formatDateHeader(iso)
+
+// Auto-categoriza descrição por palavras-chave (retorna id de CATEGORIES)
+function autoCategory(description)
+
+// Retorna { month, year } da fatura correspondente à data de compra
+// Compra ≤ closingDay → fatura do mesmo mês; > closingDay → fatura do próximo
+function getBillingMonth(dateStr, billingPeriods, closingDay)
+```
 
 ---
 
@@ -226,17 +286,31 @@ import       → ImportView
 ### Layout de Navegação
 
 **Desktop (≥ 601px):**
-- Sidebar rail fixa de 64px na esquerda com todos os 7 tabs como ícones
-- Topbar horizontal sticky com título da aba atual, busca cosmética e toggle de tema
+- Sidebar rail fixa (64px colapsado, 210px expandido) com todos os 7 tabs como ícones SVG
+- Topbar horizontal sticky com título da aba atual
 - FABs fixos no canto inferior direito: "+ Receita" e "+ Gasto"
-- User avatar no rodapé da sidebar → menu dropdown (Perfil, Família, Cartões, Tema, Sair)
+- User avatar no rodapé da sidebar → menu dropdown com `Icon` SVG (Perfil, Família, Cartões, Tema, Sair)
 
 **Mobile (≤ 600px):**
-- Topbar fixa (56px + safe-area-inset-top) com logo, badge DEMO e botão `···` (drawer)
-- Bottom bar fixa com 4 abas primárias (`dashboard`, `calendar`, `charts`, `recurring`) + botão FAB central ("+")
-- Abas secundárias (`budget`, `transactions`, `import`) acessíveis via drawer lateral direito
-- FAB central abre sheet com "➕ Gasto" e "💚 Receita"
+- Topbar fixa (`56px + safe-area-inset-top`) com logo centralizado e badge DEMO
+- Bottom bar fixa com 3 abas primárias (`dashboard`, `calendar`, `charts`) + FAB central ("+") + botão "Menu"
+- Botão **Menu** abre `showMoreDrawer` (bottom sheet) com abas secundárias: Recorrentes, Orçamento, Lançamentos, Importar + links para Perfil, Família, Cartões, Tema, Sair
+- FAB central abre `showFabSheet` com "+ Gasto" e "+ Receita"
 - `env(safe-area-inset-bottom)` garante que a bottom bar não fique atrás do home indicator do iPhone
+- Barras flutuantes de ação usam `bottom: "calc(64px + env(safe-area-inset-bottom) + 10px)"`
+
+### Animações CSS (keyframes em `<style>` no App)
+
+| Keyframe | Uso |
+|---|---|
+| `fadeInUp` | Entrada de conteúdo principal |
+| `slideInRight` | Toast notifications |
+| `slideInLeft` | — |
+| `modalIn` | Entrada de modais |
+| `sheetIn` | Entrada de sheets menores |
+| `sheetUp` | Bottom sheet mobile (showMoreDrawer, showFabSheet) |
+| `lpGlow` | Long-press: anima `box-shadow` de 0 a anel de 2.5px em 500ms |
+| `shimmer` | Skeleton screens |
 
 ---
 
@@ -315,15 +389,6 @@ const INCOME_SOURCES = [
   { id: "aluguel",     label: "Aluguel",      emoji: "🏘️" },
   { id: "outros",      label: "Outros",       emoji: "💰" },
 ];
-```
-
-## Utilitário de Mês de Fatura
-
-```javascript
-// Retorna { month, year } da fatura correspondente a uma data de compra
-// Compra ≤ closingDay → fatura do mesmo mês; > closingDay → fatura do próximo mês
-// Usado apenas para crédito; PIX e débito usam sempre e.date original
-function getBillingMonth(dateStr, closingDay = 28)
 ```
 
 ---
