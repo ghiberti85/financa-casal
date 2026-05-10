@@ -409,6 +409,63 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
   );
 }
 
+// ─── CONFIRM MODAL ────────────────────────────────────────────────────────────
+function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel = "Excluir", t }) {
+  if (!open) return null;
+  return createPortal(
+    <div
+      onClick={onCancel}
+      style={{
+        position: "fixed", inset: 0, zIndex: 600,
+        background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "24px 20px",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: t.glassModal, border: `1.5px solid ${t.glassBorder}`,
+          backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
+          borderRadius: 20, padding: "24px 24px 20px", width: "100%", maxWidth: 320,
+          boxShadow: t.shadow, animation: "modalIn 0.2s ease",
+        }}
+      >
+        <div style={{ fontSize: 28, marginBottom: 12, lineHeight: 1 }}>🗑️</div>
+        <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: t.text, letterSpacing: "-0.02em" }}>
+          {title}
+        </h3>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: t.textSecondary, lineHeight: 1.55 }}>
+          {message}
+        </p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, height: 42, borderRadius: 12, cursor: "pointer",
+              border: `1px solid ${t.border}`, background: t.surface,
+              color: t.text, fontSize: 14, fontWeight: 600,
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              flex: 1, height: 42, borderRadius: 12, cursor: "pointer",
+              border: `1px solid ${t.danger}55`, background: `${t.danger}20`,
+              color: t.danger, fontSize: 14, fontWeight: 700,
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ─── INPUT / SELECT / BTN ─────────────────────────────────────────────────────
 function Input({ label, t, ...props }) {
   const defaultMaxLength = props.type === "email" ? 254
@@ -836,15 +893,21 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   const [calSelectedIds, setCalSelectedIds] = useState(new Set());
   const calLpRef = useRef(null);
   const [calLpId, setCalLpId] = useState(null);
+  const [calConfirmOpts, setCalConfirmOpts] = useState(null);
   const calStartLp = (id) => { calLpRef.current = setTimeout(() => { setCalSelMode(true); setCalSelectedIds(new Set([id])); setCalLpId(null); }, 500); setCalLpId(id); };
   const calCancelLp = () => { clearTimeout(calLpRef.current); setCalLpId(null); };
   const calToggleSel = (id) => setCalSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
   const calExitSel = () => { setCalSelMode(false); setCalSelectedIds(new Set()); };
-  const calDeleteSelected = async () => {
+  const calDeleteSelected = () => {
     const arr = Array.from(calSelectedIds);
-    if (!window.confirm(`Remover ${arr.length} lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.`)) return;
-    await Promise.all(arr.map(id => { const isInc = incomes.some(i=>i.id===id); return isInc?onDeleteIncome(id):onDeleteExpense(id); }));
-    calExitSel();
+    setCalConfirmOpts({
+      title: "Remover lançamentos",
+      message: `Remover ${arr.length} lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.`,
+      onConfirm: async () => {
+        await Promise.all(arr.map(id => { const isInc = incomes.some(i=>i.id===id); return isInc?onDeleteIncome(id):onDeleteExpense(id); }));
+        calExitSel();
+      },
+    });
   };
 
   useEffect(() => {
@@ -1123,7 +1186,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 
       {/* Floating delete bar — CalendarView */}
       {calSelMode && calSelectedIds.size > 0 && (
-        <div style={{ position:"fixed",bottom:84,left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
+        <div style={{ position:"fixed",bottom:"calc(64px + env(safe-area-inset-bottom) + 10px)",left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
           <button onClick={calExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>Cancelar</button>
           <button onClick={calDeleteSelected} style={{ flex:1,height:40,borderRadius:12,background:"rgba(255,107,107,0.18)",border:"1px solid rgba(255,107,107,0.35)",color:"#FF9B9B",fontSize:13.5,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1147,6 +1210,15 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!calConfirmOpts}
+        title={calConfirmOpts?.title}
+        message={calConfirmOpts?.message}
+        onConfirm={() => { calConfirmOpts?.onConfirm(); setCalConfirmOpts(null); }}
+        onCancel={() => setCalConfirmOpts(null)}
+        t={t}
+      />
     </div>
   );
 }
@@ -2059,6 +2131,9 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const [selectedIds, setSelectedIds] = useState(new Set());
   const longPressRef = useRef(null);
   const [longPressingId, setLongPressingId] = useState(null);
+  const [confirmOpts, setConfirmOpts] = useState(null);
+  const openConfirm = (title, message, onConfirm) => setConfirmOpts({ title, message, onConfirm });
+  const closeConfirm = () => setConfirmOpts(null);
 
   // ── Edit modal state ──
   const [editItem, setEditItem] = useState(null);
@@ -2227,12 +2302,17 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const handleDeleteSelected = () => {
     const selArr = Array.from(selectedIds);
     if (!selArr.length) return;
-    if (!window.confirm(`Remover ${selArr.length} lançamento(s) selecionado(s)?`)) return;
     const expIds = selArr.filter(id => all.find(i=>i.id===id&&i._type==="expense"));
     const incIds = selArr.filter(id => all.find(i=>i.id===id&&i._type==="income"));
-    if (expIds.length) onDeleteAllExpenses(expIds);
-    if (incIds.length) onDeleteAllIncomes(incIds);
-    exitSelMode();
+    openConfirm(
+      "Remover lançamentos",
+      `Remover ${selArr.length} lançamento(s) selecionado(s)?`,
+      () => {
+        if (expIds.length) onDeleteAllExpenses(expIds);
+        if (incIds.length) onDeleteAllIncomes(incIds);
+        exitSelMode();
+      }
+    );
   };
 
   // Delete filtered (from action sheet)
@@ -2241,9 +2321,14 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
     const expIds = filtered.filter(i=>i._type==="expense").map(i=>i.id);
     const incIds = filtered.filter(i=>i._type==="income").map(i=>i.id);
     if (!filtered.length) return;
-    if (!window.confirm(`Remover ${filtered.length} lançamento(s) filtrado(s)?`)) return;
-    if (expIds.length) onDeleteAllExpenses(expIds);
-    if (incIds.length) onDeleteAllIncomes(incIds);
+    openConfirm(
+      "Remover lançamentos filtrados",
+      `Remover ${filtered.length} lançamento(s) filtrado(s)?`,
+      () => {
+        if (expIds.length) onDeleteAllExpenses(expIds);
+        if (incIds.length) onDeleteAllIncomes(incIds);
+      }
+    );
   };
 
   // Glass tokens (matching design reference)
@@ -2483,11 +2568,15 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
             <button onClick={()=>{
               const expDups = dupIdsArray.filter(id=>all.find(i=>i.id===id&&i._type==="expense"));
               const incDups = dupIdsArray.filter(id=>all.find(i=>i.id===id&&i._type==="income"));
-              if(window.confirm(`Remover ${dupCount} lançamento(s) duplicado(s)? Esta ação não pode ser desfeita.`)){
-                if(expDups.length) onDeleteAllExpenses(expDups);
-                if(incDups.length) onDeleteAllIncomes(incDups);
-                setShowDupsOnly(false);
-              }
+              openConfirm(
+                "Remover duplicatas",
+                `Remover ${dupCount} lançamento(s) duplicado(s)? Esta ação não pode ser desfeita.`,
+                () => {
+                  if(expDups.length) onDeleteAllExpenses(expDups);
+                  if(incDups.length) onDeleteAllIncomes(incDups);
+                  setShowDupsOnly(false);
+                }
+              );
             }}
               style={{ padding:"7px 14px",borderRadius:10,border:"1px solid rgba(217,119,6,0.4)",background:"rgba(217,119,6,0.12)",color:t.warning,fontSize:12,fontWeight:700,cursor:"pointer" }}>
               🗑 Remover todos
@@ -2648,7 +2737,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       {/* ══ FLOATING SELECTION ACTION BAR ══ */}
       {selMode && selectedIds.size > 0 && (
         <div style={{
-          position:"fixed", bottom:84, left:20, right:20, zIndex:200,
+          position:"fixed", bottom:"calc(64px + env(safe-area-inset-bottom) + 10px)", left:20, right:20, zIndex:200,
           padding:"10px 12px", borderRadius:18,
           background:"rgba(20,14,36,0.92)", backdropFilter:"blur(22px)",
           border:`1px solid ${t.glassBorder}`,
@@ -2683,6 +2772,15 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmOpts}
+        title={confirmOpts?.title}
+        message={confirmOpts?.message}
+        onConfirm={() => { confirmOpts?.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        t={t}
+      />
     </div>
   );
 }
@@ -2758,15 +2856,21 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
   const [rSelectedIds, setRSelectedIds] = useState(new Set());
   const rLpRef = useRef(null);
   const [rLpId, setRLpId] = useState(null);
+  const [rConfirmOpts, setRConfirmOpts] = useState(null);
   const rStartLp = (id) => { rLpRef.current = setTimeout(() => { setRSelMode(true); setRSelectedIds(new Set([id])); setRLpId(null); }, 500); setRLpId(id); };
   const rCancelLp = () => { clearTimeout(rLpRef.current); setRLpId(null); };
   const rToggleSel = (id) => setRSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
   const rExitSel = () => { setRSelMode(false); setRSelectedIds(new Set()); };
-  const rDeleteSelected = async () => {
+  const rDeleteSelected = () => {
     const arr = Array.from(rSelectedIds);
-    if (!window.confirm(`Remover ${arr.length} regra(s) recorrente(s)? Os lançamentos já feitos não serão afetados.`)) return;
-    await Promise.all(arr.map(id => { const rule = rules.find(r=>r.id===id); return rule ? deleteRule(rule, true) : Promise.resolve(); }));
-    rExitSel();
+    setRConfirmOpts({
+      title: "Remover recorrentes",
+      message: `Remover ${arr.length} regra(s) recorrente(s)? Os lançamentos já feitos não serão afetados.`,
+      onConfirm: async () => {
+        await Promise.all(arr.map(id => { const rule = rules.find(r=>r.id===id); return rule ? deleteRule(rule) : Promise.resolve(); }));
+        rExitSel();
+      },
+    });
   };
 
   const curMonth = today.getMonth() + 1;
@@ -2911,8 +3015,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
     } catch (e) { addToast("Erro: " + e.message, "error"); }
   };
 
-  const deleteRule = async (rule, silent = false) => {
-    if (!silent && !window.confirm(`Remover "${rule.description}"? Os lançamentos já feitos não serão afetados.`)) return;
+  const deleteRule = async (rule) => {
     try {
       await supabaseFetch(`/recurring_expenses?id=eq.${rule.id}`, { method: "DELETE" });
       setRules(p => p.filter(r => r.id !== rule.id));
@@ -2920,6 +3023,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
       addToast("Recorrente removido", "info");
     } catch (e) { addToast("Erro: " + e.message, "error"); }
   };
+
 
   const curMonthPrefix = `${curYear}-${String(curMonth).padStart(2,"0")}`;
   // Derive pending from rules directly — never depends on reminder rows existing.
@@ -3104,7 +3208,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
 
       {/* Floating delete bar — RecurringView */}
       {rSelMode && rSelectedIds.size > 0 && (
-        <div style={{ position:"fixed",bottom:84,left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
+        <div style={{ position:"fixed",bottom:"calc(64px + env(safe-area-inset-bottom) + 10px)",left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
           <button onClick={rExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>Cancelar</button>
           <button onClick={rDeleteSelected} style={{ flex:1,height:40,borderRadius:12,background:"rgba(255,107,107,0.18)",border:"1px solid rgba(255,107,107,0.35)",color:"#FF9B9B",fontSize:13.5,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -3126,6 +3230,15 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
           }}
         />
       )}
+
+      <ConfirmModal
+        open={!!rConfirmOpts}
+        title={rConfirmOpts?.title}
+        message={rConfirmOpts?.message}
+        onConfirm={() => { rConfirmOpts?.onConfirm(); setRConfirmOpts(null); }}
+        onCancel={() => setRConfirmOpts(null)}
+        t={t}
+      />
     </div>
   );
 }
@@ -4470,6 +4583,7 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
   const [bpEditId, setBpEditId] = useState(null);
   const [bpLoading, setBpLoading] = useState(false);
   const [showBpForm, setShowBpForm] = useState(false);
+  const [cardConfirmOpts, setCardConfirmOpts] = useState(null);
   const sbp = (k,v) => setBpForm(p=>({...p,[k]:v}));
 
   useEffect(()=>{
@@ -4501,14 +4615,19 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
 
 
 
-  const del = async(id)=>{
+  const del = (id)=>{
     if(cards.length<=1){addToast("Não é possível excluir o único cartão.","error");return;}
-    if(!window.confirm("Excluir este cartão?")) return;
-    try{
-      await supabaseFetch(`/cards?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
-      setCards(p=>p.filter(c=>c.id!==id));
-      addToast("Cartão excluído.","info");
-    }catch(err){addToast(err.message,"error");}
+    setCardConfirmOpts({
+      title: "Excluir cartão",
+      message: "Excluir este cartão? Esta ação não pode ser desfeita.",
+      onConfirm: async () => {
+        try{
+          await supabaseFetch(`/cards?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
+          setCards(p=>p.filter(c=>c.id!==id));
+          addToast("Cartão excluído.","info");
+        }catch(err){addToast(err.message,"error");}
+      },
+    });
   };
 
   const startEdit=(c)=>{ setEditId(c.id); setForm({name:c.name,holder:c.holder,closing_day:c.closing_day,due_day:c.due_day,color:c.color}); setShowCardForm(true); };
@@ -4546,13 +4665,18 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
     finally { setBpLoading(false); }
   };
 
-  const delBp = async (id) => {
-    if (!window.confirm("Excluir este período?")) return;
-    try {
-      await supabaseFetch(`/billing_periods?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
-      setBillingPeriods(p => p.filter(bp => bp.id !== id));
-      addToast("Período excluído.","info");
-    } catch(err) { addToast(err.message,"error"); }
+  const delBp = (id) => {
+    setCardConfirmOpts({
+      title: "Excluir período",
+      message: "Excluir este período de fatura?",
+      onConfirm: async () => {
+        try {
+          await supabaseFetch(`/billing_periods?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
+          setBillingPeriods(p => p.filter(bp => bp.id !== id));
+          addToast("Período excluído.","info");
+        } catch(err) { addToast(err.message,"error"); }
+      },
+    });
   };
 
   const startEditBp = (bp) => {
@@ -4681,6 +4805,15 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
           )}
         </div>
       )}
+
+      <ConfirmModal
+        open={!!cardConfirmOpts}
+        title={cardConfirmOpts?.title}
+        message={cardConfirmOpts?.message}
+        onConfirm={() => { cardConfirmOpts?.onConfirm(); setCardConfirmOpts(null); }}
+        onCancel={() => setCardConfirmOpts(null)}
+        t={t}
+      />
     </div>
   );
 }
@@ -5078,7 +5211,6 @@ export default function App() {
 
   const deleteAllExpenses=async(ids)=>{
     if(!ids.length) return;
-    if(!window.confirm(`Remover ${ids.length} gasto(s)? Esta ação não pode ser desfeita.`)) return;
     if(!isDemo){
       try {
         for(let i=0;i<ids.length;i+=20){
@@ -5093,7 +5225,6 @@ export default function App() {
 
   const deleteAllIncomes=async(ids)=>{
     if(!ids.length) return;
-    if(!window.confirm(`Remover ${ids.length} receita(s)? Esta ação não pode ser desfeita.`)) return;
     if(!isDemo){
       try {
         for(let i=0;i<ids.length;i+=20){
