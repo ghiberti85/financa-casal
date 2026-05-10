@@ -1326,6 +1326,23 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const [selectedPieCategory, setSelectedPieCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [selectedCatIds, setSelectedCatIds] = useState(new Set());
+  const [chartTab, setChartTab] = useState("categories");
+  const TAB_DEFS = [
+    {id:"categories",   icon:"pieChart", label:"Categorias"},
+    {id:"incomeExpense",icon:"chart",    label:"Receitas × Gastos"},
+    {id:"installments", icon:"card",     label:"Parcelas"},
+  ];
+  const TAB_ORDER = ["categories","incomeExpense","installments"];
+  const swipeRef = useRef({});
+
+  const handleTouchStart = (e) => { swipeRef.current.startX = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - (swipeRef.current.startX || 0);
+    if (Math.abs(dx) < 60) return;
+    const idx = TAB_ORDER.indexOf(chartTab);
+    if (dx < 0 && idx < TAB_ORDER.length - 1) setChartTab(TAB_ORDER[idx + 1]);
+    if (dx > 0 && idx > 0) setChartTab(TAB_ORDER[idx - 1]);
+  };
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -1532,6 +1549,28 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           {availableYears.map(yr=><option key={yr} value={yr}>{yr}</option>)}
         </select>
       </div>
+
+      {/* Chart tab strip */}
+      <div style={{ display:"flex", padding:4, borderRadius:12, background:t.surface, border:`1px solid ${t.border}`, gap:4 }}>
+        {TAB_DEFS.map(tab => (
+          <button key={tab.id} onClick={()=>setChartTab(tab.id)} style={{
+            flex:1, height:36, borderRadius:9, border:"none", cursor:"pointer",
+            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+            background: chartTab===tab.id ? t.accentSoft : "transparent",
+            color: chartTab===tab.id ? t.accent : t.textSecondary,
+            fontSize: 12, fontWeight: chartTab===tab.id ? 700 : 500,
+            transition:"all 0.15s",
+          }}>
+            <Icon name={tab.icon} size={14} color={chartTab===tab.id?t.accent:t.textSecondary} />
+            <span className="chart-tab-label">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Swipe area */}
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} key={chartTab} style={{ display:"flex",flexDirection:"column",gap:24,animation:"fadeInUp 0.22s ease" }}>
+
+      {chartTab === "categories" && <>
       <Card title={`🥧 Gastos por categoria — ${period==="month" ? MONTH_FULL[selectedMonth] : "Ano"} ${selectedYear}`}>
         <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma fatia ou categoria para ver os lançamentos.</p>
         <div style={{ display:"flex",flexWrap:"wrap",gap:24,alignItems:"center" }}>
@@ -1659,7 +1698,9 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
+      {chartTab === "incomeExpense" && <>
       <Card title="📊 Receitas × Gastos — Últimos 6 meses">
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={barData} barGap={4} barCategoryGap="25%">
@@ -1674,7 +1715,9 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
+      {chartTab === "installments" && <>
       <Card title="💳 Parcelas de Crédito — Próximos 12 meses">
         <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em um ponto para ver e editar as parcelas daquele mês.</p>
         <ResponsiveContainer width="100%" height={220}>
@@ -1798,6 +1841,16 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
             );
           })()}
         </Card>
+      </>}
+
+      </div>{/* end swipe area */}
+
+      {/* Page dots */}
+      <div style={{ display:"flex", justifyContent:"center", gap:6 }}>
+        {TAB_ORDER.map(id => (
+          <div key={id} style={{ height:6, width:chartTab===id?18:6, borderRadius:3, background:chartTab===id?t.accent:t.border, transition:"all 0.2s" }} />
+        ))}
+      </div>
 
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
@@ -5541,6 +5594,7 @@ export default function App() {
     @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
     .sk{border-radius:10px;background:linear-gradient(90deg,${t.surface} 25%,${t.surfaceHover} 50%,${t.surface} 75%);background-size:800px 100%;animation:shimmer 1.5s infinite linear;}
     @media(prefers-reduced-motion:reduce){*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
+    @media(max-width:600px){.chart-tab-label{display:none!important;}}
     @media(max-width:600px){
       .modal-sheet{position:fixed!important;bottom:0!important;left:0!important;right:0!important;border-radius:20px 20px 0 0!important;max-width:100%!important;max-height:90vh!important;animation:sheetUp 0.25s ease!important;}
       .modal-handle-wrap{display:flex!important;}
