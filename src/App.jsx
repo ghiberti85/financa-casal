@@ -3773,6 +3773,52 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
   );
 }
 
+// ─── SKELETON SCREENS ─────────────────────────────────────────────────────────
+function SummaryCardsSkeleton({ t }) {
+  return (
+    <div className="summary-grid" style={{ marginBottom:24 }}>
+      {[1,2,3,4].map(i=>(
+        <div key={i} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:18,padding:"18px 20px" }}>
+          <div className="sk" style={{ width:32,height:32,borderRadius:8,marginBottom:12 }} />
+          <div className="sk" style={{ width:"55%",height:10,borderRadius:6,marginBottom:8 }} />
+          <div className="sk" style={{ width:"75%",height:24,borderRadius:8 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TransactionsListSkeleton({ t, rows = 6 }) {
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+      {Array.from({length:rows},(_,i)=>(
+        <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,background:t.surface,border:`1px solid ${t.border}` }}>
+          <div className="sk" style={{ width:40,height:40,borderRadius:"50%",flexShrink:0 }} />
+          <div style={{ flex:1 }}>
+            <div className="sk" style={{ width:"60%",height:12,borderRadius:6,marginBottom:6 }} />
+            <div className="sk" style={{ width:"40%",height:10,borderRadius:6 }} />
+          </div>
+          <div className="sk" style={{ width:60,height:16,borderRadius:6 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartsViewSkeleton({ t }) {
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
+      <div style={{ display:"flex",gap:8 }}>
+        {[1,2,3].map(i=><div key={i} className="sk" style={{ flex:1,height:34,borderRadius:10 }} />)}
+      </div>
+      <div className="sk" style={{ width:"100%",height:260,borderRadius:16 }} />
+      <div style={{ display:"flex",gap:8,justifyContent:"center" }}>
+        {[1,2,3].map(i=><div key={i} className="sk" style={{ width:i===1?18:8,height:8,borderRadius:4 }} />)}
+      </div>
+    </div>
+  );
+}
+
 // ─── SUMMARY CARDS ────────────────────────────────────────────────────────────
 function SummaryCards({ expenses, incomes, t, only = null }) {
   const prefix=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
@@ -4973,6 +5019,7 @@ export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [cards, setCards] = useState([]);
   const [recurringRules, setRecurringRules] = useState([]);
   const [billingPeriods, setBillingPeriods] = useState([]);
@@ -5123,7 +5170,8 @@ export default function App() {
   }, []);
 
   const loadData = useCallback(async () => {
-    if (isDemo||!user||!family) return;
+    if (isDemo||!user||!family) { setDataLoading(false); return; }
+    setDataLoading(true);
     try {
       const [exp,inc,cds,rec]=await Promise.all([
         supabaseFetch(`/expenses?family_id=eq.${family.family_id}&select=*&order=date.desc`),
@@ -5137,6 +5185,7 @@ export default function App() {
         .then(bps => setBillingPeriods(bps||[]))
         .catch(() => {});
     } catch { addToast("Erro ao carregar dados","error"); }
+    finally { setDataLoading(false); }
   }, [user, family, isDemo, addToast]);
 
   useEffect(()=>{ if(user&&family) loadData(); },[user,family,loadData]);
@@ -5148,6 +5197,7 @@ export default function App() {
       const d = makeDemoData();
       setExpenses(d.expenses);
       setIncomes(d.incomes);
+      setDataLoading(false);
       setProfile({ first_name:"Demo", last_name:"" });
       setFamilyMembers([
         { user_id:"demo",  user_label:"Você",   role:"admin"  },
@@ -5400,6 +5450,8 @@ export default function App() {
     @keyframes lpFill{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
     .lp-ring-svg{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);pointer-events:none;border-radius:inherit;}
     .lp-ring-path{stroke-dasharray:100;stroke-dashoffset:100;animation:lpFill 500ms linear forwards;}
+    @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+    .sk{border-radius:10px;background:linear-gradient(90deg,${t.surface} 25%,${t.surfaceHover} 50%,${t.surface} 75%);background-size:800px 100%;animation:shimmer 1.5s infinite linear;}
     @media(prefers-reduced-motion:reduce){*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
     @media(max-width:600px){
       .modal-sheet{position:fixed!important;bottom:0!important;left:0!important;right:0!important;border-radius:20px 20px 0 0!important;max-width:100%!important;max-height:90vh!important;animation:sheetUp 0.25s ease!important;}
@@ -5580,7 +5632,7 @@ export default function App() {
                   </h2>
                   <p style={{ color:t.textMuted,fontSize:13 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
                 </div>
-                <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Receitas do Mês","Gastos do Mês","Saldo"]} />
+                {dataLoading ? <SummaryCardsSkeleton t={t} /> : <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Receitas do Mês","Gastos do Mês","Saldo"]} />}
                 <div className="dashboard-row2">
                   <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} />
                   <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Parcelas Futuras"]} />
@@ -5603,7 +5655,7 @@ export default function App() {
               </div>
             )}
             {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
-            {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} billingPeriods={billingPeriods} />}
+            {tab==="charts"&&(dataLoading ? <ChartsViewSkeleton t={t} /> : <ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} billingPeriods={billingPeriods} />)}
             {tab==="recurring"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
@@ -5622,7 +5674,7 @@ export default function App() {
                 <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
               </div>
             )}
-            {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />}
+            {tab==="transactions"&&(dataLoading ? <TransactionsListSkeleton t={t} /> : <TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />)}
             {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
           </main>
 
