@@ -426,35 +426,79 @@ function Toast({ toasts, remove }) {
 }
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
-function Modal({ open, onClose, title, children, t, darkMode }) {
+function Modal({ open, onClose, title, children, t, darkMode, size = 'form', footer, sheetOnMobile = true }) {
+  const touchStartY = useRef(null);
+  const handleTouchStart = (e) => { touchStartY.current = e.touches[0].clientY; };
+  const handleTouchMove = (e) => {
+    if (touchStartY.current === null) return;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 120) { touchStartY.current = null; onClose(); }
+  };
+
   if (!open) return null;
-  return (
+  const maxW = size === 'list' ? 640 : size === 'wide' ? 760 : 480;
+
+  return createPortal(
     <div onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }} style={{
-      position: "fixed", inset: 0, zIndex: 500,
-      background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+      position:"fixed", inset:0, zIndex:500,
+      background:"rgba(0,0,0,0.65)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
+      display:"flex",
+      alignItems: sheetOnMobile ? undefined : "center",
+      justifyContent: sheetOnMobile ? undefined : "center",
+      padding: sheetOnMobile ? 0 : 20,
     }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        background: t.glassModal,
-        border: `1.5px solid ${t.glassBorder}`,
-        backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
-        borderRadius: 24, padding: 32, width: "100%", maxWidth: 480,
-        maxHeight: "90vh", overflowY: "auto",
-        animation: "modalIn 0.25s ease",
-        boxShadow: `${t.shadow}, ${t.innerGlow}`,
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h3 style={{ margin: 0, color: t.text, fontSize: 20, fontWeight: 700, letterSpacing:"-0.02em" }}>{title}</h3>
-          <button
-            onClick={onClose}
-            style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.textSecondary, fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.18s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = t.danger+"22"; e.currentTarget.style.color = t.danger; e.currentTarget.style.borderColor = t.danger+"55"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = t.surfaceHover; e.currentTarget.style.color = t.textSecondary; e.currentTarget.style.borderColor = t.border; }}
+      <div
+        onTouchStart={sheetOnMobile ? handleTouchStart : undefined}
+        onTouchMove={sheetOnMobile ? handleTouchMove : undefined}
+        onClick={e=>e.stopPropagation()}
+        className={sheetOnMobile ? "modal-sheet" : "modal-centered"}
+        style={{
+          background: t.glassModal,
+          border: `1.5px solid ${t.glassBorder}`,
+          backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
+          display: "flex", flexDirection: "column",
+          boxShadow: `${t.shadow}, ${t.innerGlow}`,
+          borderRadius: 24, width: "100%", maxWidth: maxW,
+          maxHeight: "90vh",
+          animation: "modalIn 0.25s ease",
+        }}
+      >
+        {/* Handle bar (mobile sheet only) */}
+        <div className="modal-handle-wrap" style={{ display:"none", justifyContent:"center", padding:"10px 0 0" }}>
+          <div style={{ width:36, height:4, borderRadius:2, background:t.border }} />
+        </div>
+        {/* Header */}
+        <div style={{
+          display:"flex", justifyContent:"space-between", alignItems:"center",
+          height:56, minHeight:56, padding:"0 20px",
+          borderBottom:`1px solid ${t.border}`, flexShrink:0,
+        }}>
+          <h3 style={{ margin:0, color:t.text, fontSize:18, fontWeight:700, letterSpacing:"-0.02em" }}>{title}</h3>
+          <button onClick={onClose} style={{
+            background:t.surfaceHover, border:`1px solid ${t.border}`, borderRadius:10,
+            width:34, height:34, cursor:"pointer", color:t.textSecondary, fontSize:18,
+            display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+          }}
+            onMouseEnter={(e)=>{ e.currentTarget.style.background=t.danger+"22"; e.currentTarget.style.color=t.danger; }}
+            onMouseLeave={(e)=>{ e.currentTarget.style.background=t.surfaceHover; e.currentTarget.style.color=t.textSecondary; }}
           ><Icon name="x" size={16} /></button>
         </div>
-        {children}
+        {/* Body */}
+        <div style={{ padding:"20px", overflowY:"auto", flex:1 }}>
+          {children}
+        </div>
+        {/* Footer */}
+        {footer && (
+          <div style={{
+            padding:"12px 20px", borderTop:`1px solid ${t.border}`,
+            display:"flex", gap:10, justifyContent:"flex-end", flexShrink:0,
+          }}>
+            {footer}
+          </div>
+        )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -5344,6 +5388,16 @@ export default function App() {
     @media(min-width:901px){
       .desktop-sidebar{width:210px!important;}
       .main-content-wrap{margin-left:210px!important;}
+    }
+    @keyframes sheetUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+    @media(prefers-reduced-motion:reduce){*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
+    @media(max-width:600px){
+      .modal-sheet{position:fixed!important;bottom:0!important;left:0!important;right:0!important;border-radius:20px 20px 0 0!important;max-width:100%!important;max-height:90vh!important;animation:sheetUp 0.25s ease!important;}
+      .modal-handle-wrap{display:flex!important;}
+      .modal-centered{border-radius:20px 20px 0 0!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important;max-width:100%!important;}
+    }
+    @media(min-width:601px){
+      .modal-sheet{animation:modalIn 0.25s ease!important;}
     }
   `;
 
