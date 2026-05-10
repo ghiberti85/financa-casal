@@ -2233,6 +2233,32 @@ function groupByDate(items) {
     }));
 }
 
+// ─── USE DEBOUNCE ─────────────────────────────────────────────────────────────
+function useDebounce(value, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
+// ─── HIGHLIGHT ────────────────────────────────────────────────────────────────
+function Highlight({ text = "", term = "", t }) {
+  if (!term.trim()) return <span>{text}</span>;
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx === -1) return <span>{text}</span>;
+  return (
+    <span>
+      {text.slice(0, idx)}
+      <mark style={{ background: t.accentSoft, color: t.accent, borderRadius: 3, padding: "0 2px" }}>
+        {text.slice(idx, idx + term.length)}
+      </mark>
+      {text.slice(idx + term.length)}
+    </span>
+  );
+}
+
 // ─── USE LONG PRESS HOOK ──────────────────────────────────────────────────────
 function useLongPress(onTrigger, ms = 500) {
   const [pressingId, setPressingId] = useState(null);
@@ -2267,6 +2293,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   // ── Filter state ──
   const [filter, setFilter] = useState("all"); // 'all' | 'expense' | 'income'
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [memberFilter, setMemberFilter] = useState("all");
@@ -2402,7 +2429,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const filtered = useMemo(() => all.filter(item => {
     if (filter==="expense" && item._type!=="expense") return false;
     if (filter==="income"  && item._type!=="income")  return false;
-    if (search && !item.description?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (debouncedSearch && !item.description?.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
     if (showDupsOnly && !dupIds.has(item.id)) return false;
     if (paymentFilter!=="all" && item._type==="expense" && item.type!==paymentFilter) return false;
     if (categoryFilter!=="all" && item._type==="expense" && item.category!==categoryFilter) return false;
@@ -2414,7 +2441,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       if (!matchExact && !matchVoce) return false;
     }
     return true;
-  }), [all, filter, search, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
+  }), [all, filter, debouncedSearch, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
 
   const totalExp = filtered.filter(i=>i._type==="expense").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const totalInc = filtered.filter(i=>i._type==="income").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
@@ -2545,17 +2572,16 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           {/* ══ ROW 3: Search + ••• ══ */}
           <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
             <div style={{ flex:1, height:36, borderRadius:999, background:t.surface, border:`1px solid ${t.border}`,
-              display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13 }}>
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <circle cx="7" cy="7" r="5.5" stroke={t.textMuted} strokeWidth="1.5"/>
-                <path d="M11 11l4 4" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
+              display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13, position:"relative" }}>
+              <Icon name="search" size={14} color={t.textMuted} />
               <input value={search} onChange={e=>setSearch(e.target.value)}
                 placeholder="Buscar lançamento…"
                 style={{ flex:1, background:"transparent", border:"none", outline:"none", color:t.text, fontSize:13 }} />
               {search && (
                 <button onClick={()=>setSearch("")}
-                  style={{ background:"none", border:"none", color:t.textMuted, cursor:"pointer", fontSize:15, padding:0, lineHeight:1 }}>×</button>
+                  style={{ background:"none", border:"none", color:t.textMuted, cursor:"pointer", padding:0, display:"flex", alignItems:"center" }}>
+                  <Icon name="x" size={14} color={t.textMuted} />
+                </button>
               )}
             </div>
             {/* ••• menu */}
@@ -2746,9 +2772,18 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       {/* ══ LIST ══ */}
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign:"center", padding:"40px 0", color:t.textMuted, fontSize:14 }}>
-            {showDupsOnly ? "Nenhuma duplicata encontrada neste período" : "Nenhum lançamento encontrado"}
-          </div>
+          debouncedSearch ? (
+            <div style={{ textAlign:"center", padding:"48px 20px", color:t.textMuted }}>
+              <Icon name="search" size={40} color={t.border} style={{ marginBottom:12 }} />
+              <div style={{ fontSize:15, fontWeight:600, color:t.textSecondary, marginBottom:4 }}>Nenhum resultado</div>
+              <div style={{ fontSize:13, marginBottom:16 }}>Nada encontrado para "{debouncedSearch}"</div>
+              <button onClick={()=>setSearch("")} style={{ padding:"8px 20px", borderRadius:10, border:`1px solid ${t.border}`, background:t.surface, color:t.text, fontSize:13, fontWeight:600, cursor:"pointer" }}>Limpar busca</button>
+            </div>
+          ) : (
+            <div style={{ textAlign:"center", padding:"40px 0", color:t.textMuted, fontSize:14 }}>
+              {showDupsOnly ? "Nenhuma duplicata encontrada neste período" : "Nenhum lançamento encontrado"}
+            </div>
+          )
         ) : grouped.map(group => (
           <React.Fragment key={group.date}>
             {/* Sticky date header */}
@@ -2818,7 +2853,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               <div style={{ flex:1, minWidth:0, textAlign:"center" }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, flexWrap:"wrap" }}>
                   <span style={{ fontWeight:700, fontSize:14, color:t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing:0.2 }}>
-                    {item.description}
+                    <Highlight text={item.description||""} term={debouncedSearch} t={t} />
                   </span>
                   {isDup && (
                     <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(217,119,6,0.15)",color:t.warning,border:"1px solid rgba(217,119,6,0.3)",flexShrink:0 }}>
