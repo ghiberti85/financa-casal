@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
 
@@ -2838,7 +2838,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
             </div>
           )
         ) : grouped.map(group => (
-          <React.Fragment key={group.date}>
+          <Fragment key={group.date}>
             {/* Sticky date header */}
             <div style={{
               position:"sticky", top:0, zIndex:10,
@@ -2970,7 +2970,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               )}
             </div>
           );})}
-          </React.Fragment>
+          </Fragment>
         ))}
       </div>
 
