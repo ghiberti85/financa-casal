@@ -4979,6 +4979,7 @@ export default function App() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showFabSheet, setShowFabSheet] = useState(false);
+  const [showMoreDrawer, setShowMoreDrawer] = useState(false);
 
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT") || user?.id === "demo";
@@ -5340,7 +5341,7 @@ export default function App() {
     {id:"import",     label:"Importar",    shortLabel:"Importar",   icon:"upload"},
   ];
   // primary tabs shown in the mobile bottom bar (4 slots + center FAB)
-  const PRIMARY_MOBILE_TABS = ["calendar","charts","recurring","transactions"];
+  const PRIMARY_MOBILE_TABS = ["dashboard","calendar","charts","__menu"];
 
   const css=`
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -5367,7 +5368,7 @@ export default function App() {
       .desktop-sidebar{display:none!important;}
       .desktop-topbar{display:none!important;}
       .desktop-fab{display:none!important;}
-      .main-content-wrap{margin-left:0!important;padding-top:calc(56px + env(safe-area-inset-top))!important;}
+      .main-content-wrap{margin-left:0!important;padding-top:calc(56px + env(safe-area-inset-top))!important;padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
     }
     @media(min-width:601px){
       .mobile-topbar{display:none!important;}
@@ -5633,31 +5634,72 @@ export default function App() {
 
         {/* ══ MOBILE BOTTOM BAR ══ */}
         <div className="mobile-bottombar" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:`${t.bg}f4`,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${t.border}`,display:"flex",alignItems:"center",paddingBottom:"env(safe-area-inset-bottom)" }}>
-          {PRIMARY_MOBILE_TABS.slice(0,2).map(id=>{
-            const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
+          {/* Tab: Dashboard */}
+          {["dashboard","calendar"].map(id => {
+            const tb = tabs.find(x=>x.id===id); const isAct = tab===id;
             return (
-              <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
+              <button key={id} onClick={()=>{setTab(id);setShowMoreDrawer(false);}} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s",position:"relative" }}>
                 <Icon name={tb.icon} size={22} color={isAct?t.accent:t.textMuted} />
                 <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
-                {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
+                {isAct&&<span style={{ position:"absolute",bottom:2,width:18,height:2,borderRadius:2,background:t.accent }} />}
               </button>
             );
           })}
           {/* Center FAB */}
-          <button onClick={()=>setShowFabSheet(v=>!v)} style={{ flex:1,border:"none",background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",paddingBottom:4 }}>
-            <span style={{ width:52,height:52,borderRadius:"50%",background:showFabSheet?`${t.accent}cc`:t.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,color:"#fff",boxShadow:`0 4px 18px ${t.accentGlow}`,transform:showFabSheet?"rotate(45deg)":"none",transition:"all 0.2s",lineHeight:1,fontWeight:300 }}>+</span>
+          <button onClick={()=>{setShowFabSheet(v=>!v);setShowMoreDrawer(false);}} style={{ flex:1,border:"none",background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",paddingBottom:4 }}>
+            <span style={{ width:52,height:52,borderRadius:"50%",background:showFabSheet?`${t.accent}cc`:t.accent,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",boxShadow:`0 4px 18px ${t.accentGlow}`,transform:showFabSheet?"rotate(45deg)":"none",transition:"all 0.2s",marginTop:-8 }}>
+              <Icon name="plus" size={26} color="#fff" />
+            </span>
           </button>
-          {PRIMARY_MOBILE_TABS.slice(2).map(id=>{
-            const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
+          {/* Tab: Charts */}
+          {["charts"].map(id => {
+            const tb = tabs.find(x=>x.id===id); const isAct = tab===id;
             return (
-              <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
+              <button key={id} onClick={()=>{setTab(id);setShowMoreDrawer(false);}} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s",position:"relative" }}>
                 <Icon name={tb.icon} size={22} color={isAct?t.accent:t.textMuted} />
                 <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
-                {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
+                {isAct&&<span style={{ position:"absolute",bottom:2,width:18,height:2,borderRadius:2,background:t.accent }} />}
               </button>
             );
           })}
+          {/* Menu button */}
+          <button onClick={()=>setShowMoreDrawer(v=>!v)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:showMoreDrawer?t.accent:t.textMuted,transition:"color 0.15s" }}>
+            <Icon name="more" size={22} color={showMoreDrawer?t.accent:t.textMuted} />
+            <span style={{ fontSize:9.5,fontWeight:showMoreDrawer?700:500,lineHeight:1.2 }}>Menu</span>
+          </button>
         </div>
+
+        {/* ══ MORE DRAWER (mobile) ══ */}
+        {showMoreDrawer&&(
+          <>
+            <div onClick={()=>setShowMoreDrawer(false)} style={{ position:"fixed",inset:0,zIndex:201,background:"rgba(0,0,0,0.45)" }} />
+            <div style={{ position:"fixed",bottom:"calc(64px + env(safe-area-inset-bottom))",left:0,right:0,zIndex:202,background:t.glassModal,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRadius:"20px 20px 0 0",border:`1px solid ${t.glassBorder}`,borderBottom:"none",padding:"20px 16px 8px",animation:"sheetUp 0.22s ease",boxShadow:t.shadow }}>
+              <div style={{ display:"flex",justifyContent:"center",marginBottom:16 }}>
+                <div style={{ width:36,height:4,borderRadius:2,background:t.border }} />
+              </div>
+              {[
+                {id:"recurring", icon:"repeat", label:"Recorrentes"},
+                {id:"budget",    icon:"target", label:"Orçamento"},
+                {id:"transactions",icon:"list",label:"Lançamentos"},
+                {id:"import",   icon:"upload", label:"Importar"},
+              ].map(item=>(
+                <button key={item.id} onClick={()=>{setTab(item.id);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:12,border:"none",cursor:"pointer",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",marginBottom:4 }}>
+                  <Icon name={item.icon} size={20} color={tab===item.id?t.accent:t.textMuted} />
+                  {item.label}
+                </button>
+              ))}
+              <div style={{ height:1,background:t.border,margin:"8px 0" }} />
+              {!isDemo&&<button onClick={()=>{setShowProfile(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="user" size={18} color={t.textMuted} />Meu Perfil</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowInvite(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="users" size={18} color={t.textMuted} />Família</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowCardsManager(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="card" size={18} color={t.textMuted} />Cartões</button>}
+              <div style={{ height:1,background:t.border,margin:"8px 0" }} />
+              <button onClick={()=>setDarkMode(v=>!v)} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name={darkMode?"sun":"moon"} size={18} color={t.textMuted} />{darkMode?"Modo claro":"Modo escuro"}</button>
+              <div style={{ height:1,background:t.border,margin:"8px 0" }} />
+              {!isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />Sair</button>}
+              {isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />Sair do Demo</button>}
+            </div>
+          </>
+        )}
 
         {/* ══ MOBILE FAB SHEET ══ */}
         {showFabSheet&&(
