@@ -230,6 +230,55 @@ const themes = {
   },
 };
 
+// ─── ICON SYSTEM ──────────────────────────────────────────────────────────────
+const ICON_PATHS = {
+  home:         ["M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z","M9 22V12h6v10"],
+  calendar:     "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+  chart:        "M18 20V10M12 20V4M6 20v-6",
+  pieChart:     ["M21.21 15.89A10 10 0 118 2.83","M22 12A10 10 0 0012 2v10z"],
+  list:         "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  target:       ["M12 22a10 10 0 100-20 10 10 0 000 20z","M12 18a6 6 0 100-12 6 6 0 000 12z","M12 14a2 2 0 100-4 2 2 0 000 4z"],
+  repeat:       ["M17 1l4 4-4 4","M3 11V9a4 4 0 014-4h14","M7 23l-4-4 4-4","M21 13v2a4 4 0 01-4 4H3"],
+  upload:       ["M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4","M17 8l-5-5-5 5","M12 3v12"],
+  download:     ["M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4","M7 10l5 5 5-5","M12 15V3"],
+  plus:         "M12 5v14M5 12h14",
+  minus:        "M5 12h14",
+  more:         ["M12 13a1 1 0 100-2 1 1 0 000 2z","M19 13a1 1 0 100-2 1 1 0 000 2z","M5 13a1 1 0 100-2 1 1 0 000 2z"],
+  search:       "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+  x:            "M18 6L6 18M6 6l12 12",
+  trash:        ["M3 6h18","M8 6V4h8v2","M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"],
+  edit:         ["M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7","M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"],
+  check:        "M20 6L9 17l-5-5",
+  filter:       "M22 3H2l8 9.46V19l4 2v-8.54L22 3z",
+  sun:          ["M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42","M12 17a5 5 0 100-10 5 5 0 000 10z"],
+  moon:         "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
+  user:         ["M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2","M12 11a4 4 0 100-8 4 4 0 000 8z"],
+  users:        ["M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2","M9 11a4 4 0 100-8 4 4 0 000 8z","M23 21v-2a4 4 0 00-3-3.87","M16 3.13a4 4 0 010 7.75"],
+  card:         ["M1 4h22v16H1z","M1 10h22"],
+  logout:       ["M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4","M16 17l5-5-5-5","M21 12H9"],
+  chevronLeft:  "M15 18l-6-6 6-6",
+  chevronRight: "M9 18l6-6-6-6",
+  chevronDown:  "M6 9l6 6 6-6",
+  arrowUp:      ["M12 19V5","M5 12l7-7 7 7"],
+  arrowDown:    ["M12 5v14","M19 12l-7 7-7-7"],
+  wallet:       ["M21 12V7H5a2 2 0 010-4h14v4","M3 5v14a2 2 0 002 2h16v-5","M21 12a2 2 0 000 4h0"],
+  bell:         ["M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 01-3.46 0"],
+  menuLines:    "M3 12h18M3 6h18M3 18h18",
+};
+
+function Icon({ name, size = 20, color = "currentColor", style: extraStyle }) {
+  const d = ICON_PATHS[name];
+  if (!d) return null;
+  const paths = Array.isArray(d) ? d : [d];
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      style={{ display:"inline-block", flexShrink:0, verticalAlign:"middle", ...extraStyle }}>
+      {paths.map((p, i) => <path key={i} d={p} />)}
+    </svg>
+  );
+}
+
 const CATEGORIES = [
   { id: "alimentacao", label: "Alimentação", emoji: "🍽️" },
   { id: "supermercado", label: "Supermercado", emoji: "🛒" },
@@ -377,35 +426,79 @@ function Toast({ toasts, remove }) {
 }
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
-function Modal({ open, onClose, title, children, t, darkMode }) {
+function Modal({ open, onClose, title, children, t, darkMode, size = 'form', footer, sheetOnMobile = true }) {
+  const touchStartY = useRef(null);
+  const handleTouchStart = (e) => { touchStartY.current = e.touches[0].clientY; };
+  const handleTouchMove = (e) => {
+    if (touchStartY.current === null) return;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 120) { touchStartY.current = null; onClose(); }
+  };
+
   if (!open) return null;
-  return (
+  const maxW = size === 'list' ? 640 : size === 'wide' ? 760 : 480;
+
+  return createPortal(
     <div onClick={(e)=>{ if(e.target===e.currentTarget) onClose(); }} style={{
-      position: "fixed", inset: 0, zIndex: 500,
-      background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+      position:"fixed", inset:0, zIndex:500,
+      background:"rgba(0,0,0,0.65)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
+      display:"flex",
+      alignItems: sheetOnMobile ? undefined : "center",
+      justifyContent: sheetOnMobile ? undefined : "center",
+      padding: sheetOnMobile ? 0 : 20,
     }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        background: t.glassModal,
-        border: `1.5px solid ${t.glassBorder}`,
-        backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
-        borderRadius: 24, padding: 32, width: "100%", maxWidth: 480,
-        maxHeight: "90vh", overflowY: "auto",
-        animation: "modalIn 0.25s ease",
-        boxShadow: `${t.shadow}, ${t.innerGlow}`,
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h3 style={{ margin: 0, color: t.text, fontSize: 20, fontWeight: 700, letterSpacing:"-0.02em" }}>{title}</h3>
-          <button
-            onClick={onClose}
-            style={{ background: t.surfaceHover, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: t.textSecondary, fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.18s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = t.danger+"22"; e.currentTarget.style.color = t.danger; e.currentTarget.style.borderColor = t.danger+"55"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = t.surfaceHover; e.currentTarget.style.color = t.textSecondary; e.currentTarget.style.borderColor = t.border; }}
-          >×</button>
+      <div
+        onTouchStart={sheetOnMobile ? handleTouchStart : undefined}
+        onTouchMove={sheetOnMobile ? handleTouchMove : undefined}
+        onClick={e=>e.stopPropagation()}
+        className={sheetOnMobile ? "modal-sheet" : "modal-centered"}
+        style={{
+          background: t.glassModal,
+          border: `1.5px solid ${t.glassBorder}`,
+          backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
+          display: "flex", flexDirection: "column",
+          boxShadow: `${t.shadow}, ${t.innerGlow}`,
+          borderRadius: 24, width: "100%", maxWidth: maxW,
+          maxHeight: "90vh",
+          animation: "modalIn 0.25s ease",
+        }}
+      >
+        {/* Handle bar (mobile sheet only) */}
+        <div className="modal-handle-wrap" style={{ display:"none", justifyContent:"center", padding:"10px 0 0" }}>
+          <div style={{ width:36, height:4, borderRadius:2, background:t.border }} />
         </div>
-        {children}
+        {/* Header */}
+        <div style={{
+          display:"flex", justifyContent:"space-between", alignItems:"center",
+          height:56, minHeight:56, padding:"0 20px",
+          borderBottom:`1px solid ${t.border}`, flexShrink:0,
+        }}>
+          <h3 style={{ margin:0, color:t.text, fontSize:18, fontWeight:700, letterSpacing:"-0.02em" }}>{title}</h3>
+          <button onClick={onClose} style={{
+            background:t.surfaceHover, border:`1px solid ${t.border}`, borderRadius:10,
+            width:34, height:34, cursor:"pointer", color:t.textSecondary, fontSize:18,
+            display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+          }}
+            onMouseEnter={(e)=>{ e.currentTarget.style.background=t.danger+"22"; e.currentTarget.style.color=t.danger; }}
+            onMouseLeave={(e)=>{ e.currentTarget.style.background=t.surfaceHover; e.currentTarget.style.color=t.textSecondary; }}
+          ><Icon name="x" size={16} /></button>
+        </div>
+        {/* Body */}
+        <div style={{ padding:"20px", overflowY:"auto", flex:1 }}>
+          {children}
+        </div>
+        {/* Footer */}
+        {footer && (
+          <div style={{
+            padding:"12px 20px", borderTop:`1px solid ${t.border}`,
+            display:"flex", gap:10, justifyContent:"flex-end", flexShrink:0,
+          }}>
+            {footer}
+          </div>
+        )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -431,7 +524,7 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel 
           boxShadow: t.shadow, animation: "modalIn 0.2s ease",
         }}
       >
-        <div style={{ fontSize: 28, marginBottom: 12, lineHeight: 1 }}>🗑️</div>
+        <div style={{ marginBottom: 12, lineHeight: 1 }}><Icon name="trash" size={28} color={t.danger} /></div>
         <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: t.text, letterSpacing: "-0.02em" }}>
           {title}
         </h3>
@@ -891,11 +984,11 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
   const [recurringRules, setRecurringRules] = useState([]);
   const [calSelMode, setCalSelMode] = useState(false);
   const [calSelectedIds, setCalSelectedIds] = useState(new Set());
-  const calLpRef = useRef(null);
-  const [calLpId, setCalLpId] = useState(null);
   const [calConfirmOpts, setCalConfirmOpts] = useState(null);
-  const calStartLp = (id) => { calLpRef.current = setTimeout(() => { setCalSelMode(true); setCalSelectedIds(new Set([id])); setCalLpId(null); }, 500); setCalLpId(id); };
-  const calCancelLp = () => { clearTimeout(calLpRef.current); setCalLpId(null); };
+  const { pressingId: calLpId, start: calStartLp, cancel: calCancelLp } = useLongPress(
+    useCallback((id) => { if (!calSelMode) { setCalSelMode(true); setCalSelectedIds(new Set([id])); } }, [calSelMode]),
+    500
+  );
   const calToggleSel = (id) => setCalSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
   const calExitSel = () => { setCalSelMode(false); setCalSelectedIds(new Set()); };
   const calDeleteSelected = () => {
@@ -1109,7 +1202,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                     }}>
                     {calSelMode && (
                       <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSel?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSel?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                        {calIsSel && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {calIsSel && <Icon name="check" size={12} color="#fff" />}
                       </div>
                     )}
                     <span style={{ fontSize:22,flexShrink:0 }}>{incCat?.emoji||"💰"}</span>
@@ -1159,7 +1252,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                     }}>
                     {calSelMode && (
                       <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:calIsSelExp?"none":"1.8px solid rgba(255,255,255,0.35)",background:calIsSelExp?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                        {calIsSelExp && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {calIsSelExp && <Icon name="check" size={12} color="#fff" />}
                       </div>
                     )}
                     <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||"📦"}</span>
@@ -1233,6 +1326,23 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
   const [selectedPieCategory, setSelectedPieCategory] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [selectedCatIds, setSelectedCatIds] = useState(new Set());
+  const [chartTab, setChartTab] = useState("categories");
+  const TAB_DEFS = [
+    {id:"categories",   icon:"pieChart", label:"Categorias"},
+    {id:"incomeExpense",icon:"chart",    label:"Receitas × Gastos"},
+    {id:"installments", icon:"card",     label:"Parcelas"},
+  ];
+  const TAB_ORDER = ["categories","incomeExpense","installments"];
+  const swipeRef = useRef({});
+
+  const handleTouchStart = (e) => { swipeRef.current.startX = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - (swipeRef.current.startX || 0);
+    if (Math.abs(dx) < 60) return;
+    const idx = TAB_ORDER.indexOf(chartTab);
+    if (dx < 0 && idx < TAB_ORDER.length - 1) setChartTab(TAB_ORDER[idx + 1]);
+    if (dx > 0 && idx > 0) setChartTab(TAB_ORDER[idx - 1]);
+  };
 
   const availableYears = useMemo(() => {
     const yrs = new Set([today.getFullYear()]);
@@ -1439,6 +1549,28 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           {availableYears.map(yr=><option key={yr} value={yr}>{yr}</option>)}
         </select>
       </div>
+
+      {/* Chart tab strip */}
+      <div style={{ display:"flex", padding:4, borderRadius:12, background:t.surface, border:`1px solid ${t.border}`, gap:4 }}>
+        {TAB_DEFS.map(tab => (
+          <button key={tab.id} onClick={()=>setChartTab(tab.id)} style={{
+            flex:1, height:36, borderRadius:9, border:"none", cursor:"pointer",
+            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+            background: chartTab===tab.id ? t.accentSoft : "transparent",
+            color: chartTab===tab.id ? t.accent : t.textSecondary,
+            fontSize: 12, fontWeight: chartTab===tab.id ? 700 : 500,
+            transition:"all 0.15s",
+          }}>
+            <Icon name={tab.icon} size={14} color={chartTab===tab.id?t.accent:t.textSecondary} />
+            <span className="chart-tab-label">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Swipe area */}
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} key={chartTab} style={{ display:"flex",flexDirection:"column",gap:24,animation:"fadeInUp 0.22s ease" }}>
+
+      {chartTab === "categories" && <>
       <Card title={`🥧 Gastos por categoria — ${period==="month" ? MONTH_FULL[selectedMonth] : "Ano"} ${selectedYear}`}>
         <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma fatia ou categoria para ver os lançamentos.</p>
         <div style={{ display:"flex",flexWrap:"wrap",gap:24,alignItems:"center" }}>
@@ -1566,7 +1698,9 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
+      {chartTab === "incomeExpense" && <>
       <Card title="📊 Receitas × Gastos — Últimos 6 meses">
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={barData} barGap={4} barCategoryGap="25%">
@@ -1581,7 +1715,9 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
+      {chartTab === "installments" && <>
       <Card title="💳 Parcelas de Crédito — Próximos 12 meses">
         <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em um ponto para ver e editar as parcelas daquele mês.</p>
         <ResponsiveContainer width="100%" height={220}>
@@ -1705,6 +1841,16 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
             );
           })()}
         </Card>
+      </>}
+
+      </div>{/* end swipe area */}
+
+      {/* Page dots */}
+      <div style={{ display:"flex", justifyContent:"center", gap:6 }}>
+        {TAB_ORDER.map(id => (
+          <div key={id} style={{ height:6, width:chartTab===id?18:6, borderRadius:3, background:chartTab===id?t.accent:t.border, transition:"all 0.2s" }} />
+        ))}
+      </div>
 
       {editItem && (
         <div onClick={e=>{ if(e.target===e.currentTarget) setEditItem(null); }}
@@ -2107,6 +2253,87 @@ function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
   );
 }
 
+// ─── DATE GROUPING HELPERS ────────────────────────────────────────────────────
+const WEEK_DAYS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+function formatDateHeader(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0,10).split("-").map(Number);
+  const date = new Date(y, m-1, d);
+  const now = new Date();
+  const todayD = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((date - todayD) / 86400000);
+  if (diff === 0) return "Hoje";
+  if (diff === -1) return "Ontem";
+  if (diff === 1) return "Amanhã";
+  return `${WEEK_DAYS[date.getDay()]}, ${d} de ${MONTH_FULL[m-1]}`;
+}
+
+function groupByDate(items) {
+  const map = new Map();
+  items.forEach(item => {
+    const key = (item.date||"").slice(0,10);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(item);
+  });
+  return Array.from(map.entries())
+    .sort((a,b) => b[0].localeCompare(a[0]))
+    .map(([date, its]) => ({
+      date,
+      label: formatDateHeader(date),
+      items: its,
+      net: its.reduce((s,i) => s + (i._type==="income"?1:-1)*(parseFloat(i.amount)||0), 0),
+    }));
+}
+
+// ─── USE DEBOUNCE ─────────────────────────────────────────────────────────────
+function useDebounce(value, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
+// ─── HIGHLIGHT ────────────────────────────────────────────────────────────────
+function Highlight({ text = "", term = "", t }) {
+  if (!term.trim()) return <span>{text}</span>;
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx === -1) return <span>{text}</span>;
+  return (
+    <span>
+      {text.slice(0, idx)}
+      <mark style={{ background: t.accentSoft, color: t.accent, borderRadius: 3, padding: "0 2px" }}>
+        {text.slice(idx, idx + term.length)}
+      </mark>
+      {text.slice(idx + term.length)}
+    </span>
+  );
+}
+
+// ─── USE LONG PRESS HOOK ──────────────────────────────────────────────────────
+function useLongPress(onTrigger, ms = 500) {
+  const [pressingId, setPressingId] = useState(null);
+  const timerRef = useRef(null);
+
+  const start = useCallback((id) => {
+    setPressingId(id);
+    timerRef.current = setTimeout(() => {
+      setPressingId(null);
+      navigator.vibrate?.(30);
+      onTrigger(id);
+    }, ms);
+  }, [onTrigger, ms]);
+
+  const cancel = useCallback(() => {
+    clearTimeout(timerRef.current);
+    setPressingId(null);
+  }, []);
+
+  return { pressingId, start, cancel };
+}
+
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você", billingPeriods = [] }) {
   // ── Period / window state ──
@@ -2119,6 +2346,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   // ── Filter state ──
   const [filter, setFilter] = useState("all"); // 'all' | 'expense' | 'income'
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [memberFilter, setMemberFilter] = useState("all");
@@ -2129,8 +2357,6 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   // ── Selection mode state ──
   const [selMode, setSelMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const longPressRef = useRef(null);
-  const [longPressingId, setLongPressingId] = useState(null);
   const [confirmOpts, setConfirmOpts] = useState(null);
   const openConfirm = (title, message, onConfirm) => setConfirmOpts({ title, message, onConfirm });
   const closeConfirm = () => setConfirmOpts(null);
@@ -2256,7 +2482,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const filtered = useMemo(() => all.filter(item => {
     if (filter==="expense" && item._type!=="expense") return false;
     if (filter==="income"  && item._type!=="income")  return false;
-    if (search && !item.description?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (debouncedSearch && !item.description?.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
     if (showDupsOnly && !dupIds.has(item.id)) return false;
     if (paymentFilter!=="all" && item._type==="expense" && item.type!==paymentFilter) return false;
     if (categoryFilter!=="all" && item._type==="expense" && item.category!==categoryFilter) return false;
@@ -2268,12 +2494,14 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       if (!matchExact && !matchVoce) return false;
     }
     return true;
-  }), [all, filter, search, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
+  }), [all, filter, debouncedSearch, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
 
   const totalExp = filtered.filter(i=>i._type==="expense").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const totalInc = filtered.filter(i=>i._type==="income").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const dupCount = dupIds.size;
   const dupIdsArray = Array.from(dupIds);
+
+  const grouped = useMemo(() => groupByDate(filtered), [filtered]);
 
   const hasActiveChipFilters = paymentFilter!=="all" || categoryFilter!=="all" || memberFilter!=="all";
 
@@ -2284,19 +2512,11 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const selectAll    = () => setSelectedIds(new Set(filtered.map(r=>r.id)));
   const isAllSel     = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id));
 
-  // Long-press handlers
-  const startLongPress = (id) => {
-    if (selMode) return; // already in selection mode — normal tap
-    longPressRef.current = setTimeout(() => {
-      setLongPressingId(null);
-      enterSelMode(id);
-    }, 500);
-    setLongPressingId(id);
-  };
-  const cancelLongPress = () => {
-    clearTimeout(longPressRef.current);
-    setLongPressingId(null);
-  };
+  // Long-press via hook
+  const { pressingId: longPressingId, start: startLongPress, cancel: cancelLongPress } = useLongPress(
+    useCallback((id) => { if (!selMode) enterSelMode(id); }, [selMode]),
+    500
+  );
 
   // Delete selected
   const handleDeleteSelected = () => {
@@ -2405,17 +2625,16 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           {/* ══ ROW 3: Search + ••• ══ */}
           <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
             <div style={{ flex:1, height:36, borderRadius:999, background:t.surface, border:`1px solid ${t.border}`,
-              display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13 }}>
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <circle cx="7" cy="7" r="5.5" stroke={t.textMuted} strokeWidth="1.5"/>
-                <path d="M11 11l4 4" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
+              display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13, position:"relative" }}>
+              <Icon name="search" size={14} color={t.textMuted} />
               <input value={search} onChange={e=>setSearch(e.target.value)}
                 placeholder="Buscar lançamento…"
                 style={{ flex:1, background:"transparent", border:"none", outline:"none", color:t.text, fontSize:13 }} />
               {search && (
                 <button onClick={()=>setSearch("")}
-                  style={{ background:"none", border:"none", color:t.textMuted, cursor:"pointer", fontSize:15, padding:0, lineHeight:1 }}>×</button>
+                  style={{ background:"none", border:"none", color:t.textMuted, cursor:"pointer", padding:0, display:"flex", alignItems:"center" }}>
+                  <Icon name="x" size={14} color={t.textMuted} />
+                </button>
               )}
             </div>
             {/* ••• menu */}
@@ -2606,10 +2825,36 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
       {/* ══ LIST ══ */}
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign:"center", padding:"40px 0", color:t.textMuted, fontSize:14 }}>
-            {showDupsOnly ? "Nenhuma duplicata encontrada neste período" : "Nenhum lançamento encontrado"}
-          </div>
-        ) : filtered.map(item => {
+          debouncedSearch ? (
+            <div style={{ textAlign:"center", padding:"48px 20px", color:t.textMuted }}>
+              <Icon name="search" size={40} color={t.border} style={{ marginBottom:12 }} />
+              <div style={{ fontSize:15, fontWeight:600, color:t.textSecondary, marginBottom:4 }}>Nenhum resultado</div>
+              <div style={{ fontSize:13, marginBottom:16 }}>Nada encontrado para "{debouncedSearch}"</div>
+              <button onClick={()=>setSearch("")} style={{ padding:"8px 20px", borderRadius:10, border:`1px solid ${t.border}`, background:t.surface, color:t.text, fontSize:13, fontWeight:600, cursor:"pointer" }}>Limpar busca</button>
+            </div>
+          ) : (
+            <div style={{ textAlign:"center", padding:"40px 0", color:t.textMuted, fontSize:14 }}>
+              {showDupsOnly ? "Nenhuma duplicata encontrada neste período" : "Nenhum lançamento encontrado"}
+            </div>
+          )
+        ) : grouped.map(group => (
+          <React.Fragment key={group.date}>
+            {/* Sticky date header */}
+            <div style={{
+              position:"sticky", top:0, zIndex:10,
+              background:`${t.bg}cc`, backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)",
+              borderBottom:`1px solid ${t.border}`,
+              display:"flex", justifyContent:"space-between", alignItems:"center",
+              padding:"6px 4px", marginBottom:4, marginTop:8,
+            }}>
+              <span style={{ fontSize:11, fontWeight:700, color:t.textSecondary, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                {group.label}
+              </span>
+              <span style={{ fontSize:12, fontWeight:700, color: group.net >= 0 ? t.success : t.danger }}>
+                {group.net >= 0 ? "+" : ""}{fmt(Math.abs(group.net))}
+              </span>
+            </div>
+            {group.items.map(item => {
           const isExp  = item._type === "expense";
           const isDup  = dupIds.has(item.id);
           const isSel  = selectedIds.has(item.id);
@@ -2648,11 +2893,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                   background: isSel?t.accent:"transparent",
                   display:"flex", alignItems:"center", justifyContent:"center",
                 }}>
-                  {isSel && (
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                      <path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
+                  {isSel && <Icon name="check" size={12} color="#fff" />}
                 </div>
               ) : null}
 
@@ -2665,7 +2906,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
               <div style={{ flex:1, minWidth:0, textAlign:"center" }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, flexWrap:"wrap" }}>
                   <span style={{ fontWeight:700, fontSize:14, color:t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing:0.2 }}>
-                    {item.description}
+                    <Highlight text={item.description||""} term={debouncedSearch} t={t} />
                   </span>
                   {isDup && (
                     <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(217,119,6,0.15)",color:t.warning,border:"1px solid rgba(217,119,6,0.3)",flexShrink:0 }}>
@@ -2720,18 +2961,17 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 </>}
               </div>
 
-              {/* Long-press hint tooltip */}
+              {/* Long-press progress ring */}
               {isLong && (
-                <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)",
-                  background:"#000", color:"#fff", fontSize:10, fontWeight:600,
-                  padding:"4px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.15)",
-                  whiteSpace:"nowrap", pointerEvents:"none" }}>
-                  segurando…
-                </div>
+                <svg className="lp-ring-svg" viewBox="0 0 100 100" fill="none">
+                  <rect className="lp-ring-path" x="1" y="1" width="98" height="98" rx="15"
+                    stroke={t.accent} strokeWidth="2.5" />
+                </svg>
               )}
             </div>
-          );
-        })}
+          );})}
+          </React.Fragment>
+        ))}
       </div>
 
       {/* ══ FLOATING SELECTION ACTION BAR ══ */}
@@ -2854,11 +3094,11 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
   const [confirmingId, setConfirmingId] = useState(null);
   const [rSelMode, setRSelMode] = useState(false);
   const [rSelectedIds, setRSelectedIds] = useState(new Set());
-  const rLpRef = useRef(null);
-  const [rLpId, setRLpId] = useState(null);
   const [rConfirmOpts, setRConfirmOpts] = useState(null);
-  const rStartLp = (id) => { rLpRef.current = setTimeout(() => { setRSelMode(true); setRSelectedIds(new Set([id])); setRLpId(null); }, 500); setRLpId(id); };
-  const rCancelLp = () => { clearTimeout(rLpRef.current); setRLpId(null); };
+  const { pressingId: rLpId, start: rStartLp, cancel: rCancelLp } = useLongPress(
+    useCallback((id) => { if (!rSelMode) { setRSelMode(true); setRSelectedIds(new Set([id])); } }, [rSelMode]),
+    500
+  );
   const rToggleSel = (id) => setRSelectedIds(p => { const n = new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
   const rExitSel = () => { setRSelMode(false); setRSelectedIds(new Set()); };
   const rDeleteSelected = () => {
@@ -3164,7 +3404,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                   }}>
                   {rSelMode && (
                     <div style={{ width:22,height:22,borderRadius:999,flexShrink:0,border:rIsSel?"none":"1.8px solid rgba(255,255,255,0.35)",background:rIsSel?"#7c6af7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                      {rIsSel && <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 8.2l2.5 2.5L12 5.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      {rIsSel && <Icon name="check" size={12} color="#fff" />}
                     </div>
                   )}
                   <span style={{ fontSize:20,flexShrink:0 }}>{rule.active ? (cat?.emoji || "📦") : "⏸️"}</span>
@@ -3670,6 +3910,52 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
           Ou use <strong style={{color:t.accent}}>Copiar do mês anterior</strong> se já configurou antes.
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── SKELETON SCREENS ─────────────────────────────────────────────────────────
+function SummaryCardsSkeleton({ t }) {
+  return (
+    <div className="summary-grid" style={{ marginBottom:24 }}>
+      {[1,2,3,4].map(i=>(
+        <div key={i} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:18,padding:"18px 20px" }}>
+          <div className="sk" style={{ width:32,height:32,borderRadius:8,marginBottom:12 }} />
+          <div className="sk" style={{ width:"55%",height:10,borderRadius:6,marginBottom:8 }} />
+          <div className="sk" style={{ width:"75%",height:24,borderRadius:8 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TransactionsListSkeleton({ t, rows = 6 }) {
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+      {Array.from({length:rows},(_,i)=>(
+        <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,background:t.surface,border:`1px solid ${t.border}` }}>
+          <div className="sk" style={{ width:40,height:40,borderRadius:"50%",flexShrink:0 }} />
+          <div style={{ flex:1 }}>
+            <div className="sk" style={{ width:"60%",height:12,borderRadius:6,marginBottom:6 }} />
+            <div className="sk" style={{ width:"40%",height:10,borderRadius:6 }} />
+          </div>
+          <div className="sk" style={{ width:60,height:16,borderRadius:6 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartsViewSkeleton({ t }) {
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
+      <div style={{ display:"flex",gap:8 }}>
+        {[1,2,3].map(i=><div key={i} className="sk" style={{ flex:1,height:34,borderRadius:10 }} />)}
+      </div>
+      <div className="sk" style={{ width:"100%",height:260,borderRadius:16 }} />
+      <div style={{ display:"flex",gap:8,justifyContent:"center" }}>
+        {[1,2,3].map(i=><div key={i} className="sk" style={{ width:i===1?18:8,height:8,borderRadius:4 }} />)}
+      </div>
     </div>
   );
 }
@@ -4874,6 +5160,7 @@ export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [cards, setCards] = useState([]);
   const [recurringRules, setRecurringRules] = useState([]);
   const [billingPeriods, setBillingPeriods] = useState([]);
@@ -4886,6 +5173,7 @@ export default function App() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showFabSheet, setShowFabSheet] = useState(false);
+  const [showMoreDrawer, setShowMoreDrawer] = useState(false);
 
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT") || user?.id === "demo";
@@ -5023,7 +5311,8 @@ export default function App() {
   }, []);
 
   const loadData = useCallback(async () => {
-    if (isDemo||!user||!family) return;
+    if (isDemo||!user||!family) { setDataLoading(false); return; }
+    setDataLoading(true);
     try {
       const [exp,inc,cds,rec]=await Promise.all([
         supabaseFetch(`/expenses?family_id=eq.${family.family_id}&select=*&order=date.desc`),
@@ -5037,6 +5326,7 @@ export default function App() {
         .then(bps => setBillingPeriods(bps||[]))
         .catch(() => {});
     } catch { addToast("Erro ao carregar dados","error"); }
+    finally { setDataLoading(false); }
   }, [user, family, isDemo, addToast]);
 
   useEffect(()=>{ if(user&&family) loadData(); },[user,family,loadData]);
@@ -5048,6 +5338,7 @@ export default function App() {
       const d = makeDemoData();
       setExpenses(d.expenses);
       setIncomes(d.incomes);
+      setDataLoading(false);
       setProfile({ first_name:"Demo", last_name:"" });
       setFamilyMembers([
         { user_id:"demo",  user_label:"Você",   role:"admin"  },
@@ -5238,16 +5529,16 @@ export default function App() {
   };
 
   const tabs=[
-    {id:"dashboard",  label:"Início",      shortLabel:"Início",     icon:"🏠"},
-    {id:"calendar",   label:"Calendário",  shortLabel:"Calendário", icon:"📅"},
-    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos",   icon:"📊"},
-    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",  icon:"🎯"},
-    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",    icon:"🔁"},
-    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",    icon:"📋"},
-    {id:"import",     label:"Importar",    shortLabel:"Importar",   icon:"📥"},
+    {id:"dashboard",  label:"Início",      shortLabel:"Início",     icon:"home"},
+    {id:"calendar",   label:"Calendário",  shortLabel:"Calendário", icon:"calendar"},
+    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos",   icon:"chart"},
+    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",  icon:"target"},
+    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",    icon:"repeat"},
+    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",    icon:"list"},
+    {id:"import",     label:"Importar",    shortLabel:"Importar",   icon:"upload"},
   ];
   // primary tabs shown in the mobile bottom bar (4 slots + center FAB)
-  const PRIMARY_MOBILE_TABS = ["calendar","charts","recurring","transactions"];
+  const PRIMARY_MOBILE_TABS = ["dashboard","calendar","charts","__menu"];
 
   const css=`
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -5274,7 +5565,7 @@ export default function App() {
       .desktop-sidebar{display:none!important;}
       .desktop-topbar{display:none!important;}
       .desktop-fab{display:none!important;}
-      .main-content-wrap{margin-left:0!important;padding-top:calc(56px + env(safe-area-inset-top))!important;}
+      .main-content-wrap{margin-left:0!important;padding-top:calc(56px + env(safe-area-inset-top))!important;padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
     }
     @media(min-width:601px){
       .mobile-topbar{display:none!important;}
@@ -5295,6 +5586,22 @@ export default function App() {
     @media(min-width:901px){
       .desktop-sidebar{width:210px!important;}
       .main-content-wrap{margin-left:210px!important;}
+    }
+    @keyframes sheetUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+    @keyframes lpFill{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+    .lp-ring-svg{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);pointer-events:none;border-radius:inherit;}
+    .lp-ring-path{stroke-dasharray:100;stroke-dashoffset:100;animation:lpFill 500ms linear forwards;}
+    @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+    .sk{border-radius:10px;background:linear-gradient(90deg,${t.surface} 25%,${t.surfaceHover} 50%,${t.surface} 75%);background-size:800px 100%;animation:shimmer 1.5s infinite linear;}
+    @media(prefers-reduced-motion:reduce){*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
+    @media(max-width:600px){.chart-tab-label{display:none!important;}}
+    @media(max-width:600px){
+      .modal-sheet{position:fixed!important;bottom:0!important;left:0!important;right:0!important;border-radius:20px 20px 0 0!important;max-width:100%!important;max-height:90vh!important;animation:sheetUp 0.25s ease!important;}
+      .modal-handle-wrap{display:flex!important;}
+      .modal-centered{border-radius:20px 20px 0 0!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important;max-width:100%!important;}
+    }
+    @media(min-width:601px){
+      .modal-sheet{animation:modalIn 0.25s ease!important;}
     }
   `;
 
@@ -5365,7 +5672,7 @@ export default function App() {
                 style={{ width:"100%",height:44,borderRadius:12,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:"0 12px",
                   background:tab===tb.id?t.accentSoft:"transparent",
                   color:tab===tb.id?t.accent:t.textMuted }}>
-                <span style={{ fontSize:20,flexShrink:0,width:24,textAlign:"center" }}>{tb.icon}</span>
+                <Icon name={tb.icon} size={20} color={tab===tb.id?t.accent:t.textMuted} />
                 <span className="nav-label" style={{ fontSize:13,fontWeight:tab===tb.id?700:500,whiteSpace:"nowrap" }}>{tb.label}</span>
               </button>
             ))}
@@ -5467,7 +5774,7 @@ export default function App() {
                   </h2>
                   <p style={{ color:t.textMuted,fontSize:13 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
                 </div>
-                <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Receitas do Mês","Gastos do Mês","Saldo"]} />
+                {dataLoading ? <SummaryCardsSkeleton t={t} /> : <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Receitas do Mês","Gastos do Mês","Saldo"]} />}
                 <div className="dashboard-row2">
                   <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} />
                   <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Parcelas Futuras"]} />
@@ -5490,7 +5797,7 @@ export default function App() {
               </div>
             )}
             {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
-            {tab==="charts"&&<ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} billingPeriods={billingPeriods} />}
+            {tab==="charts"&&(dataLoading ? <ChartsViewSkeleton t={t} /> : <ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} billingPeriods={billingPeriods} />)}
             {tab==="recurring"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
@@ -5509,7 +5816,7 @@ export default function App() {
                 <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
               </div>
             )}
-            {tab==="transactions"&&<TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />}
+            {tab==="transactions"&&(dataLoading ? <TransactionsListSkeleton t={t} /> : <TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />)}
             {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
           </main>
 
@@ -5530,31 +5837,72 @@ export default function App() {
 
         {/* ══ MOBILE BOTTOM BAR ══ */}
         <div className="mobile-bottombar" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:`${t.bg}f4`,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${t.border}`,display:"flex",alignItems:"center",paddingBottom:"env(safe-area-inset-bottom)" }}>
-          {PRIMARY_MOBILE_TABS.slice(0,2).map(id=>{
-            const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
+          {/* Tab: Dashboard */}
+          {["dashboard","calendar"].map(id => {
+            const tb = tabs.find(x=>x.id===id); const isAct = tab===id;
             return (
-              <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
-                <span style={{ fontSize:20,lineHeight:1 }}>{tb.icon}</span>
+              <button key={id} onClick={()=>{setTab(id);setShowMoreDrawer(false);}} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s",position:"relative" }}>
+                <Icon name={tb.icon} size={22} color={isAct?t.accent:t.textMuted} />
                 <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
-                {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
+                {isAct&&<span style={{ position:"absolute",bottom:2,width:18,height:2,borderRadius:2,background:t.accent }} />}
               </button>
             );
           })}
           {/* Center FAB */}
-          <button onClick={()=>setShowFabSheet(v=>!v)} style={{ flex:1,border:"none",background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",paddingBottom:4 }}>
-            <span style={{ width:52,height:52,borderRadius:"50%",background:showFabSheet?`${t.accent}cc`:t.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,color:"#fff",boxShadow:`0 4px 18px ${t.accentGlow}`,transform:showFabSheet?"rotate(45deg)":"none",transition:"all 0.2s",lineHeight:1,fontWeight:300 }}>+</span>
+          <button onClick={()=>{setShowFabSheet(v=>!v);setShowMoreDrawer(false);}} style={{ flex:1,border:"none",background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",paddingBottom:4 }}>
+            <span style={{ width:52,height:52,borderRadius:"50%",background:showFabSheet?`${t.accent}cc`:t.accent,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",boxShadow:`0 4px 18px ${t.accentGlow}`,transform:showFabSheet?"rotate(45deg)":"none",transition:"all 0.2s",marginTop:-8 }}>
+              <Icon name="plus" size={26} color="#fff" />
+            </span>
           </button>
-          {PRIMARY_MOBILE_TABS.slice(2).map(id=>{
-            const tb=tabs.find(x=>x.id===id); const isAct=tab===id;
+          {/* Tab: Charts */}
+          {["charts"].map(id => {
+            const tb = tabs.find(x=>x.id===id); const isAct = tab===id;
             return (
-              <button key={id} onClick={()=>setTab(id)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s" }}>
-                <span style={{ fontSize:20,lineHeight:1 }}>{tb.icon}</span>
+              <button key={id} onClick={()=>{setTab(id);setShowMoreDrawer(false);}} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:isAct?t.accent:t.textMuted,transition:"color 0.15s",position:"relative" }}>
+                <Icon name={tb.icon} size={22} color={isAct?t.accent:t.textMuted} />
                 <span style={{ fontSize:9.5,fontWeight:isAct?700:500,lineHeight:1.2,whiteSpace:"nowrap" }}>{tb.shortLabel}</span>
-                {isAct&&<span style={{ width:18,height:2,borderRadius:2,background:t.accent }} />}
+                {isAct&&<span style={{ position:"absolute",bottom:2,width:18,height:2,borderRadius:2,background:t.accent }} />}
               </button>
             );
           })}
+          {/* Menu button */}
+          <button onClick={()=>setShowMoreDrawer(v=>!v)} style={{ flex:1,border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px 6px",gap:3,cursor:"pointer",color:showMoreDrawer?t.accent:t.textMuted,transition:"color 0.15s" }}>
+            <Icon name="more" size={22} color={showMoreDrawer?t.accent:t.textMuted} />
+            <span style={{ fontSize:9.5,fontWeight:showMoreDrawer?700:500,lineHeight:1.2 }}>Menu</span>
+          </button>
         </div>
+
+        {/* ══ MORE DRAWER (mobile) ══ */}
+        {showMoreDrawer&&(
+          <>
+            <div onClick={()=>setShowMoreDrawer(false)} style={{ position:"fixed",inset:0,zIndex:201,background:"rgba(0,0,0,0.45)" }} />
+            <div style={{ position:"fixed",bottom:"calc(64px + env(safe-area-inset-bottom))",left:0,right:0,zIndex:202,background:t.glassModal,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRadius:"20px 20px 0 0",border:`1px solid ${t.glassBorder}`,borderBottom:"none",padding:"20px 16px 8px",animation:"sheetUp 0.22s ease",boxShadow:t.shadow }}>
+              <div style={{ display:"flex",justifyContent:"center",marginBottom:16 }}>
+                <div style={{ width:36,height:4,borderRadius:2,background:t.border }} />
+              </div>
+              {[
+                {id:"recurring", icon:"repeat", label:"Recorrentes"},
+                {id:"budget",    icon:"target", label:"Orçamento"},
+                {id:"transactions",icon:"list",label:"Lançamentos"},
+                {id:"import",   icon:"upload", label:"Importar"},
+              ].map(item=>(
+                <button key={item.id} onClick={()=>{setTab(item.id);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:12,border:"none",cursor:"pointer",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",marginBottom:4 }}>
+                  <Icon name={item.icon} size={20} color={tab===item.id?t.accent:t.textMuted} />
+                  {item.label}
+                </button>
+              ))}
+              <div style={{ height:1,background:t.border,margin:"8px 0" }} />
+              {!isDemo&&<button onClick={()=>{setShowProfile(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="user" size={18} color={t.textMuted} />Meu Perfil</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowInvite(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="users" size={18} color={t.textMuted} />Família</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowCardsManager(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="card" size={18} color={t.textMuted} />Cartões</button>}
+              <div style={{ height:1,background:t.border,margin:"8px 0" }} />
+              <button onClick={()=>setDarkMode(v=>!v)} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name={darkMode?"sun":"moon"} size={18} color={t.textMuted} />{darkMode?"Modo claro":"Modo escuro"}</button>
+              <div style={{ height:1,background:t.border,margin:"8px 0" }} />
+              {!isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />Sair</button>}
+              {isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />Sair do Demo</button>}
+            </div>
+          </>
+        )}
 
         {/* ══ MOBILE FAB SHEET ══ */}
         {showFabSheet&&(
