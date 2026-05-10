@@ -159,9 +159,9 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 ### Frontend
 | Tecnologia | Versão | Uso |
 |---|---|---|
-| React | 18 | UI e gerenciamento de estado |
-| Vite | 5 | Build tool e dev server |
-| Recharts | 2 | Gráficos (barras, rosca, linha) |
+| React | 19 | UI e gerenciamento de estado |
+| Vite | 8 | Build tool e dev server |
+| Recharts | 3 | Gráficos (barras, rosca, linha) |
 
 ### Backend / Infraestrutura
 | Tecnologia | Uso |
@@ -370,7 +370,9 @@ Configure as mesmas variáveis do `.env.local` em:
 ```
 financa-casal/
 ├── src/
-│   └── App.jsx          # Aplicação completa (~4924 linhas)
+│   ├── App.jsx          # Aplicação completa (~5372 linhas)
+│   ├── index.css        # Estilos globais base
+│   └── main.jsx         # Entry point React
 ├── public/
 │   ├── favicon.svg      # Ícone diamante roxo
 │   └── og-image.svg     # Imagem Open Graph (1200×630)
