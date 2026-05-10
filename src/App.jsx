@@ -115,7 +115,10 @@ async function supabaseAuth(action, email, password) {
 
 // ─── FAMILY HELPERS (via Supabase RPC — bypasses RLS safely) ─────────────────
 function genCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => chars[b % chars.length]).join("");
 }
 
 async function supabaseRpc(fn, params = {}) {
@@ -408,10 +411,14 @@ function Modal({ open, onClose, title, children, t, darkMode }) {
 
 // ─── INPUT / SELECT / BTN ─────────────────────────────────────────────────────
 function Input({ label, t, ...props }) {
+  const defaultMaxLength = props.type === "email" ? 254
+    : props.type === "password" ? 128
+    : props.type === "number" ? undefined
+    : 200;
   return (
     <div style={{ marginBottom: 16, minWidth: 0 }}>
       {label && <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600, color: t.textSecondary, letterSpacing: "0.02em", textAlign: "left" }}>{label}</label>}
-      <input {...props} style={{ width: "100%", maxWidth: "100%", padding: "11px 14px", borderRadius: 12, fontSize: 14, fontFamily: "'DM Sans', sans-serif", background: t.inputBg, border: `1px solid ${t.border}`, color: t.text, outline: "none", transition: "border-color 0.2s", boxSizing: "border-box", minWidth: 0, ...(props.style||{}) }}
+      <input maxLength={defaultMaxLength} {...props} style={{ width: "100%", maxWidth: "100%", padding: "11px 14px", borderRadius: 12, fontSize: 14, fontFamily: "'DM Sans', sans-serif", background: t.inputBg, border: `1px solid ${t.border}`, color: t.text, outline: "none", transition: "border-color 0.2s", boxSizing: "border-box", minWidth: 0, ...(props.style||{}) }}
         onFocus={(e) => { e.target.style.borderColor = t.accent; }}
         onBlur={(e) => { e.target.style.borderColor = t.border; }}
       />
@@ -802,7 +809,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     <div style={{ background:t.successSoft,border:`1.5px solid ${t.success}33`,borderRadius:16,padding:20 }}>
       <div style={{ fontSize:15,fontWeight:700,color:t.text,marginBottom:4 }}>🔗 Entrar em uma família</div>
       <div style={{ fontSize:13,color:t.textMuted,marginBottom:14 }}>Peça o código de convite para quem criou a família.</div>
-      <Input label="Código de convite (6 dígitos)" t={t} value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder="Ex: AB12CD" style={{ letterSpacing:"0.2em",fontWeight:700 }} />
+      <Input label="Código de convite (6 dígitos)" t={t} value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder="Ex: AB12CD" maxLength={6} style={{ letterSpacing:"0.2em",fontWeight:700 }} />
       <Btn t={t} variant="success" type="button" onClick={handleJoinFamily} style={{ width:"100%" }} disabled={loading}>{loading?"Entrando...":"🔗 Entrar com código"}</Btn>
     </div>
   </>);
@@ -3829,10 +3836,25 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
       } else if (ext === "xlsx" || ext === "xls") {
         setLoadingMsg("📊 Lendo planilha Excel...");
         const buf = await file.arrayBuffer();
-        const { read, utils } = await import("xlsx");
-        const wb = read(buf);
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        textData = utils.sheet_to_csv(ws);
+        const ExcelJS = (await import("exceljs")).default;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buf);
+        const worksheet = workbook.worksheets[0];
+        const csvRows = [];
+        worksheet.eachRow({ includeEmpty: false }, (row) => {
+          const vals = [];
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            let v = "";
+            if (cell.value === null || cell.value === undefined) v = "";
+            else if (typeof cell.value === "object" && cell.value.text) v = cell.value.text;
+            else if (typeof cell.value === "object" && cell.value.result !== undefined) v = String(cell.value.result);
+            else if (cell.value instanceof Date) v = cell.value.toISOString().slice(0, 10);
+            else v = String(cell.value);
+            vals.push(v.includes(",") || v.includes("\n") ? `"${v.replace(/"/g, '""')}"` : v);
+          });
+          csvRows.push(vals.join(","));
+        });
+        textData = csvRows.join("\n");
       } else if (ext === "pdf") {
         setLoadingMsg("📄 Enviando PDF para análise...");
         const buf = await file.arrayBuffer();
@@ -3982,8 +4004,8 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
       } catch(e) { addToast("Erro ao salvar: " + e.message, "error"); setLoading(false); return; }
     }
     // Add local IDs for in-memory state (not sent to Supabase)
-    const expensesWithId = expenses.map(e => ({ ...e, id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}` }));
-    const incomesWithId  = incomes.map(i => ({ ...i, id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}` }));
+    const expensesWithId = expenses.map(e => ({ ...e, id: crypto.randomUUID() }));
+    const incomesWithId  = incomes.map(i => ({ ...i, id: crypto.randomUUID() }));
     onImported(expensesWithId, incomesWithId);
     setStats({ expenses: expenses.length, incomes: incomes.length, skipped: mapped.filter(r => !r._selected).length, duplicates: mapped.filter(r => r._duplicate).length });
     setStep("done"); setLoading(false);

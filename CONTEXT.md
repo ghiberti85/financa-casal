@@ -19,7 +19,7 @@ Cada membro registra gastos e receitas, visualiza calendário, gráficos e impor
 | Estilo | Inline styles + glassmorphism — sem Tailwind nem CSS modules |
 | Backend | Supabase REST API (sem SDK — fetch direto com headers manuais) |
 | Auth | Supabase Auth via JWT — access token em memória, refresh token em cookie HttpOnly via `/api/auth/*` |
-| Planilhas | xlsx (bundle local) para CSV/XLSX; PDF via Edge Function |
+| Planilhas | exceljs (bundle local, sem vulnerabilidades) para CSV/XLSX; PDF via Edge Function |
 | IA | Claude Sonnet via Supabase Edge Function (Deno) para importação |
 | Deploy | Vercel (auto-deploy no push para main) + API Routes serverless |
 

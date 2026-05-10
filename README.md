@@ -162,7 +162,7 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 | React | 19 | UI e gerenciamento de estado |
 | Vite | 8 | Build tool e dev server |
 | Recharts | 3 | Gráficos (barras, rosca, linha) |
-| xlsx | — | Leitura de planilhas Excel (bundle local) |
+| exceljs | — | Leitura de planilhas Excel (bundle local, sem vulnerabilidades conhecidas) |
 
 ### Backend / Infraestrutura
 | Tecnologia | Uso |
@@ -460,6 +460,7 @@ financa-casal/
 ### Headers HTTP (`vercel.json`)
 | Header | Valor |
 |---|---|
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` — força HTTPS |
 | `Content-Security-Policy` | `script-src 'self'` — bloqueia scripts externos; `frame-ancestors 'none'` |
 | `X-Frame-Options` | `DENY` — previne clickjacking |
 | `X-Content-Type-Options` | `nosniff` — previne MIME sniffing |
@@ -470,6 +471,16 @@ financa-casal/
 - Tamanho máximo: **10 MB**
 - MIME type validado antes do processamento
 - Extensões permitidas: `.csv`, `.xlsx`, `.xls`, `.pdf`, `.txt`
+- Leitura de XLSX via `exceljs` (sem vulnerabilidades conhecidas — substitui o `xlsx` abandonado)
+
+### Geração de códigos e IDs
+- Código de convite gerado com `crypto.getRandomValues()` — criptograficamente seguro
+- IDs temporários gerados com `crypto.randomUUID()` — nativo do browser
+
+### Rate limiting
+- **Frontend:** 3 tentativas falhas → bloqueio de 30 segundos no botão de login
+- **Servidor:** `/api/auth/login` limita 10 tentativas por IP em janela de 15 minutos (segunda camada além da proteção nativa do Supabase)
+- **Campos de formulário:** `maxLength` aplicado em todos os inputs de texto (email: 254, senha: 128, demais: 200)
 
 ---
 

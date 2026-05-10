@@ -1,5 +1,32 @@
+// In-memory rate limiter (best-effort for serverless — resets on cold start)
+// Supabase also enforces its own rate limiting as a second layer of protection.
+const attempts = new Map();
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_ATTEMPTS = 10;
+
+function getIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  return (forwarded ? forwarded.split(",")[0].trim() : req.socket?.remoteAddress) || "unknown";
+}
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const rec = attempts.get(ip);
+  if (!rec || now - rec.first > WINDOW_MS) {
+    attempts.set(ip, { count: 1, first: now });
+    return false;
+  }
+  rec.count++;
+  return rec.count > MAX_ATTEMPTS;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+
+  const ip = getIp(req);
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos." });
+  }
 
   const { email, password } = req.body || {};
   if (!email || !password) {
