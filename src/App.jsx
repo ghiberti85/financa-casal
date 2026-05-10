@@ -5,37 +5,55 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-let _authToken = localStorage.getItem("sb_token") || null;
 
-let _refreshToken = localStorage.getItem("sb_refresh") || null;
+// Access token lives only in memory — never persisted to localStorage in production.
+// In dev, localStorage is used for convenience (no Vercel API routes available).
+let _authToken = import.meta.env.DEV ? (localStorage.getItem("sb_token") || null) : null;
+let _refreshToken = import.meta.env.DEV ? (localStorage.getItem("sb_refresh") || null) : null;
 
 function setAuthToken(token, refreshToken = null) {
   _authToken = token;
-  if (token) localStorage.setItem("sb_token", token);
-  else localStorage.removeItem("sb_token");
-  if (refreshToken) {
-    _refreshToken = refreshToken;
-    localStorage.setItem("sb_refresh", refreshToken);
-  } else if (!token) {
-    _refreshToken = null;
-    localStorage.removeItem("sb_refresh");
+  if (import.meta.env.DEV) {
+    // Dev: persist to localStorage for convenience
+    if (token) localStorage.setItem("sb_token", token);
+    else localStorage.removeItem("sb_token");
+    if (refreshToken) {
+      _refreshToken = refreshToken;
+      localStorage.setItem("sb_refresh", refreshToken);
+    } else if (!token) {
+      _refreshToken = null;
+      localStorage.removeItem("sb_refresh");
+    }
   }
+  // Production: tokens stay in memory only; refresh token is in HttpOnly cookie (set by /api/auth/*)
 }
 
-// Silently refresh the access token using the refresh token
+// Silently refresh the access token
 async function refreshAccessToken() {
-  const rt = _refreshToken || localStorage.getItem("sb_refresh");
-  if (!rt) return false;
+  if (import.meta.env.DEV) {
+    // Dev: use localStorage refresh token directly
+    const rt = _refreshToken || localStorage.getItem("sb_refresh");
+    if (!rt) return false;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: rt }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data.access_token) return false;
+      setAuthToken(data.access_token, data.refresh_token);
+      return true;
+    } catch { return false; }
+  }
+  // Production: HttpOnly cookie is sent automatically by the browser
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-      method: "POST",
-      headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: rt }),
-    });
+    const res = await fetch("/api/auth/refresh", { method: "POST" });
     if (!res.ok) return false;
     const data = await res.json();
     if (!data.access_token) return false;
-    setAuthToken(data.access_token, data.refresh_token);
+    _authToken = data.access_token;
     return true;
   } catch { return false; }
 }
@@ -72,13 +90,26 @@ async function supabaseFetch(path, options = {}, _retry = true) {
 }
 
 async function supabaseAuth(action, email, password) {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/${action}`, {
+  if (import.meta.env.DEV) {
+    // Dev: call Supabase directly (Vercel API routes not available in dev server)
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/${action}`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error_description || data.error);
+    return data;
+  }
+  // Production: proxy through Vercel API route, which sets the HttpOnly cookie
+  const endpoint = action.startsWith("token") ? "/api/auth/login" : "/api/auth/signup";
+  const res = await fetch(endpoint, {
     method: "POST",
-    headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error_description || data.error);
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
 
@@ -3584,37 +3615,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
     );
   };
 
-  // ── Extract text from PDF using AI ──
-  const extractPDF = async (file) => {
-    setLoading(true); setLoadingMsg("📄 Lendo PDF...");
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const base64 = e.target.result.split(",")[1];
-          const res = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 4000,
-              messages: [{
-                role: "user",
-                content: [
-                  { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-                  { type: "text", text: "Extraia todas as transações financeiras deste extrato bancário e retorne como CSV com colunas: data,descricao,valor,tipo. Retorne APENAS o CSV sem explicações." }
-                ]
-              }]
-            }),
-          });
-          const data = await res.json();
-          resolve(data.content?.[0]?.text || "");
-        } catch(err) { reject(err); }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+  // PDF processing is handled server-side by the Supabase Edge Function via analyzeWithAI
 
   // ── CSV parser helpers ──────────────────────────────────────────────────────
   const cleanBRL = (v) => {
@@ -3794,7 +3795,14 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
         const ws = wb.Sheets[wb.SheetNames[0]];
         textData = utils.sheet_to_csv(ws);
       } else if (ext === "pdf") {
-        textData = await extractPDF(file);
+        setLoadingMsg("📄 Enviando PDF para análise...");
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        const pdfBase64 = btoa(binary);
+        await analyzeWithAI("", file.name, pdfBase64);
+        return;
       } else {
         throw new Error("Formato não suportado. Use CSV, XLSX ou PDF.");
       }
@@ -3824,12 +3832,15 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
     }
   };
 
-  // ── AI mapping via Supabase Edge Function (avoids CORS/auth issues) ──
-  const analyzeWithAI = async (textData, filename) => {
+  // ── AI mapping via Supabase Edge Function (Anthropic API key stays server-side) ──
+  const analyzeWithAI = async (textData, filename, pdfBase64 = null) => {
     setLoadingMsg("🤖 Mapeando dados com IA...");
 
     try {
-      // Call our Edge Function — it holds the Anthropic API key server-side
+      const body = pdfBase64
+        ? { pdfBase64, filename }
+        : { textData, filename };
+
       const res = await fetch(`${SUPABASE_URL}/functions/v1/analyze-import`, {
         method: "POST",
         headers: {
@@ -3837,7 +3848,7 @@ function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, e
           "Authorization": `Bearer ${_authToken || SUPABASE_ANON_KEY}`,
           "apikey": SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ textData, filename }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -4659,7 +4670,9 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t }) {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [darkMode, setDarkMode] = useState(true);
-  const [initializing, setInitializing] = useState(() => !!localStorage.getItem("sb_token"));
+  const [initializing, setInitializing] = useState(
+    () => import.meta.env.DEV ? !!localStorage.getItem("sb_token") : true
+  );
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [family, setFamily] = useState(null);
@@ -4773,23 +4786,19 @@ export default function App() {
     };
   }, []);
 
-  // Restore session from localStorage on page load
+  // Restore session on page load
   useEffect(() => {
-    const token = localStorage.getItem("sb_token");
-    if (!token || isDemo) { setInitializing(false); return; }
-    fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${token}` }
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(async u => {
-      if (!u?.id) { setInitializing(false); return; }
-      setAuthToken(token, localStorage.getItem("sb_refresh"));
-      const fam = await getOrCreateFamily(u.id).catch(() => null);
+    if (isDemo) { setInitializing(false); return; }
+
+    const restoreSession = async (accessToken, user) => {
+      if (!accessToken || !user?.id) { setInitializing(false); return; }
+      setAuthToken(accessToken);
+      const fam = await getOrCreateFamily(user.id).catch(() => null);
       if (!fam) { setInitializing(false); return; }
-      setUser(u);
+      setUser(user);
       setFamily(fam);
       try {
-        const rows = await supabaseFetch(`/profiles?id=eq.${u.id}&select=first_name,last_name,phone`);
+        const rows = await supabaseFetch(`/profiles?id=eq.${user.id}&select=first_name,last_name,phone`);
         if (rows?.[0]) setProfile(rows[0]);
       } catch {}
       try {
@@ -4797,8 +4806,25 @@ export default function App() {
         setFamilyMembers(Array.isArray(members) ? members : []);
       } catch {}
       setInitializing(false);
-    })
-    .catch(() => { setAuthToken(null); setInitializing(false); });
+    };
+
+    if (import.meta.env.DEV) {
+      // Dev: restore from localStorage token
+      const token = localStorage.getItem("sb_token");
+      if (!token) { setInitializing(false); return; }
+      fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${token}` }
+      })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(u => restoreSession(token, u))
+      .catch(() => { setAuthToken(null); setInitializing(false); });
+    } else {
+      // Production: restore using HttpOnly cookie via Vercel API route
+      fetch("/api/auth/refresh", { method: "POST" })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(data => restoreSession(data.access_token, data.user))
+        .catch(() => setInitializing(false));
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -4851,10 +4877,15 @@ export default function App() {
     }
   };
 
-  const handleLogout=()=>{
-    setAuthToken(null); setUser(null); setFamily(null); setProfile(null); setFamilyMembers([]);
+  const handleLogout = () => {
+    setAuthToken(null);
+    setUser(null); setFamily(null); setProfile(null); setFamilyMembers([]);
     setExpenses([]); setIncomes([]); setCards([]); setRecurringRules([]); setBillingPeriods([]);
-    addToast("Saiu com sucesso","info");
+    if (!import.meta.env.DEV) {
+      // Production: clear the HttpOnly refresh token cookie server-side
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    }
+    addToast("Saiu com sucesso", "info");
   };
 
   const handleRegenCode = async () => {
