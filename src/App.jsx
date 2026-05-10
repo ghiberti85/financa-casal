@@ -1217,7 +1217,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...inc,_type:"income"}); }} title="Editar"
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
-                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>}
+                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>}
                     </div>
                   </div>
                 );
@@ -1267,7 +1267,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
                       {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...exp,_type:"expense"}); }} title="Editar"
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
-                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>}
+                        onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>}
                     </div>
                   </div>
                 );
@@ -1295,7 +1295,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>✏️ Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
             <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers}
@@ -1646,7 +1646,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                           <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
                             style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
-                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
+                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
                         )}
                       </div>
                     </div>
@@ -1770,7 +1770,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                           <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
                             style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
-                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
+                            onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
                         )}
                       </div>
                     </div>
@@ -1829,7 +1829,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
                             <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
                               style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                               onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
-                              onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}>✏️</button>
+                              onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
                           )}
 
                         </div>
@@ -1858,7 +1858,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>✏️ Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
             <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]} cards={cards}
@@ -2797,8 +2797,8 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 }
               );
             }}
-              style={{ padding:"7px 14px",borderRadius:10,border:"1px solid rgba(217,119,6,0.4)",background:"rgba(217,119,6,0.12)",color:t.warning,fontSize:12,fontWeight:700,cursor:"pointer" }}>
-              🗑 Remover todos
+              style={{ padding:"7px 14px",borderRadius:10,border:"1px solid rgba(217,119,6,0.4)",background:"rgba(217,119,6,0.12)",color:t.warning,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}>
+              <Icon name="trash" size={13} color={t.warning} />Remover todos
             </button>
           </div>
         </div>
@@ -2955,7 +2955,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                     style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                     onMouseEnter={e=>e.currentTarget.style.color=t.accent}
                     onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>
-                    ✏️
+                    <Icon name="edit" size={14} />
                   </button>
 
                 </>}
@@ -3004,7 +3004,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>✏️ Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />Editar Lançamento</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
             <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers} cards={cards}
@@ -3433,7 +3433,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
                     <button onClick={() => { setEditRule(rule); setShowForm(true); }} title="Editar"
                       style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}
                       onMouseEnter={e=>e.currentTarget.style.color=t.accent}
-                      onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
+                      onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
                     <button onClick={() => toggleActive(rule)} title={rule.active?"Pausar":"Reativar"}
                       style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}>
                       {rule.active ? "⏸" : "▶"}
@@ -3551,7 +3551,10 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
         style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px",width:"100%",maxWidth:460,boxShadow:t.shadow,animation:"modalIn 0.25s ease",flexShrink:0 }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
           <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>
-            {isEdit ? "✏️ Editar Recorrente" : "🔁 Novo Recorrente"}
+            <span style={{ display:"flex",alignItems:"center",gap:8 }}>
+              <Icon name={isEdit?"edit":"repeat"} size={17} color={t.accent} />
+              {isEdit ? "Editar Recorrente" : "Novo Recorrente"}
+            </span>
           </h3>
           <button onClick={onClose} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,padding:"2px 8px" }}>×</button>
         </div>
@@ -3858,7 +3861,7 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
                         {!isDemo && !isEditing && (
                           <button onClick={() => { setEditingCat(cat.id); setInputVal(budget ? String(budget.amount) : ""); }}
                             style={{ background:budget?t.surfaceHover:t.accentSoft,border:`1px solid ${budget?t.border:t.accent+"33"}`,borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:13,fontWeight:700,color:budget?t.textMuted:t.accent,flexShrink:0 }}>
-                            {budget ? "✏️" : "+"}
+                            {budget ? <Icon name="edit" size={13} /> : "+"}
                           </button>
                         )}
                       </div>
@@ -3885,7 +3888,7 @@ function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
                           style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>✕</button>
                         {budget && (
                           <button onClick={()=>deleteBudget(cat.id)}
-                            style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.danger,fontSize:12 }}>🗑</button>
+                            style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:t.danger,display:"flex",alignItems:"center" }}><Icon name="trash" size={13} /></button>
                         )}
                       </div>
                     )}
@@ -4984,8 +4987,8 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
             <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{c.holder} · Fecha dia {c.closing_day} · Vence dia {c.due_day}</div>
           </div>
           <div style={{display:"flex",gap:4,flexShrink:0}}>
-            <button onClick={()=>startEdit(c)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
-            <button onClick={()=>del(c.id)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.danger} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
+            <button onClick={()=>startEdit(c)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"4px 6px",borderRadius:6,display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
+            <button onClick={()=>del(c.id)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"4px 6px",borderRadius:6,display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=t.danger} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="trash" size={14} /></button>
           </div>
         </div>
       ))}
@@ -4995,7 +4998,7 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
           style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"transparent",border:"none",cursor:editId?"default":"pointer",gap:8}}
         >
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:15,lineHeight:1}}>{editId?"✏️":"➕"}</span>
+            <Icon name={editId?"edit":"plus"} size={15} color={t.accent} />
             <span style={{fontSize:13,fontWeight:700,color:t.text}}>{editId?"Editar cartão":"Novo cartão"}</span>
           </div>
           {!editId && (
@@ -5047,8 +5050,8 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
                   <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{fmtDate(bp.period_start)} → {fmtDate(bp.period_end)} · Vence {fmtDate(bp.due_date)}{bp.total_pdf?` · R$ ${Number(bp.total_pdf).toLocaleString("pt-BR",{minimumFractionDigits:2})}`:""}</div>
                 </div>
                 <div style={{display:"flex",gap:4,flexShrink:0}}>
-                  <button onClick={()=>startEditBp(bp)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:12,padding:"3px 5px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>✏️</button>
-                  <button onClick={()=>delBp(bp.id)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:12,padding:"3px 5px",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.color=t.danger} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>🗑</button>
+                  <button onClick={()=>startEditBp(bp)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"3px 5px",borderRadius:6,display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={13} /></button>
+                  <button onClick={()=>delBp(bp.id)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"3px 5px",borderRadius:6,display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=t.danger} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="trash" size={13} /></button>
                 </div>
               </div>
             );
@@ -5694,13 +5697,23 @@ export default function App() {
                     <div style={{ fontSize:12,fontWeight:700,color:t.text }}>{profile?.first_name} {profile?.last_name}</div>
                     <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
                   </div>
-                  {[{label:"👤 Meu Perfil",action:()=>{setShowProfile(true);setShowUserMenu(false);}},{label:"👥 Família",action:()=>{setShowInvite(true);setShowUserMenu(false);}},{label:"💳 Cartões",action:()=>{setShowCardsManager(true);setShowUserMenu(false);}}].map(item=>(
-                    <button key={item.label} onClick={item.action} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{item.label}</button>
+                  {[
+                    {icon:"user",  label:"Meu Perfil", action:()=>{setShowProfile(true);setShowUserMenu(false);}},
+                    {icon:"users", label:"Família",    action:()=>{setShowInvite(true);setShowUserMenu(false);}},
+                    {icon:"card",  label:"Cartões",    action:()=>{setShowCardsManager(true);setShowUserMenu(false);}},
+                  ].map(item=>(
+                    <button key={item.label} onClick={item.action} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <Icon name={item.icon} size={15} color={t.textMuted} />{item.label}
+                    </button>
                   ))}
                   <div style={{ height:1,background:t.border,margin:"6px 0" }} />
-                  <button onClick={()=>{setDarkMode(!darkMode);setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{darkMode?"☀️ Modo claro":"🌙 Modo escuro"}</button>
+                  <button onClick={()=>{setDarkMode(!darkMode);setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <Icon name={darkMode?"sun":"moon"} size={15} color={t.textMuted} />{darkMode?"Modo claro":"Modo escuro"}
+                  </button>
                   <div style={{ height:1,background:t.border,margin:"6px 0" }} />
-                  <button onClick={()=>{handleLogout();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.danger }} onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>🚪 Sair</button>
+                  <button onClick={()=>{handleLogout();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.danger,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <Icon name="logout" size={15} color={t.danger} />Sair
+                  </button>
                 </div>
               )}
             </div>
@@ -5709,8 +5722,8 @@ export default function App() {
             <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:6,marginTop:8 }}>
               <div style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"3px 6px",borderRadius:6,fontWeight:700,textAlign:"center",width:44 }}>DEMO</div>
               <button onClick={handleLogout} title="Sair do Demo"
-                style={{ width:38,height:38,borderRadius:12,border:`1px solid ${t.dangerSoft}`,background:"transparent",cursor:"pointer",color:t.danger,fontSize:17,display:"flex",alignItems:"center",justifyContent:"center" }}>
-                🚪
+                style={{ width:38,height:38,borderRadius:12,border:`1px solid ${t.dangerSoft}`,background:"transparent",cursor:"pointer",color:t.danger,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                <Icon name="logout" size={18} color={t.danger} />
               </button>
             </div>
           )}
