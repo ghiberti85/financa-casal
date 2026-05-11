@@ -2,7 +2,7 @@
 
 ## Leitura Obrigatória
 Leia o `CONTEXT.md` antes de qualquer tarefa.
-Ele contém arquitetura, schema do banco, componentes e decisões técnicas.
+Ele contém arquitetura, schema do banco, componentes, decisões técnicas e o **Roadmap de Lançamento Público** — verifique o status dos sprints antes de implementar qualquer nova feature.
 
 ---
 

@@ -393,7 +393,73 @@ const INCOME_SOURCES = [
 
 ---
 
-## Roadmap (Pendente)
+## Roadmap de Lançamento Público
+
+**Status:** Em andamento — todas as etapas abaixo devem ser concluídas antes de abrir a aplicação para outros usuários.
+
+> Contexto de custo: infraestrutura fica em ~R$242/mês fixos até ~3.000 assinantes. Margem líquida após Stripe (~5,3%) é de ~93% em escala. Break-even a partir de 9 assinantes a R$29,90/mês.
+
+---
+
+### Sprint 0 — Pré-requisitos de infraestrutura
+*Fazer ANTES de qualquer desenvolvimento dos Sprints seguintes.*
+
+- [ ] Upgrade Supabase para Pro (backups diários, PITR, PgBouncer connection pooling)
+- [ ] Domínio próprio + DNS + SSL (ex: `financacasal.com.br`)
+- [ ] Customizar templates de e-mail no Supabase para PT-BR (confirmação, reset, convite)
+- [ ] `npm audit` + corrigir todas as vulnerabilidades críticas e altas
+
+---
+
+### Sprint 1 — Segurança e legal
+*Bloqueadores de lançamento — sem esses itens a aplicação não pode ser aberta.*
+
+- [ ] Auditar e documentar RLS policies no Supabase para todas as tabelas (`expenses`, `incomes`, `families`, `family_members`, `profiles`, `budgets`, `cards`, `recurring_expenses`, `recurring_reminders`)
+- [ ] Ativar email confirmation no Supabase + tela "Verifique seu e-mail" no `LoginPage`
+- [ ] "Esqueci minha senha" no `LoginPage` (link → e-mail de reset → tela de nova senha)
+- [ ] Rate limiting no `api/auth/signup.js` (igual ao `login.js`: 10 tentativas / 15 min por IP)
+- [ ] Página de Política de Privacidade (informar data residency: AWS us-east-1 via Supabase)
+- [ ] Página de Termos de Uso + Política de Reembolso
+- [ ] Cookie banner básico (LGPD)
+- [ ] Botão "Excluir minha conta" no `ProfileModal` (delete em cascade no banco)
+- [ ] DPA (Data Processing Agreement) com Supabase e Vercel — processo administrativo, não código
+- [ ] Documento interno de resposta a incidentes (quem notifica, como, prazo 72h LGPD)
+
+---
+
+### Sprint 2 — Stripe e monetização
+
+- [ ] Definir modelo de planos: trial 14 dias (acesso completo) → Pro pago → Free limitado
+- [ ] Definir feature gating: o que é Free vs Pro (ex: histórico limitado a 3 meses, sem importação, sem recorrentes no Free)
+- [ ] Atualizar CSP no `vercel.json` para incluir domínios Stripe (`js.stripe.com`, `hooks.stripe.com`, `*.stripe.com`)
+- [ ] `api/stripe/create-checkout.js` — cria Stripe Checkout Session com trial
+- [ ] `api/stripe/webhook.js` — handlers para `customer.subscription.created`, `invoice.payment_failed`, `customer.subscription.deleted` (**obrigatório:** verificar assinatura com `stripe.webhooks.constructEvent()`)
+- [ ] `api/stripe/portal.js` — abre Customer Portal para gerenciar/cancelar assinatura
+- [ ] Migração Supabase: adicionar `stripe_customer_id`, `subscription_status` (`'free'`|`'trial'`|`'active'`|`'past_due'`|`'canceled'`), `subscription_id`, `current_period_end` à tabela `profiles`
+- [ ] `PaywallModal` no `App.jsx` + feature gating baseado em `profile.subscription_status`
+- [ ] Canal de suporte mínimo: e-mail dedicado (ex: `suporte@financacasal.com.br`)
+
+---
+
+### Sprint 3 — Produto e conversão
+
+- [ ] Empty state de onboarding no Dashboard quando não há dados (card "Comece por aqui" com ações primárias)
+- [ ] E-mails transacionais via Resend: boas-vindas, confirmação de pagamento, trial expirando em 3 dias, pagamento falhou
+- [ ] Landing page separada do app (fora do React SPA, ou rota `/`)
+- [ ] Sentry para monitoramento de erros em produção (`VITE_SENTRY_DSN` como env var)
+
+---
+
+### Sprint 4 — Performance e alcance
+*Pós-lançamento — melhorias incrementais.*
+
+- [ ] Code splitting com `React.lazy()` + `Suspense` nas abas pesadas (`ImportView`, `ChartsView`) — reduz bundle inicial em ~40%
+- [ ] Service worker básico para PWA offline (registrar gastos sem sinal)
+- [ ] Acessibilidade mínima: ARIA labels em modais, `role` em elementos interativos, contraste de cores WCAG AA
+
+---
+
+## Roadmap de Features (pós-lançamento)
 
 - [ ] Notificações push para vencimento de parcelas
 - [ ] Metas financeiras mensais com progresso visual
