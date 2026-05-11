@@ -270,32 +270,64 @@ const MONTH_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
 
 ---
 
-## Próximas Features (por prioridade)
+## Próximas Features — Pré-lançamento
 
-### 1. Metas Financeiras Mensais
-Nova tab "🎯 Metas" ou seção no Dashboard.
-Nova tabela `goals` no Supabase: `(id, family_id, description, target_amount, current_amount, deadline, category, created_at)`.
-Barra de progresso visual por meta. Integração com saldo do mês atual.
+### 1. Resumo Mensal Algorítmico
+Card no Dashboard com resumo calculado sem IA: total do mês vs anterior (% variação), categoria que mais cresceu, maior gasto único, recorrentes pendentes. Implementar com string templates e cálculos sobre `expenses`/`incomes` já carregados. Sem nova tabela, sem chamada de API externa.
 
 ### 2. Notificações de Vencimento de Parcelas
 Banner/card no Dashboard alertando parcelas que vencem nos próximos 7 dias.
-Baseado na tabela `expenses` onde `type = 'credit'` e `date` está próxima.
+Filtrar `expenses` onde `type = 'credit'` e `date` está entre hoje e hoje+7.
 Não requer nova tabela — apenas lógica de filtro no frontend.
 
-### 3. Exportação de Relatórios em PDF
-Botão "Exportar PDF" na aba Gráficos e Lançamentos.
-Usar `jsPDF` + `html2canvas` para capturar os gráficos Recharts.
-Relatório mensal com: resumo, gráficos, lista de lançamentos.
+### 3. Metas Financeiras Mensais
+Nova seção no Dashboard ou tab dedicada.
+Nova tabela `goals`: `(id, family_id, description, target_amount, current_amount, deadline, category, created_at)`.
+Barra de progresso visual por meta. Integração com saldo do mês atual.
 
-### 4. Divisão do App.jsx em arquivos separados
-Apenas quando o arquivo dificultar a manutenção (~6000+ linhas).
-Criar pasta `src/components/` e extrair componentes um a um.
-Manter o mesmo padrão de props e inline styles.
+### 4. Comparativo Mês a Mês
+Indicadores de variação (`↑ 23%`, `↓ 8%`) ao lado dos totais no Dashboard.
+Calcular diferença entre mês atual e mês anterior usando `expenses`/`incomes` já carregados.
+Sem nova tabela.
 
-### 5. Suporte a múltiplas moedas
-Campo `currency` nas tabelas `expenses` e `incomes`.
-Taxa de câmbio via API externa (exchangerate-api.com — gratuito).
-Conversão para BRL na exibição dos totais.
+### 5. Previsão de Saldo ao Fim do Mês
+Estimativa baseada em: recorrentes ativos (`recurring_expenses`) + média de gastos variáveis dos últimos 3 meses. Card simples no Dashboard. Sem nova tabela.
+
+### 6. Alerta de Fatura Chegando
+Card no Dashboard 3 dias antes do vencimento do cartão.
+Usa `cards.due_day` já existente. Sem nova tabela.
+
+### 7. Divisão de Gastos Entre o Casal
+Painel com: quanto cada membro gastou no mês e o "acerto" (quem deve quanto a quem).
+Usa `user_label` já presente em todas as despesas. Sem nova tabela.
+
+---
+
+## Próximas Features — Pós-lançamento
+
+### 8. Foto de Recibo → Registro Automático
+Câmera do celular → Edge Function extrai valor, data e categoria via Claude Vision → preenche formulário.
+Requer nova Edge Function. Alto impacto para usuários mobile.
+
+### 9. Relatório Anual / Retrospectiva
+Painel do ano: maiores gastos, mês mais caro, categorias que mais cresceram.
+Sem nova tabela. Alto potencial de compartilhamento social.
+
+### 10. Exportação de Relatórios em PDF
+Botão na aba Gráficos e Lançamentos.
+Gerar server-side via Edge Function (preferível a `jsPDF + html2canvas` com glassmorphism).
+
+### 11. Score de Saúde Financeira
+Pontuação 0–100 mensal: saldo positivo, orçamento respeitado, metas atingidas, recorrentes em dia.
+Gamificação para aumentar retenção.
+
+### 12. Orçamento por Percentuais (50/30/20)
+Configurar orçamento como % da renda em vez de valores fixos por categoria.
+Extensão natural do `BudgetView` existente.
+
+### 13. Divisão do App.jsx em Arquivos Separados
+Somente quando ultrapassar ~6.000 linhas e dificultar manutenção.
+Criar `src/components/` e extrair um a um. Manter padrão de props e inline styles.
 
 ---
 
