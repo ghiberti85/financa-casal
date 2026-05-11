@@ -459,12 +459,36 @@ const INCOME_SOURCES = [
 
 ---
 
-## Roadmap de Features (pós-lançamento)
+## Roadmap de Features
 
-- [ ] Notificações push para vencimento de parcelas
-- [ ] Metas financeiras mensais com progresso visual
-- [ ] Exportação de relatórios em PDF
-- [ ] Suporte a múltiplas moedas
-- [ ] App mobile nativo (React Native)
-- [ ] Testes automatizados
-- [ ] Divisão do App.jsx em componentes separados (quando necessário)
+### Pré-lançamento — implementar antes de abrir para outros usuários
+
+**Dashboard & insights (sem nova tabela — usam dados existentes)**
+- [ ] **Resumo mensal algorítmico** — card no Dashboard com: total do mês vs mês anterior (% variação), categoria que mais cresceu, maior gasto único, recorrentes pendentes. String templates com cálculos, sem IA.
+- [ ] **Comparativo mês a mês** — indicadores de variação `↑ 23%` ao lado de cada total no Dashboard
+- [ ] **Previsão de saldo ao fim do mês** — estimativa baseada em recorrentes cadastrados + média dos últimos 3 meses
+- [ ] **Alerta de fatura chegando** — card no Dashboard 3 dias antes do vencimento do cartão (usa `cards.due_day` já existente)
+
+**Features de produto**
+- [ ] **Notificações de vencimento de parcelas** — banner/card no Dashboard alertando crédito parcelado com `date` nos próximos 7 dias. Sem nova tabela.
+- [ ] **Metas financeiras mensais** — nova tab ou seção no Dashboard com barra de progresso por meta. Nova tabela `goals (id, family_id, description, target_amount, current_amount, deadline, category, created_at)`.
+- [ ] **Divisão de gastos entre o casal** — painel mostrando quanto cada membro gastou no mês e o "acerto" (quem deve quanto a quem). Usa `user_label` já existente em todas as despesas. Sem nova tabela.
+
+---
+
+### Pós-lançamento — após validar produto com usuários reais
+
+- [ ] **Foto de recibo → registro automático** — câmera do celular + Edge Function extrai valor, data e categoria do cupom fiscal e preenche o formulário. Requer nova Edge Function com Claude Vision.
+- [ ] **Relatório anual / retrospectiva** — painel do ano: maiores gastos, mês mais caro, categorias que mais cresceram. Alto potencial de compartilhamento. Sem nova tabela.
+- [ ] **Exportação de relatórios em PDF** — botão na aba Gráficos e Lançamentos. Gerar server-side via Edge Function (mais confiável que `jsPDF + html2canvas` com glassmorphism).
+- [ ] **Notificação push quando parceiro registra gasto** — Web Push API + service worker. Requer tabela de push subscriptions.
+- [ ] **Score de saúde financeira** — pontuação 0–100 mensal baseada em: saldo positivo, orçamento respeitado, metas atingidas, recorrentes em dia. Gamificação para retenção.
+- [ ] **Orçamento por percentuais (regra 50/30/20)** — configurar orçamento como % da renda em vez de valores fixos. Extensão do `BudgetView` existente.
+- [ ] **App mobile nativo** — React Native. Somente após validar produto no PWA com usuários reais.
+
+---
+
+### Técnico (não são features de usuário)
+
+- [ ] **Testes automatizados** — cobertura de componentes críticos (formulários, cálculos financeiros)
+- [ ] **Divisão do App.jsx em componentes separados** — somente quando ultrapassar ~6.000 linhas e dificultar manutenção. Manter padrão de props e inline styles.
