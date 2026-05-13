@@ -5813,7 +5813,7 @@ export default function App() {
         </div>
 
         {/* ══ MOBILE BOTTOM BAR ══ */}
-        <div className="mobile-bottombar" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:`${t.bg}f4`,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${t.border}`,display:"flex",alignItems:"center",paddingBottom:"env(safe-area-inset-bottom)" }}>
+        <div className="mobile-bottombar" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:200,background:`${t.bg}f4`,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${t.border}`,display:"flex",alignItems:"center",paddingBottom:"env(safe-area-inset-bottom)",transform:"translateZ(0)",WebkitTransform:"translateZ(0)",willChange:"transform" }}>
           {/* Tab: Dashboard */}
           {["dashboard","calendar"].map(id => {
             const tb = tabs.find(x=>x.id===id); const isAct = tab===id;
@@ -5858,10 +5858,10 @@ export default function App() {
                 <div style={{ width:36,height:4,borderRadius:2,background:t.border }} />
               </div>
               {[
-                {id:"recurring", icon:"repeat", label:"Recorrentes"},
-                {id:"budget",    icon:"target", label:"Orçamento"},
-                {id:"transactions",icon:"list",label:"Lançamentos"},
-                {id:"import",   icon:"upload", label:"Importar"},
+                {id:"recurring",    icon:"repeat", label:"Recorrentes"},
+                {id:"transactions", icon:"list",   label:"Lançamentos"},
+                {id:"budget",       icon:"target", label:"Orçamento"},
+                {id:"import",       icon:"upload", label:"Importar"},
               ].map(item=>(
                 <button key={item.id} onClick={()=>{setTab(item.id);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:12,border:"none",cursor:"pointer",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",marginBottom:4 }}>
                   <Icon name={item.icon} size={20} color={tab===item.id?t.accent:t.textMuted} />
