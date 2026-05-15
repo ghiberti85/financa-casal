@@ -34,7 +34,7 @@ api/auth/
   refresh.js  ← POST /api/auth/refresh (lê cookie HttpOnly)
   logout.js   ← POST /api/auth/logout (apaga cookie)
 src/
-  App.jsx     ← aplicação INTEIRA em um único arquivo (~5920 linhas)
+  App.jsx     ← aplicação INTEIRA em um único arquivo (~6100 linhas)
   index.css   ← estilos globais base
   main.jsx    ← entry point React
 public/
@@ -101,11 +101,14 @@ family_members      (id, family_id, user_id, role, joined_at)
                    role: 'admin' | 'member'
 
 expenses            (id, family_id, user_id, description, amount, date,
-                     category, type, parcelas, user_label, card_id, created_at)
-                   type: 'pix' | 'debito' | 'credito'
+                     category, type, parcelas, user_label, card_id,
+                     split_group_id, created_at)
+                   type: 'pix' | 'debito' | 'credito' | 'dinheiro'
                    amount: SEMPRE o valor da PARCELA, nunca o total
                    parcelas: número total de parcelas (null para não-parcelado)
                    card_id: FK para cards (nullable)
+                   split_group_id: UUID compartilhado por dois registros de um
+                                   pagamento dividido (nullable)
 
 incomes             (id, family_id, user_id, description, amount, date,
                      source, category, user_label, created_at)
@@ -231,7 +234,7 @@ function useDebounce(value, delay = 300)
 | `TransactionsList` | Lista com filtros, agrupamento por data, busca, seleção em massa, duplicatas |
 | `TransactionsListSkeleton` | Skeleton de carregamento para TransactionsList |
 | `ImportView` | Upload CSV/XLSX/PDF + preview + detecção de duplicatas |
-| `ExpenseForm` | Gasto: PIX/Débito/Crédito parcelado + opção recorrente |
+| `ExpenseForm` | Gasto: PIX/Débito/Crédito/Dinheiro + parcelado + recorrente + pagamento dividido (split) |
 | `IncomeForm` | Receita: descrição, quem recebeu, categoria, valor, data |
 | `EditModal` | Edição de gasto ou receita existente |
 | `BudgetView` | Orçamento por categoria com barra de progresso |
@@ -294,7 +297,7 @@ import       → ImportView
 **Mobile (≤ 600px):**
 - Topbar fixa (`56px + safe-area-inset-top`) com logo centralizado e badge DEMO
 - Bottom bar fixa com 3 abas primárias (`dashboard`, `calendar`, `charts`) + FAB central ("+") + botão "Menu"
-- Botão **Menu** abre `showMoreDrawer` (bottom sheet) com abas secundárias: Recorrentes, Orçamento, Lançamentos, Importar + links para Perfil, Família, Cartões, Tema, Sair
+- Botão **Menu** abre `showMoreDrawer` (bottom sheet) com abas secundárias: Recorrentes, **Lançamentos**, **Orçamento**, Importar + links para Perfil, Família, Cartões, Tema, Sair
 - FAB central abre `showFabSheet` com "+ Gasto" e "+ Receita"
 - `env(safe-area-inset-bottom)` garante que a bottom bar não fique atrás do home indicator do iPhone
 - Barras flutuantes de ação usam `bottom: "calc(64px + env(safe-area-inset-bottom) + 10px)"`
@@ -490,5 +493,83 @@ const INCOME_SOURCES = [
 
 ### Técnico (não são features de usuário)
 
-- [ ] **Testes automatizados** — cobertura de componentes críticos (formulários, cálculos financeiros)
+- [ ] **Testes automatizados** — plano em 3 fases (ver detalhes abaixo)
 - [ ] **Divisão do App.jsx em componentes separados** — somente quando ultrapassar ~6.000 linhas e dificultar manutenção. Manter padrão de props e inline styles.
+
+---
+
+## Plano de Testes Automatizados
+
+**Status:** Planejado — implementar antes do lançamento público.
+
+### Stack escolhida
+| Camada | Ferramenta | Motivo |
+|---|---|---|
+| Unit + Component | Vitest + React Testing Library | Compatível com Vite, zero config adicional |
+| E2E | Playwright | Testa fluxos reais no browser, suporte a mobile viewport |
+
+### Estrutura de arquivos planejada
+```
+src/
+  utils/
+    finance.js          ← funções puras extraídas de App.jsx para torná-las testáveis
+  __tests__/
+    utils/
+      finance.test.js   ← unit tests das funções puras
+    components/
+      ExpenseForm.test.jsx
+      SummaryCards.test.jsx
+      TransactionsList.test.jsx
+e2e/
+  auth.spec.js
+  expenses.spec.js
+  navigation.spec.js
+  filters.spec.js
+playwright.config.js
+```
+
+### Fase 1 — Unit tests (funções puras)
+Extrair para `src/utils/finance.js` e cobrir com Vitest:
+
+| Função | Risco | Casos críticos |
+|---|---|---|
+| `monthlyAmount(e)` | **Alto** | crédito 1x vs Nx, dinheiro, split |
+| `getBillingMonth(date, periods, day)` | **Alto** | compra antes/depois do fechamento |
+| `autoCategory(description)` | Médio | palavras-chave conhecidas e desconhecidas |
+| `groupByDate(items)` | Médio | hoje, ontem, datas antigas |
+| `fmt(v)` / `fmtShort(v)` | Baixo | zero, negativos, milhares |
+| `applyPhoneMask(value, mask)` | Baixo | formatos BR com DDI |
+
+### Fase 2 — Component tests
+| Componente | Cenários principais |
+|---|---|
+| `ExpenseForm` | Validação, cálculo parcela↔total, toggle split, crédito parcelado |
+| `SummaryCards` | Totalização correta de expenses/incomes, saldo líquido |
+| `BudgetView` | Alertas de estouro, cálculo de percentual por categoria |
+| `TransactionsList` | Filtros por tipo/categoria/membro, busca, agrupamento por data |
+
+### Fase 3 — E2E (Playwright)
+Fluxos críticos com viewport mobile (390px) e desktop:
+- Login demo → dashboard carrega com dados
+- Criar gasto simples + gasto com pagamento dividido
+- Editar e deletar gasto → totais atualizados
+- Filtrar por tipo "Dinheiro"
+- Navegar entre todas as tabs
+- Toggle dark/light mode
+
+### Scripts a adicionar no package.json
+```json
+"test":        "vitest run",
+"test:watch":  "vitest",
+"test:ui":     "vitest --ui",
+"test:e2e":    "playwright test",
+"test:all":    "vitest run && playwright test"
+```
+
+### Dependências a instalar (quando for implementar)
+```bash
+npm install -D vitest @vitest/ui jsdom
+npm install -D @testing-library/react @testing-library/jest-dom @testing-library/user-event
+npm install -D @playwright/test
+npx playwright install chromium
+```

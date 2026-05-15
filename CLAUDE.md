@@ -329,6 +329,16 @@ Extensão natural do `BudgetView` existente.
 Somente quando ultrapassar ~6.000 linhas e dificultar manutenção.
 Criar `src/components/` e extrair um a um. Manter padrão de props e inline styles.
 
+### 14. Testes Automatizados
+Plano em 3 fases — ver detalhamento completo em `CONTEXT.md` (seção "Plano de Testes Automatizados").
+
+**Resumo:**
+- Fase 1: Vitest para funções puras extraídas para `src/utils/finance.js`
+- Fase 2: React Testing Library para componentes críticos (`ExpenseForm`, `SummaryCards`, etc.)
+- Fase 3: Playwright para E2E dos fluxos principais (login, criar gasto, filtros, mobile viewport)
+
+**Pré-requisito da Fase 1:** extrair funções puras de App.jsx para `src/utils/finance.js` e importá-las de volta. Zero impacto visual ou comportamental no app.
+
 ---
 
 ## Armadilhas Conhecidas
@@ -354,3 +364,7 @@ Criar `src/components/` e extrair um a um. Manter padrão de props e inline styl
 10. **ConfirmModal, nunca window.confirm()** — `window.confirm()` não respeita o tema, bloqueia a thread e não funciona em alguns browsers mobile (WebViews). Usar sempre o componente `ConfirmModal`.
 
 11. **Commits direto no main** — proibido. Sempre usar branch + PR. O Vercel faz auto-deploy no push para `main`, então um commit com erro quebra produção.
+
+12. **Pagamento dividido (split)** — um gasto dividido em duas formas de pagamento cria **dois registros separados** no banco, ambos com o mesmo `split_group_id` (UUID). Nunca tentar armazenar dois pagamentos em um único registro. Ao deletar um dos pares, verificar `split_group_id` e incluir o parceiro na operação. Badge `✂️ dividido` é exibido na lista quando `split_group_id` não é null.
+
+13. **Modal swipe-to-close** — o gesto de arrastar para baixo que fecha o modal está vinculado **apenas** ao handle bar e ao header. O body do modal tem scroll livre sem interferência. Nunca adicionar `onTouchMove` de dismiss no elemento scrollável do body — causa fechamento acidental em formulários longos.
