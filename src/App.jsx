@@ -1226,7 +1226,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
               {sExp.map((exp) => {
                 const cat = CATEGORIES.find(c=>c.id===exp.category);
                 const p = parseInt(exp.parcelas)||1;
-                const typeLabel = exp.type==="pix"?"PIX":exp.type==="debito"?"Débito":"Crédito";
+                const typeLabel = exp.type==="pix"?"PIX":exp.type==="debito"?"Débito":exp.type==="dinheiro"?"Dinheiro":"Crédito";
                 let subtitleExtra = "";
                 if(exp.type==="credito" && p>1){
                   const nth = exp._installNum || 1;
@@ -1631,7 +1631,7 @@ function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, fami
               </div>
               <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
                 {catExpenses.map((e,i)=>{
-                  const typeLabel = e.type==="pix"?"PIX":e.type==="debito"?"Débito":"Crédito";
+                  const typeLabel = e.type==="pix"?"PIX":e.type==="debito"?"Débito":e.type==="dinheiro"?"Dinheiro":"Crédito";
                   return (
                     <div key={e.id||i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.surface,border:`1px solid ${color}22` }}>
                       <span style={{ fontSize:18,flexShrink:0 }}>{catObj?.emoji||"📦"}</span>
@@ -1900,6 +1900,8 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
   const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:currentUserLabel, card_id:"" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
+  const [isSplit, setIsSplit] = useState(false);
+  const [splitForm, setSplitForm] = useState({ type:"dinheiro", amount:"" });
   const [saving, setSaving] = useState(false);
   const setR = (k, v) => setRecurringForm(p => ({ ...p, [k]: v }));
 
@@ -1939,10 +1941,12 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
       ? (parseFloat(form.installAmount) || parseFloat(form.amount) / parcelas)
       : parseFloat(form.amount);
     if (!effectiveAmount) return;
+    if (isSplit && !(parseFloat(splitForm.amount) > 0)) return;
     setSaving(true);
     onSave({
       ...form, amount: effectiveAmount, parcelas, id: Date.now(),
       _recurring: isRecurring ? recurringForm : null,
+      _split: isSplit ? { type: splitForm.type, amount: parseFloat(splitForm.amount) } : null,
     });
   };
 
@@ -1966,6 +1970,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
         <option value="pix">💸 PIX</option>
         <option value="debito">🏦 Débito</option>
         <option value="credito">💳 Crédito</option>
+        <option value="dinheiro">💵 Dinheiro</option>
       </Select>
       {isCredit && cards.length > 0 && (
         <Select label="Cartão" t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
@@ -2008,6 +2013,43 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
       {form.category && (
         <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:t.accentSoft,fontSize:13,color:t.accent,fontWeight:600,border:`1px solid ${t.accent}33`,display:"flex",alignItems:"center",gap:8 }}>
           ✨ {CATEGORIES.find(c=>c.id===form.category)?.emoji} {CATEGORIES.find(c=>c.id===form.category)?.label}
+        </div>
+      )}
+
+      {/* ── Split payment toggle ── */}
+      {!isRecurring && (
+        <div style={{ marginBottom:16 }}>
+          <button type="button" onClick={()=>{ setIsSplit(v=>!v); setSplitForm({ type:"dinheiro", amount:"" }); }}
+            style={{ width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${isSplit?"#3b82f6":t.border}`,background:isSplit?"rgba(59,130,246,0.08)":"transparent",color:isSplit?"#60a5fa":t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.2s",textAlign:"left" }}>
+            <span style={{ fontSize:16 }}>✂️</span>
+            {isSplit ? "Pagamento dividido ativado" : "Dividir pagamento?"}
+            <span style={{ marginLeft:"auto",fontSize:11,opacity:0.7 }}>{isSplit?"▲ ocultar":"▼ configurar"}</span>
+          </button>
+          {isSplit && (
+            <div style={{ marginTop:12,padding:"14px 14px 10px",borderRadius:12,background:t.surface,border:"1px solid rgba(59,130,246,0.25)" }}>
+              <div style={{ fontSize:12,color:"#60a5fa",fontWeight:700,marginBottom:12,display:"flex",alignItems:"center",gap:6 }}>
+                ✂️ O valor total da compra será dividido em duas formas de pagamento.
+              </div>
+              {/* Primary row summary */}
+              <div style={{ fontSize:12,color:t.textMuted,marginBottom:10,padding:"8px 12px",borderRadius:8,background:t.bg,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                <span>💳 Pagamento principal ({form.type==="pix"?"PIX":form.type==="debito"?"Débito":form.type==="dinheiro"?"Dinheiro":"Crédito"})</span>
+                <span style={{ fontWeight:700,color:t.text }}>{parseFloat(form.amount||form.installAmount)>0?fmt(parseFloat(form.amount||form.installAmount)):"R$ —"}</span>
+              </div>
+              {/* Split type + amount */}
+              <Select label="2º forma de pagamento" t={t} value={splitForm.type} onChange={e=>setSplitForm(p=>({...p,type:e.target.value}))}>
+                <option value="dinheiro">💵 Dinheiro</option>
+                <option value="pix">💸 PIX</option>
+                <option value="debito">🏦 Débito</option>
+              </Select>
+              <Input label="Valor pago nesta forma (R$)" t={t} type="number" step="0.01" value={splitForm.amount} onChange={e=>setSplitForm(p=>({...p,amount:e.target.value}))} placeholder="0,00" />
+              {parseFloat(splitForm.amount)>0 && parseFloat(form.amount||form.installAmount)>0 && (
+                <div style={{ fontSize:12,fontWeight:700,color:t.textMuted,padding:"8px 12px",borderRadius:8,background:t.bg,display:"flex",justifyContent:"space-between" }}>
+                  <span>Total da compra</span>
+                  <span style={{ color:t.text }}>{fmt(parseFloat(form.amount||form.installAmount)+parseFloat(splitForm.amount))}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -2184,6 +2226,7 @@ function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
           <option value="pix">💸 PIX</option>
           <option value="debito">🏦 Débito</option>
           <option value="credito">💳 Crédito</option>
+          <option value="dinheiro">💵 Dinheiro</option>
         </Select>
         {form.type === "credito" && cards.length > 0 && (
           <Select label="Cartão" t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
@@ -2524,11 +2567,20 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
   const handleDeleteSelected = () => {
     const selArr = Array.from(selectedIds);
     if (!selArr.length) return;
-    const expIds = selArr.filter(id => all.find(i=>i.id===id&&i._type==="expense"));
+    // Expand selection to include split partners
+    const expandedExpIds = new Set(selArr.filter(id => all.find(i=>i.id===id&&i._type==="expense")));
+    expandedExpIds.forEach(id => {
+      const exp = expenses.find(e=>e.id===id);
+      if (exp?.split_group_id) {
+        expenses.filter(e=>e.split_group_id===exp.split_group_id&&e.id!==id).forEach(p=>expandedExpIds.add(p.id));
+      }
+    });
+    const expIds = Array.from(expandedExpIds);
     const incIds = selArr.filter(id => all.find(i=>i.id===id&&i._type==="income"));
+    const hasSplit = expIds.length > selArr.filter(id=>all.find(i=>i.id===id&&i._type==="expense")).length;
     openConfirm(
       "Remover lançamentos",
-      `Remover ${selArr.length} lançamento(s) selecionado(s)?`,
+      `Remover ${selArr.length} lançamento(s) selecionado(s)?${hasSplit?" O par do pagamento dividido também será removido.":""}`,
       () => {
         if (expIds.length) onDeleteAllExpenses(expIds);
         if (incIds.length) onDeleteAllIncomes(incIds);
@@ -2730,6 +2782,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                 <option value="pix">💸 PIX</option>
                 <option value="debito">🏦 Débito</option>
                 <option value="credito">💳 Crédito</option>
+                <option value="dinheiro">💵 Dinheiro</option>
               </select>
             )}
             {/* Categoria */}
@@ -2916,11 +2969,16 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
                       🔁 duplicata
                     </span>
                   )}
+                  {isExp && item.split_group_id && (
+                    <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(59,130,246,0.12)",color:"#60a5fa",border:"1px solid rgba(59,130,246,0.3)",flexShrink:0 }}>
+                      ✂️ dividido
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize:11, color:t.textMuted, marginTop:2, lineHeight:1.4 }}>
                   {item.user_label} · {(item.date||"").slice(8,10)+"/"+(item.date||"").slice(5,7)+"/"+(item.date||"").slice(2,4)}
                   {isExp && (() => {
-                    const typeLabel = item.type==="pix"?"PIX":item.type==="debito"?"Débito":"Crédito";
+                    const typeLabel = item.type==="pix"?"PIX":item.type==="debito"?"Débito":item.type==="dinheiro"?"Dinheiro":"Crédito";
                     const p = parseInt(item.parcelas)||1;
                     const catLabel = cat?.label || "";
                     if (item.type==="credito" && p>1) {
@@ -3379,7 +3437,7 @@ function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpense
               const cat = CATEGORIES.find(c => c.id === rule.category);
               const hasReminder = reminders.find(r => r.recurring_id === rule.id);
               const freqLabel = rule.frequency==="monthly" ? "Mensal" : rule.frequency==="weekly" ? "Semanal" : "Anual";
-              const typeLabel = rule.type==="pix" ? "PIX" : rule.type==="debito" ? "Débito" : "Crédito";
+              const typeLabel = rule.type==="pix" ? "PIX" : rule.type==="debito" ? "Débito" : rule.type==="dinheiro" ? "Dinheiro" : "Crédito";
               const rIsSel = rSelectedIds.has(rule.id);
               const rIsLp = rLpId === rule.id;
               return (
@@ -3573,6 +3631,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
           <option value="pix">💸 PIX</option>
           <option value="debito">🏦 Débito</option>
           <option value="credito">💳 Crédito</option>
+          <option value="dinheiro">💵 Dinheiro</option>
         </Select>
 
         <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
@@ -5382,7 +5441,8 @@ export default function App() {
   };
 
   const saveExpense=async(data)=>{
-    const { _recurring, installAmount, id: _id, ...expData } = data;
+    const { _recurring, _split, installAmount, id: _id, ...expData } = data;
+    const splitGroupId = _split ? crypto.randomUUID() : null;
     // Only send columns that exist in the expenses table
     const payload = {
       description: expData.description,
@@ -5395,13 +5455,30 @@ export default function App() {
       card_id:     expData.card_id || null,
       family_id:   family?.family_id,
       user_id:     user?.id,
+      split_group_id: splitGroupId,
     };
     if(!isDemo){
       try{
         const s=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(payload),headers:{"Prefer":"return=representation,resolution=ignore-duplicates"}});
         setExpenses(p=>[s[0],...p]);
-        // If marked as recurring, also create the recurring rule
-        if(_recurring && family?.family_id){
+        if(_split){
+          const splitPayload = {
+            description: expData.description,
+            amount:      _split.amount,
+            date:        expData.date,
+            category:    expData.category,
+            type:        _split.type,
+            parcelas:    1,
+            user_label:  expData.user_label,
+            card_id:     null,
+            family_id:   family?.family_id,
+            user_id:     user?.id,
+            split_group_id: splitGroupId,
+          };
+          const s2=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(splitPayload),headers:{"Prefer":"return=representation,resolution=ignore-duplicates"}});
+          setExpenses(p=>[s2[0],...p]);
+          addToast("Pagamento dividido registrado! ✂️","success");
+        } else if(_recurring && family?.family_id){
           const recPayload = {
             family_id: family.family_id,
             description: expData.description,
@@ -5422,8 +5499,13 @@ export default function App() {
         }
       }catch(err){addToast(err.message,"error");return;}
     } else {
-      setExpenses(p=>[payload,...p]);
-      addToast("Gasto registrado!","success");
+      setExpenses(p=>[{...payload,id:Date.now()},...p]);
+      if(_split){
+        setExpenses(p=>[{...payload,id:Date.now()+1,type:_split.type,amount:_split.amount,parcelas:1,card_id:null},...p]);
+        addToast("Pagamento dividido registrado! ✂️","success");
+      } else {
+        addToast("Gasto registrado!","success");
+      }
     }
     setModal(null);
   };
