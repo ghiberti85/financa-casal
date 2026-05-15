@@ -427,12 +427,20 @@ function Toast({ toasts, remove }) {
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
 function Modal({ open, onClose, title, children, t, darkMode, size = 'form', footer, sheetOnMobile = true }) {
+  const bodyRef = useRef(null);
   const touchStartY = useRef(null);
-  const handleTouchStart = (e) => { touchStartY.current = e.touches[0].clientY; };
+
+  // Only trigger swipe-to-close when the body is scrolled to the very top.
+  // This prevents accidental dismissal while scrolling long form content.
+  const handleTouchStart = (e) => {
+    if (bodyRef.current && bodyRef.current.scrollTop > 0) { touchStartY.current = null; return; }
+    touchStartY.current = e.touches[0].clientY;
+  };
   const handleTouchMove = (e) => {
     if (touchStartY.current === null) return;
+    if (bodyRef.current && bodyRef.current.scrollTop > 0) { touchStartY.current = null; return; }
     const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 120) { touchStartY.current = null; onClose(); }
+    if (dy > 80) { touchStartY.current = null; onClose(); }
   };
 
   if (!open) return null;
@@ -448,8 +456,6 @@ function Modal({ open, onClose, title, children, t, darkMode, size = 'form', foo
       padding: sheetOnMobile ? 0 : 20,
     }}>
       <div
-        onTouchStart={sheetOnMobile ? handleTouchStart : undefined}
-        onTouchMove={sheetOnMobile ? handleTouchMove : undefined}
         onClick={e=>e.stopPropagation()}
         className={sheetOnMobile ? "modal-sheet" : "modal-centered"}
         style={{
@@ -463,16 +469,25 @@ function Modal({ open, onClose, title, children, t, darkMode, size = 'form', foo
           animation: "modalIn 0.25s ease",
         }}
       >
-        {/* Handle bar (mobile sheet only) */}
-        <div className="modal-handle-wrap" style={{ display:"none", justifyContent:"center", padding:"10px 0 0" }}>
-          <div style={{ width:36, height:4, borderRadius:2, background:t.border }} />
+        {/* Handle bar — swipe down here always closes (mobile sheet only) */}
+        <div
+          className="modal-handle-wrap"
+          style={{ display:"none", justifyContent:"center", padding:"14px 0 4px", cursor:"grab" }}
+          onTouchStart={sheetOnMobile ? handleTouchStart : undefined}
+          onTouchMove={sheetOnMobile ? handleTouchMove : undefined}
+        >
+          <div style={{ width:40, height:4, borderRadius:2, background:t.border }} />
         </div>
         {/* Header */}
-        <div style={{
-          display:"flex", justifyContent:"space-between", alignItems:"center",
-          height:56, minHeight:56, padding:"0 20px",
-          borderBottom:`1px solid ${t.border}`, flexShrink:0,
-        }}>
+        <div
+          style={{
+            display:"flex", justifyContent:"space-between", alignItems:"center",
+            height:56, minHeight:56, padding:"0 20px",
+            borderBottom:`1px solid ${t.border}`, flexShrink:0,
+          }}
+          onTouchStart={sheetOnMobile ? handleTouchStart : undefined}
+          onTouchMove={sheetOnMobile ? handleTouchMove : undefined}
+        >
           <h3 style={{ margin:0, color:t.text, fontSize:18, fontWeight:700, letterSpacing:"-0.02em" }}>{title}</h3>
           <button onClick={onClose} style={{
             background:t.surfaceHover, border:`1px solid ${t.border}`, borderRadius:10,
@@ -483,8 +498,13 @@ function Modal({ open, onClose, title, children, t, darkMode, size = 'form', foo
             onMouseLeave={(e)=>{ e.currentTarget.style.background=t.surfaceHover; e.currentTarget.style.color=t.textSecondary; }}
           ><Icon name="x" size={16} /></button>
         </div>
-        {/* Body */}
-        <div style={{ padding:"20px", overflowY:"auto", flex:1 }}>
+        {/* Body — swipe only closes when scrolled to the top */}
+        <div
+          ref={bodyRef}
+          onTouchStart={sheetOnMobile ? handleTouchStart : undefined}
+          onTouchMove={sheetOnMobile ? handleTouchMove : undefined}
+          style={{ padding:"20px", overflowY:"auto", flex:1, WebkitOverflowScrolling:"touch" }}
+        >
           {children}
         </div>
         {/* Footer */}
