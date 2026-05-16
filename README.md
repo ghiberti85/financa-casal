@@ -17,12 +17,14 @@
 - [Variáveis de ambiente](#variáveis-de-ambiente)
 - [Deploy](#deploy)
 - [Estrutura do projeto](#estrutura-do-projeto)
+- [Segurança](#segurança)
+- [Roadmap](#roadmap)
 
 ---
 
 ## Sobre o projeto
 
-O **Finanças do Casal** é uma aplicação web progressiva (PWA) desenvolvida para que casais possam gerenciar suas finanças de forma colaborativa. Cada membro da família pode registrar gastos e receitas, acompanhar orçamentos por categoria, gerenciar gastos recorrentes mensais, visualizar o histórico em calendário, consultar gráficos e importar extratos bancários automaticamente.
+O **Finanças do Casal** é uma aplicação web progressiva (PWA) desenvolvida para que casais possam gerenciar suas finanças de forma colaborativa. Cada membro da família registra gastos e receitas, acompanha orçamentos por categoria, gerencia gastos recorrentes mensais, visualiza o histórico em calendário, consulta gráficos e importa extratos bancários automaticamente.
 
 A aplicação foi construída com foco em:
 
@@ -37,9 +39,10 @@ A aplicação foi construída com foco em:
 
 ### 🔐 Autenticação e Perfis
 - Cadastro e login com e-mail e senha
-- Persistência de sessão via `localStorage` — sem necessidade de logar novamente ao recarregar
+- **Sessão segura:** refresh token em cookie `HttpOnly; Secure` (inacessível ao JS), access token apenas em memória
 - Skeleton loading durante restauração de sessão
 - Perfil com nome, sobrenome e telefone com DDI internacional (14 países)
+- **Modo Demo** disponível sem cadastro: `demo@financacasal.app` / `demo1234`
 
 ### 👨‍👩‍👦 Sistema de Família
 - Criar família ou entrar em família existente via **código de convite de 6 letras**
@@ -47,11 +50,16 @@ A aplicação foi construída com foco em:
 - Apenas administradores podem regenerar o código de convite
 - Proteção contra remoção do último administrador
 
+### 🌙 Tema Dark / Light
+- Alternância entre modo claro e escuro disponível no menu lateral (desktop) e no drawer (mobile)
+- Tema salvo por sessão, aplicado em todos os componentes via objeto `t` (inline styles)
+
 ### 🏠 Dashboard
 - Cards de resumo: Receitas do Mês, Gastos do Mês, Saldo e Parcelas Futuras
 - Gráfico de barras: Receitas × Gastos dos últimos 6 meses
 - **Card de alertas de orçamento** — aparece automaticamente quando alguma categoria ultrapassa 80% do limite definido
-- **Card de lembretes de recorrentes** — lista os gastos fixos que ainda não foram confirmados no mês, com acesso direto à aba Recorrentes
+- **Card de lembretes de recorrentes** — lista os gastos fixos que ainda não foram confirmados no mês
+- **BillingCard** — total da fatura do mês atual agrupado por cartão de crédito, com data de vencimento
 - Saudação personalizada com nome do usuário logado
 
 ### 📅 Calendário
@@ -68,11 +76,9 @@ A aplicação foi construída com foco em:
 - **Gastos por categoria** — gráfico de rosca (donut) interativo:
   - Toque em uma fatia ou item da legenda para selecionar a categoria
   - Fatias não selecionadas ficam em 35% de opacidade
-  - Lista detalhada de lançamentos da categoria aparece abaixo do gráfico (descrição, quem pagou, tipo, data, valor)
-  - Total da categoria destacado no cabeçalho da lista
+  - Lista detalhada de lançamentos da categoria aparece abaixo do gráfico
 - **Parcelas de crédito** — linha do tempo das parcelas futuras (12 meses):
   - Toque em um ponto para ver e editar as parcelas daquele mês
-  - Edição de parcelas diretamente no gráfico
 
 ### 🎯 Orçamento Mensal
 - Definir limite de gasto por categoria (ex: Alimentação: R$ 2.000)
@@ -86,34 +92,37 @@ A aplicação foi construída com foco em:
 - Cada regra possui: descrição, categoria, tipo de pagamento, dia de vencimento, tipo de valor (fixo ou variável)
 - **Sistema de lembretes mensais** — todo mês são gerados lembretes para cada regra ativa:
   - Pendentes: campo de valor + botão confirmar ✓ + botão pular ✕
-  - Confirmar cria o lançamento na aba Lançamentos automaticamente
+  - Confirmar cria o lançamento automaticamente
   - Detecta se o lançamento já foi importado e apenas vincula o lembrete
-- **Card de confirmados** com lista de pagamentos do mês e **total lançado**
-- Card de alertas no Dashboard com os lembretes pendentes do mês
+- Card de confirmados com lista de pagamentos do mês e total lançado
 
 ### 📋 Lançamentos
-- Listagem de gastos e receitas com filtros por: mês, ano, tipo (Todos/Gastos/Receitas), tipo de pagamento e categoria
-- **Seleção individual** com checkbox para deleção em massa
-- Botão "Selecionar tudo" com contador de itens selecionados
+- Listagem de gastos e receitas com filtros por: mês, ano, tipo (Todos/Gastos/Receitas), tipo de pagamento (PIX, Débito, Crédito, Dinheiro) e categoria
+- **Seleção individual** com long-press para entrar no modo de seleção em massa
 - **Detecção automática de duplicatas** — itens sinalizados com badge `🔁 duplicata`
-- Banner de alerta com contagem de duplicatas e remoção em massa
+- **Pagamentos divididos** — quando um gasto foi registrado em duas formas de pagamento, ambos os cards exibem o badge `✂️ dividido`
 - Editar qualquer lançamento com modal completo
-- Subtítulo informativo: `Quem pagou · Data · Tipo · Parcela X de N · Categoria`
 
 ### ➕ Registro de Gastos
-**Ordem dos campos:** Descrição → Quem pagou → Tipo de pagamento → Categoria
+**Tipos de pagamento suportados:** PIX · Débito · Crédito · Dinheiro
 
-- **PIX / Débito:** Valor + Data
+- **PIX / Débito / Dinheiro:** Valor + Data
 - **Crédito parcelado:**
-  - Nº de parcelas + Valor da Parcela
-  - Valor Total calculado automaticamente (somente leitura)
+  - Nº de parcelas ↔ Valor da Parcela ↔ Valor Total (campos sincronizados)
   - Data da 1ª parcela (com aviso sobre data da fatura)
   - Banner informativo: `💳 Propagado de Jan/2026 até Jun/2026 · Total: R$ 600,00`
   - O valor armazenado é **o da parcela** — cada mês exibe o custo real
+- **Pagamento dividido (✂️):** um mesmo gasto pode ser pago em duas formas diferentes (ex: R$ 50 em dinheiro + R$ 150 no PIX). Cria dois registros vinculados com o mesmo `split_group_id`. Somatorias permanecem corretas automaticamente.
 - Opção de tornar o gasto **recorrente** diretamente no formulário
 
 ### ➕ Registro de Receitas
 - Descrição, Quem recebeu, Categoria, Valor e Data
+
+### 💳 Cartões de Crédito
+- Cadastro de múltiplos cartões com nome, titular, dia de fechamento e dia de vencimento
+- Cor customizável por cartão para fácil identificação
+- Ao registrar um gasto de crédito, selecionar o cartão (opcional)
+- BillingCard no Dashboard com total da fatura agrupado por cartão
 
 ### 📥 Importação de Planilhas
 Suporte a **CSV, XLSX e PDF** com dois modos:
@@ -130,27 +139,21 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 - Detecção de duplicatas em relação aos dados já existentes
 - Filtros: Todos / Novos / Duplicatas
 - Seleção individual ou em massa
-- Importação com `ON CONFLICT DO NOTHING` — reimportar o mesmo arquivo nunca cria duplicatas
+- `ON CONFLICT DO NOTHING` — reimportar o mesmo arquivo nunca cria duplicatas
 
 ### ✏️ Edição de Lançamentos
 - Modal com os mesmos campos do cadastro, pré-preenchido com os valores atuais
 - Para crédito parcelado: exibe o valor da parcela e calcula o total automaticamente
 - Após salvar, re-busca o registro do banco para garantir sincronização perfeita
 
-### 💳 Cartões de Crédito
-- Cadastro de múltiplos cartões com nome, titular, dia de fechamento e dia de vencimento
-- Cor customizável por cartão para fácil identificação
-- Ao registrar um gasto de crédito, selecionar o cartão (opcional)
-- **BillingCard no Dashboard** — exibe o total da fatura do mês atual agrupado por cartão, com data de vencimento
-
 ### 📱 PWA / Mobile
 - Instalável na tela inicial do iPhone e Android
-- **Bottom bar com 4 abas primárias** (Início, Agenda, Gráficos, Recorrentes) + botão FAB central
-- **Drawer lateral** para abas secundárias (Orçamento, Lançamentos, Importar)
-- **Desktop sidebar rail** de 64px com todos os 7 tabs como ícones + avatar de usuário
+- **Bottom bar** com 3 abas primárias (Início, Agenda, Gráficos) + botão FAB central ("+") + botão "Menu"
+- **Botão Menu** abre bottom sheet com abas secundárias na ordem: Recorrentes → Lançamentos → Orçamento → Importar, além de Perfil, Família, Cartões, Tema e Sair
+- **Desktop sidebar rail** de 64px (colapsado) / 210px (expandido) com todos os 7 tabs + avatar de usuário com submenu
 - `env(safe-area-inset-bottom)` — bottom bar não fica atrás do home indicator do iPhone
 - `env(safe-area-inset-top)` — topbar não conflita com a status bar do iOS no modo standalone
-- Botão de sair do modo Demo visível tanto no sidebar desktop quanto no drawer mobile
+- Modais com swipe-to-close restrito ao handle bar e header — o body do formulário tem scroll livre sem risco de fechamento acidental
 
 ---
 
@@ -162,14 +165,14 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 | React | 19 | UI e gerenciamento de estado |
 | Vite | 8 | Build tool e dev server |
 | Recharts | 3 | Gráficos (barras, rosca, linha) |
-| exceljs | — | Leitura de planilhas Excel (bundle local, sem vulnerabilidades conhecidas) |
+| exceljs | 4 | Leitura de planilhas Excel (bundle local) |
 
 ### Backend / Infraestrutura
 | Tecnologia | Uso |
 |---|---|
 | Supabase | Banco de dados PostgreSQL, autenticação e RLS |
 | Supabase Edge Functions | Análise de planilhas via IA (Deno runtime) |
-| Vercel | Deploy, CDN e hosting |
+| Vercel | Deploy, CDN, hosting e API Routes serverless |
 
 ### IA
 | Serviço | Uso |
@@ -205,7 +208,7 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 ```
 
 **Decisões de arquitetura:**
-- **Single file component** — toda a aplicação está em `src/App.jsx` para facilitar iteração rápida
+- **Single file component** — toda a aplicação está em `src/App.jsx` (~6.100 linhas) para facilitar iteração rápida. Escolha intencional, não débito técnico.
 - **Sem SDK do Supabase** — usa `fetch` direto com headers manuais para maior controle e bundle menor
 - **Sem TypeScript** — projeto pessoal, velocidade de iteração prioritária
 - **Sem Tailwind** — inline styles com objeto de tema `t` para suporte a dark/light mode
@@ -221,14 +224,17 @@ Suporte a **CSV, XLSX e PDF** com dois modos:
 
 ```sql
 families            -- id, name, invite_code, created_at
+
 family_members      -- id, family_id, user_id, role, joined_at
                     --   role: 'admin' | 'member'
 
 expenses            -- id, family_id, user_id, description, amount, date,
-                    --   category, type, parcelas, user_label, card_id, created_at
-                    --   type: 'pix' | 'debito' | 'credito'
+                    --   category, type, parcelas, user_label,
+                    --   card_id, split_group_id, created_at
+                    --   type: 'pix' | 'debito' | 'credito' | 'dinheiro'
                     --   amount: SEMPRE o valor da parcela, nunca o total
-                    --   card_id: FK para cards (nullable)
+                    --   split_group_id: UUID compartilhado por dois registros
+                    --                  de um pagamento dividido (nullable)
 
 incomes             -- id, family_id, user_id, description, amount, date,
                     --   source, category, user_label, created_at
@@ -239,11 +245,17 @@ budgets             -- id, family_id, category, amount, month (YYYY-MM)
 
 cards               -- id, family_id, name, holder, closing_day, due_day,
                     --   color, active, created_at
+                    --   closing_day: dia de fechamento da fatura
+                    --   due_day: dia de vencimento da fatura
+
+billing_periods     -- id, family_id, card_id, month, year,
+                    --   start_date, end_date, created_at
 
 recurring_expenses  -- id, family_id, user_id, description, amount, category,
                     --   type, frequency, day_of_month, month_of_year,
                     --   amount_type, active, end_date, created_at
                     --   frequency: 'monthly' | 'weekly' | 'yearly'
+                    --   amount_type: 'fixed' | 'variable'
 
 recurring_reminders -- id, family_id, recurring_id, month, year,
                     --   amount, status, expense_id, created_at
@@ -253,6 +265,10 @@ recurring_reminders -- id, family_id, recurring_id, month, year,
 ### Convenção de valores para crédito parcelado
 
 O campo `amount` em `expenses` armazena **sempre o valor da parcela**, nunca o total. Isso garante que cada linha representa exatamente o custo daquele mês. O total é calculado no frontend como `amount × parcelas` apenas para exibição.
+
+### Pagamento dividido (`split_group_id`)
+
+Quando um gasto é pago em duas formas diferentes, são criados **dois registros** na tabela `expenses`, ambos com o mesmo `split_group_id` (UUID). Isso mantém todas as somatórias corretas sem nenhuma lógica especial — são simplesmente dois gastos vinculados.
 
 ### Índices de unicidade (anti-duplicata)
 
@@ -275,23 +291,6 @@ CREATE UNIQUE INDEX idx_incomes_no_duplicates
 | `upsert_profile()` | Salva ou atualiza perfil do usuário |
 | `update_member_role()` | Altera papel de membro (protege último admin) |
 | `regenerate_invite_code()` | Gera novo código de convite (somente admin) |
-
-### Políticas RLS
-
-Todas as 10 tabelas têm RLS ativo (auditado em maio/2026). O isolamento entre famílias é garantido pela função `get_my_family_id()` aplicada em todas as políticas de SELECT, INSERT, UPDATE e DELETE.
-
-| Tabela | RLS | Cobertura |
-|---|---|---|
-| `expenses` | ✅ | SELECT · INSERT · UPDATE · DELETE |
-| `incomes` | ✅ | SELECT · INSERT · UPDATE · DELETE |
-| `budgets` | ✅ | SELECT · INSERT · UPDATE · DELETE |
-| `recurring_expenses` | ✅ | SELECT · INSERT · UPDATE · DELETE |
-| `recurring_reminders` | ✅ | SELECT · INSERT · UPDATE · DELETE |
-| `cards` | ✅ | ALL (via `auth.uid() → family_members`) |
-| `billing_periods` | ✅ | ALL (via `auth.uid() → family_members`) |
-| `families` | ✅ | SELECT · INSERT · UPDATE (admin only) |
-| `family_members` | ✅ | SELECT · INSERT (`user_id = auth.uid()`) |
-| `profiles` | ✅ | SELECT (próprio + família) · INSERT · UPDATE |
 
 ---
 
@@ -323,12 +322,14 @@ npm run dev
 
 Acesse `http://localhost:5173`
 
+> **Modo Demo:** sem configurar o Supabase, você já pode explorar a aplicação com dados fictícios usando `demo@financacasal.app` / `demo1234`.
+
 ### Configuração do Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
 2. Execute o script SQL em `supabase/schema.sql` no SQL Editor
 3. Execute o script `supabase/rpc_functions.sql` para criar as funções RPC
-4. Em **Authentication → Providers → Email**, desative "Confirm email"
+4. Em **Authentication → Providers → Email**, desative "Confirm email" (para desenvolvimento)
 5. Copie a **Project URL** e a **anon key** para o `.env.local`
 
 ---
@@ -355,23 +356,9 @@ Secret value: sk-ant-...
 
 O projeto está configurado para deploy automático na Vercel via GitHub.
 
-### Deploy automático
+Qualquer push para a branch `main` dispara um deploy automático. O processo leva ~1–2 minutos.
 
-Qualquer push para a branch `main` dispara um deploy automático na Vercel. O processo leva aproximadamente 1–2 minutos e pode ser acompanhado em **vercel.com/dashboard**.
-
-```bash
-git add src/App.jsx
-git commit -m "feat: descrição da mudança"
-git push
-```
-
-### Deploy manual (primeira vez)
-
-```bash
-npm install -g vercel
-vercel login
-vercel --prod
-```
+> ⚠️ **Nunca commitar diretamente na `main`.** Sempre usar branch + PR. O Vercel faz auto-deploy no push para `main` — um commit com erro quebra produção.
 
 ### Variáveis de ambiente na Vercel
 
@@ -391,7 +378,7 @@ financa-casal/
 │       ├── refresh.js   # POST /api/auth/refresh — renova sessão via cookie HttpOnly
 │       └── logout.js    # POST /api/auth/logout — apaga o cookie de sessão
 ├── src/
-│   ├── App.jsx          # Aplicação completa (~5390 linhas)
+│   ├── App.jsx          # Aplicação completa (~6.100 linhas)
 │   ├── index.css        # Estilos globais base
 │   └── main.jsx         # Entry point React
 ├── public/
@@ -400,13 +387,13 @@ financa-casal/
 ├── index.html           # HTML com SEO, Open Graph e PWA meta tags
 ├── vercel.json          # Headers de segurança HTTP e CSP
 ├── vite.config.js       # Configuração do Vite
-├── CONTEXT.md           # Contexto técnico para desenvolvimento com IA
-├── CLAUDE.md            # Instruções e padrões para o Claude Code
+├── CONTEXT.md           # Contexto técnico completo para desenvolvimento com IA
+├── CLAUDE.md            # Instruções, padrões e armadilhas para o Claude Code
 ├── package.json
 └── README.md
 ```
 
-### Componentes em `App.jsx`
+### Principais componentes em `App.jsx`
 
 | Componente | Descrição |
 |---|---|
@@ -414,82 +401,84 @@ financa-casal/
 | `LoginPage` | Login/cadastro com fluxo de perfil e família (3 etapas) |
 | `SummaryCards` | Cards: Receitas, Gastos, Saldo, Parcelas Futuras |
 | `CalendarView` | Calendário mensal com indicadores e painel de detalhes |
-| `CalendarPickerModal` | Seletor de data customizado (sem input[type=date] nativo) |
-| `DateInput` | Input de data que abre CalendarPickerModal |
 | `ChartsView` | Receitas×Gastos, donut por categoria (clicável) e linha de parcelas |
 | `BudgetView` | Orçamento por categoria com barras de progresso |
 | `BudgetAlertCard` | Alerta no Dashboard quando categoria > 80% do orçamento |
 | `RecurringView` | Lembretes mensais, confirmação de pagamentos e lista de regras |
-| `RecurringForm` | Cadastro/edição de regra recorrente |
 | `RecurringAlertCard` | Alerta no Dashboard com pagamentos recorrentes pendentes |
 | `CardsManager` | CRUD de cartões de crédito (nome, titular, fechamento, vencimento) |
 | `BillingCard` | Resumo da fatura atual no Dashboard, agrupado por cartão |
-| `TransactionsList` | Lançamentos com filtros, seleção em massa e duplicatas |
+| `TransactionsList` | Lançamentos com filtros, seleção em massa e detecção de duplicatas |
 | `ImportView` | Upload CSV/XLSX/PDF, preview e detecção de duplicatas |
-| `ExpenseForm` | Gasto: PIX/Débito/Crédito parcelado + opção recorrente |
+| `ExpenseForm` | Gasto: PIX/Débito/Crédito/Dinheiro + parcelado + recorrente + pagamento dividido |
 | `IncomeForm` | Receita: descrição, quem recebeu, categoria, valor, data |
 | `EditModal` | Edição de gasto ou receita existente |
 | `FamilyModal` | Código de convite, membros e gerenciamento de papéis |
 | `ProfileModal` | Edição de perfil com telefone e DDI |
-| `MemberSelect` | Dropdown de membros da família |
-| `Modal` | Wrapper de modal reutilizável com backdrop e animação |
-| `Input` / `Select` | Inputs estilizados com label e tema |
-| `Btn` | Botão com variantes: primary, ghost, danger, success |
-| `Toast` | Sistema de notificações temporárias (success/error/info) |
+| `Modal` | Wrapper de modal reutilizável com bottom sheet no mobile |
+| `ConfirmModal` | Modal de confirmação (substitui `window.confirm`) |
+| `Toast` | Sistema de notificações temporárias (success/error/info/warning) |
+| `Icon` | Ícone SVG inline via `ICON_PATHS` (33 ícones Lucide-inspired) |
 
 ---
 
 ## Segurança
 
 ### Autenticação e sessão
-- **Refresh token** armazenado em cookie `HttpOnly; Secure; SameSite=Strict` — inacessível ao JavaScript, mesmo em caso de XSS
+- **Refresh token** em cookie `HttpOnly; Secure; SameSite=Strict` — inacessível ao JavaScript, mesmo em caso de XSS
 - **Access token** mantido apenas em memória (`_authToken`) — nunca persiste em `localStorage` em produção
 - **Rotação de refresh token** a cada uso — prevenção de token replay
-- **Rate limiting** no login: 3 tentativas falhas ativam bloqueio de 30 segundos no frontend
+- Refresh automático transparente: 401 → `/api/auth/refresh` → retry da requisição original
 
 ### Proteção de dados (Supabase)
-- **RLS ativo nas 10 tabelas** — auditado em maio/2026, sem nenhuma tabela exposta
-- Toda consulta é filtrada por `get_my_family_id()` — impossível acessar dados de outra família
+- **RLS ativo em todas as tabelas** — isolamento total entre famílias via `family_id`
 - **Funções SECURITY DEFINER** para operações sensíveis (criação de família, troca de papel, convite)
 - Índices `UNIQUE` no banco garantem idempotência na importação (`ON CONFLICT DO NOTHING`)
 
 ### Proteção da API Anthropic
 - A chave da API Anthropic fica **exclusivamente no Supabase Vault** (servidor)
-- O browser nunca recebe nem transmite a chave — todo processamento de IA passa pela Edge Function
+- O browser nunca recebe nem transmite a chave
 
 ### Headers HTTP (`vercel.json`)
-| Header | Valor |
+| Header | Proteção |
 |---|---|
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` — força HTTPS |
-| `Content-Security-Policy` | `script-src 'self'` — bloqueia scripts externos; `frame-ancestors 'none'` |
-| `X-Frame-Options` | `DENY` — previne clickjacking |
-| `X-Content-Type-Options` | `nosniff` — previne MIME sniffing |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Strict-Transport-Security` | Força HTTPS com preload |
+| `Content-Security-Policy` | Bloqueia scripts externos; proíbe iframes |
+| `X-Frame-Options` | Previne clickjacking |
+| `X-Content-Type-Options` | Previne MIME sniffing |
 | `Permissions-Policy` | Desativa câmera, microfone e geolocalização |
 
 ### Upload de arquivos
 - Tamanho máximo: **10 MB**
 - MIME type validado antes do processamento
 - Extensões permitidas: `.csv`, `.xlsx`, `.xls`, `.pdf`, `.txt`
-- Leitura de XLSX via `exceljs` (sem vulnerabilidades conhecidas — substitui o `xlsx` abandonado)
-
-### Geração de códigos e IDs
-- Código de convite gerado com `crypto.getRandomValues()` — criptograficamente seguro
-- IDs temporários gerados com `crypto.randomUUID()` — nativo do browser
+- Leitura de XLSX via `exceljs` (substitui o `xlsx` abandonado)
 
 ### Rate limiting
 - **Frontend:** 3 tentativas falhas → bloqueio de 30 segundos no botão de login
-- **Servidor:** `/api/auth/login` limita 10 tentativas por IP em janela de 15 minutos (segunda camada além da proteção nativa do Supabase)
-- **Campos de formulário:** `maxLength` aplicado em todos os inputs de texto (email: 254, senha: 128, demais: 200)
+- **Servidor:** `/api/auth/login` limita 10 tentativas por IP em janela de 15 minutos
 
 ---
 
 ## Roadmap
 
+### Pré-lançamento
+- [ ] Resumo mensal algorítmico no Dashboard (variação vs mês anterior, maior gasto, etc.)
+- [ ] Comparativo mês a mês com indicadores `↑ 23%` ao lado dos totais
+- [ ] Previsão de saldo ao fim do mês (recorrentes + média dos últimos 3 meses)
+- [ ] Alerta de fatura chegando (3 dias antes do vencimento)
+- [ ] Notificações de vencimento de parcelas de crédito
 - [ ] Metas financeiras mensais com barra de progresso
-- [ ] Notificações push para vencimento de parcelas
-- [ ] Exportação de relatórios em PDF
-- [ ] Suporte a múltiplas moedas
+- [ ] Divisão de gastos entre o casal (acerto mensal)
+- [ ] Testes automatizados (Vitest + React Testing Library + Playwright)
+
+### Pós-lançamento
+- [ ] Foto de recibo → registro automático via Claude Vision
+- [ ] Relatório anual / retrospectiva estilo Spotify Wrapped
+- [ ] Exportação de relatórios em PDF (server-side via Edge Function)
+- [ ] Notificações push quando parceiro registra gasto
+- [ ] Score de saúde financeira (0–100 mensal)
+- [ ] Orçamento por percentuais (regra 50/30/20)
 - [ ] App mobile nativo (React Native)
 
 ---

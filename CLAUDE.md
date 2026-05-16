@@ -59,7 +59,7 @@ Ele contém arquitetura, schema do banco, componentes, decisões técnicas e o *
 - Commit com mensagem descritiva em português ou inglês
 - Push para a branch: `git push -u origin nome-da-branch`
 - Abrir PR e mergear — **nunca** commitar direto no `main`
-- **Antes de abrir o PR:** verificar se `CLAUDE.md` e `CONTEXT.md` precisam ser atualizados
+- **Antes de abrir o PR:** verificar e atualizar `CLAUDE.md`, `CONTEXT.md` e `README.md` se necessário
 
 ---
 
@@ -72,8 +72,11 @@ Ele contém arquitetura, schema do banco, componentes, decisões técnicas e o *
 [ ] Emojis de UI substituídos por <Icon>
 [ ] Fragment usado em vez de React.Fragment
 [ ] CLAUDE.md atualizado (se adicionou padrões, hooks ou armadilhas)
-[ ] CONTEXT.md atualizado (se adicionou componentes, tabs ou navegação)
+[ ] CONTEXT.md atualizado (se adicionou componentes, schema, tabs ou navegação)
+[ ] README.md atualizado (funcionalidades, schema, componentes, roadmap)
 ```
+
+> **Regra de ouro:** os três arquivos de documentação (`CLAUDE.md`, `CONTEXT.md`, `README.md`) devem estar sempre sincronizados com o estado real do código. Nunca abrir um PR sem revisar os três.
 
 ---
 
