@@ -38,9 +38,10 @@ src/
   index.css   ← estilos globais base
   main.jsx    ← entry point React
 public/
-  favicon.svg
-  og-image.svg
-index.html    ← SEO, Open Graph, PWA meta tags
+  favicon.svg            ← ícone SVG do app (diamante 5 facetas, gradiente roxo)
+  apple-touch-icon.png   ← ícone PNG 180×180 para iOS home screen (apple-touch-icon)
+  og-image.svg           ← imagem Open Graph 1200×630
+index.html    ← SEO, Open Graph, PWA meta tags (apple-touch-icon aponta para o PNG)
 vercel.json   ← headers HTTP de segurança e CSP
 vite.config.js
 ```
@@ -543,19 +544,39 @@ Extrair para `src/utils/finance.js` e cobrir com Vitest:
 ### Fase 2 — Component tests
 | Componente | Cenários principais |
 |---|---|
-| `ExpenseForm` | Validação, cálculo parcela↔total, toggle split, crédito parcelado |
-| `SummaryCards` | Totalização correta de expenses/incomes, saldo líquido |
-| `BudgetView` | Alertas de estouro, cálculo de percentual por categoria |
-| `TransactionsList` | Filtros por tipo/categoria/membro, busca, agrupamento por data |
+| `ExpenseForm` | Validação obrigatória, cálculo parcela↔total, toggle split requer valor positivo na 2ª forma, tipo Dinheiro não exibe campo parcelas, crédito parcelado exibe range de meses |
+| `SummaryCards` | Totalização correta de expenses/incomes, saldo líquido, parcelas futuras excluem mês atual |
+| `BudgetView` | Alertas de estouro (>80%, >100%), cálculo de percentual por categoria |
+| `TransactionsList` | Filtros por tipo/categoria/membro, busca, agrupamento por data, badge `✂️ dividido` quando `split_group_id` presente, badge `🔁 duplicata` |
+| `Modal` | Swipe-to-close no handle/header funciona; onTouchMove no body NÃO dispara fechamento |
 
 ### Fase 3 — E2E (Playwright)
 Fluxos críticos com viewport mobile (390px) e desktop:
+
+**Autenticação e sessão**
 - Login demo → dashboard carrega com dados
-- Criar gasto simples + gasto com pagamento dividido
-- Editar e deletar gasto → totais atualizados
-- Filtrar por tipo "Dinheiro"
-- Navegar entre todas as tabs
-- Toggle dark/light mode
+- Toggle dark/light mode persiste entre navegações
+
+**Gastos**
+- Criar gasto PIX simples → aparece no Dashboard e em Lançamentos
+- Criar gasto em Dinheiro → tipo "Dinheiro" selecionado não exibe opção de parcelamento
+- Criar gasto crédito parcelado → cálculo parcela↔total em sincronia, `amount` gravado como parcela
+- Criar gasto com pagamento dividido (split) → dois cards em Lançamentos com badge `✂️ dividido`
+- Editar gasto → totais do Dashboard atualizados imediatamente
+- Deletar gasto → some da lista e recalcula totais
+
+**Modal / UX mobile**
+- Scroll no formulário de gasto (mobile, 390px) → modal não fecha acidentalmente
+- Arrastar handle bar para baixo → modal fecha corretamente
+
+**Filtros e navegação**
+- Filtrar Lançamentos por tipo "Dinheiro" → apenas gastos em dinheiro visíveis
+- Navegar entre todas as 7 tabs → conteúdo carrega sem erro
+- Bottom bar fixa durante scroll no Dashboard (mobile)
+
+**PWA**
+- `<link rel="apple-touch-icon">` aponta para `/apple-touch-icon.png` (não SVG)
+- `<meta name="theme-color">` presente com cor roxa `#7c6af7`
 
 ### Scripts a adicionar no package.json
 ```json
