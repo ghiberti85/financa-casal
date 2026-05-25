@@ -380,8 +380,9 @@ financa-casal/
 │   ├── index.css        # Base global styles
 │   └── main.jsx         # React entry point
 ├── public/
-│   ├── favicon.svg      # Purple diamond icon
-│   └── og-image.svg     # Open Graph image (1200×630)
+│   ├── favicon.svg           # SVG diamond icon (5-facet gem, purple gradient)
+│   ├── apple-touch-icon.png  # 180×180 PNG icon for iOS home screen
+│   └── og-image.svg          # Open Graph image (1200×630)
 ├── index.html           # HTML with SEO, Open Graph and PWA meta tags
 ├── vercel.json          # HTTP security headers and CSP
 ├── vite.config.js       # Vite configuration
