@@ -350,6 +350,32 @@ Secret value: sk-ant-...
 
 ---
 
+## Development Workflow
+
+All changes follow this mandatory flow — no exceptions:
+
+```
+Branch → Code → Tests → Build → Security → Docs → PR → Merge → Deploy
+```
+
+| Step | Command / Action | Pass criteria |
+|---|---|---|
+| Branch | `git checkout -b feat/name` | Created from updated `main` |
+| Code | Edit `App.jsx` | Feature implemented |
+| Tests | `npm run test` | All tests pass (when implemented) |
+| Build | `npm run build` | Zero compilation errors |
+| Security | Review checklist in `CLAUDE.md` | No critical issues |
+| Docs | Update `CLAUDE.md` + `CONTEXT.md` + `README.md` | All three in sync |
+| PR | Open descriptive PR on GitHub | PR checklist filled |
+| Merge | Squash merge to `main` | No conflicts |
+| Deploy | Vercel auto-deploy (~1 min) | No runtime errors |
+
+> **Every new feature requires a test case** — either written immediately (if tests are implemented) or documented in `CONTEXT.md` (if still in the planning phase). Features are never considered complete without their test.
+
+> **Removing a feature** means also removing its code, its tests, and all references in the three documentation files. No dead entries.
+
+---
+
 ## Deploy
 
 The project is configured for automatic deployment on Vercel via GitHub.
@@ -461,19 +487,32 @@ financa-casal/
 
 ## Roadmap
 
-### Pre-launch
-- [ ] Algorithmic monthly summary on the Dashboard (vs. previous month, top category, largest expense)
-- [ ] Month-over-month comparison with `↑ 23%` indicators next to totals
-- [ ] End-of-month balance forecast (recurring bills + 3-month spending average)
-- [ ] Upcoming billing alert (3 days before card due date)
-- [ ] Credit installment due-date notifications
-- [ ] Monthly financial goals with progress bars
-- [ ] Couple expense split (who owes whom each month)
-- [ ] Automated tests (Vitest + React Testing Library + Playwright)
+> Each item below requires a corresponding test case — either written at implementation time or documented in `CONTEXT.md` if tests aren't yet set up. Features are never considered done without their test.
 
-### Post-launch
-- [ ] Receipt photo → auto-fill via Claude Vision
-- [ ] Annual report / year in review (Spotify Wrapped style)
+### Infrastructure & Quality (before any new feature)
+- [ ] Automated test suite — Vitest (unit) + React Testing Library (component) + Playwright (E2E)
+- [ ] Supabase upgrade to Pro (daily backups, PITR, connection pooling)
+- [ ] Custom domain + SSL
+
+### Security & Legal (launch blockers)
+- [ ] Supabase RLS audit for all tables
+- [ ] Email confirmation + "Forgot password" flow
+- [ ] Rate limiting on signup endpoint
+- [ ] Privacy policy + Terms of service + LGPD cookie banner
+- [ ] Account deletion ("Right to be forgotten")
+
+### Pre-launch Features
+- [ ] Algorithmic monthly summary — vs. previous month, top category, largest expense
+- [ ] Month-over-month comparison — `↑ 23%` indicators next to dashboard totals
+- [ ] End-of-month balance forecast — recurring bills + 3-month spending average
+- [ ] Upcoming billing alert — 3 days before card due date
+- [ ] Credit installment due-date notifications — next 7 days
+- [ ] Monthly financial goals with progress bars
+- [ ] Couple expense split — who owes whom each month
+
+### Post-launch Features
+- [ ] Receipt photo → auto-fill via Claude Vision (Edge Function)
+- [ ] Annual report / year in review
 - [ ] PDF report export (server-side via Edge Function)
 - [ ] Push notifications when a partner logs an expense
 - [ ] Financial health score (0–100 monthly)
