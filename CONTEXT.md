@@ -397,6 +397,43 @@ const INCOME_SOURCES = [
 
 ---
 
+## Workflow de Desenvolvimento
+
+Todo código que vai a produção segue o fluxo abaixo sem exceção.
+
+```
+Branch → Código → Testes → Build → Segurança → Docs → PR → Merge → Deploy
+```
+
+### Fluxo passo a passo
+
+| Passo | Comando / Ação | Critério de aceite |
+|---|---|---|
+| 1. Branch | `git checkout -b feat/nome` | Branch criada a partir de `main` atualizado |
+| 2. Código | Editar `App.jsx` | Funcionalidade implementada |
+| 3. Testes | `npm run test` | Todos os testes passam (quando implementados) |
+| 4. Build | `npm run build` | Zero erros de compilação |
+| 5. Segurança | Checar lista em CLAUDE.md | Nenhum item crítico falhando |
+| 6. Docs | Atualizar CLAUDE.md + CONTEXT.md + README.md | Os três sincronizados com o código |
+| 7. PR | Abrir PR descritivo no GitHub | Checklist do PR preenchido |
+| 8. Merge | Squash merge para `main` | PR aprovado, sem conflitos |
+| 9. Deploy | Vercel auto-deploy (~1 min) | Deploy concluído sem erros de runtime |
+
+### Regra de testes por feature
+
+Ao implementar qualquer feature nova:
+1. Se testes já estiverem implementados → escrever o teste junto com o código
+2. Se testes ainda não estiverem implementados → documentar o caso de teste obrigatório no plano abaixo (Fase 1/2/3)
+3. Nunca marcar uma feature como concluída sem o teste documentado
+
+Ao remover qualquer feature:
+1. Remover o código
+2. Remover o teste correspondente (arquivo + caso no plano abaixo)
+3. Remover referências nos três arquivos de docs
+4. Sem entradas mortas, sem código comentado, sem TODO órfão
+
+---
+
 ## Roadmap de Lançamento Público
 
 **Status:** Em andamento — todas as etapas abaixo devem ser concluídas antes de abrir a aplicação para outros usuários.
@@ -502,92 +539,136 @@ const INCOME_SOURCES = [
 ## Plano de Testes Automatizados
 
 **Status:** Planejado — implementar antes do lançamento público.
+**Regra:** toda feature nova exige caso de teste documentado aqui. Toda feature removida exige remoção do caso de teste correspondente.
 
 ### Stack escolhida
 | Camada | Ferramenta | Motivo |
 |---|---|---|
-| Unit + Component | Vitest + React Testing Library | Compatível com Vite, zero config adicional |
+| Unit | Vitest | Compatível com Vite, zero config adicional, rápido |
+| Component | React Testing Library | Testa comportamento do usuário, não implementação |
 | E2E | Playwright | Testa fluxos reais no browser, suporte a mobile viewport |
 
 ### Estrutura de arquivos planejada
 ```
 src/
   utils/
-    finance.js          ← funções puras extraídas de App.jsx para torná-las testáveis
+    finance.js            ← funções puras extraídas de App.jsx (pré-requisito Fase 1)
   __tests__/
     utils/
-      finance.test.js   ← unit tests das funções puras
+      finance.test.js     ← unit tests das funções puras
     components/
       ExpenseForm.test.jsx
       SummaryCards.test.jsx
       TransactionsList.test.jsx
+      Modal.test.jsx
 e2e/
   auth.spec.js
   expenses.spec.js
   navigation.spec.js
   filters.spec.js
+  mobile.spec.js
+  pwa.spec.js
 playwright.config.js
+vitest.config.js
 ```
 
-### Fase 1 — Unit tests (funções puras)
-Extrair para `src/utils/finance.js` e cobrir com Vitest:
+---
 
-| Função | Risco | Casos críticos |
+### Fase 1 — Unit tests (funções puras)
+
+Pré-requisito: extrair para `src/utils/finance.js` e importar de volta em App.jsx. Zero impacto visual.
+
+#### Funções existentes em App.jsx
+| Função | Risco | Casos obrigatórios |
 |---|---|---|
-| `monthlyAmount(e)` | **Alto** | crédito 1x vs Nx, dinheiro, split |
-| `getBillingMonth(date, periods, day)` | **Alto** | compra antes/depois do fechamento |
-| `autoCategory(description)` | Médio | palavras-chave conhecidas e desconhecidas |
-| `groupByDate(items)` | Médio | hoje, ontem, datas antigas |
-| `fmt(v)` / `fmtShort(v)` | Baixo | zero, negativos, milhares |
-| `applyPhoneMask(value, mask)` | Baixo | formatos BR com DDI |
+| `monthlyAmount(expense)` | **Alto** | PIX/débito/dinheiro (1x), crédito 1x vs Nx, crédito split |
+| `getBillingMonth(date, periods, closingDay)` | **Alto** | compra ≤ fechamento (mesmo mês), compra > fechamento (próximo mês), fechamento dia 1, dia 31 |
+| `autoCategory(description)` | Médio | "uber", "mercado", "netflix", string sem match → "outros" |
+| `groupByDate(items)` | Médio | hoje, ontem, semana passada, array vazio |
+| `fmt(value)` | Baixo | zero, negativo, milhar, dois decimais |
+| `fmtShort(value)` | Baixo | < 1000 (passa inteiro), ≥ 1000 (converte para "k") |
+| `applyPhoneMask(value, mask)` | Baixo | BR +55, US +1, número incompleto |
+
+#### Funções a criar (features do roadmap)
+| Função | Feature | Casos obrigatórios |
+|---|---|---|
+| `buildMonthlySummary(expenses, incomes, prev)` | #1 Resumo mensal | variação positiva, negativa, mês sem dados anterior |
+| `getUpcomingInstallments(expenses, today)` | #2 Notificações parcelas | vence em 0, 7 e 8 dias; sem crédito na lista |
+| `calcMonthVariation(current, previous)` | #4 Comparativo mês a mês | aumento, queda, anterior = 0 (evitar divisão por zero) |
+| `forecastBalance(income, recurring, last3)` | #5 Previsão de saldo | histórico completo, histórico < 3 meses, renda zero |
+| `getCardsNearDue(cards, today)` | #6 Alerta de fatura | vence em 0, 3 e 4 dias; sem cartões |
+| `calcCoupleSplit(expenses)` | #7 Divisão do casal | gastos iguais (acerto zero), membro sem gastos, um membro |
+| `calcHealthScore(data)` | #11 Score de saúde | score mínimo 0, máximo 100, todos os critérios |
+| `calcPercentBudget(income, percentages)` | #12 Orçamento % | renda zero, soma ≠ 100%, categoria sem percentual |
+
+---
 
 ### Fase 2 — Component tests
-| Componente | Cenários principais |
+
+#### Componentes existentes
+| Componente | Cenários obrigatórios |
 |---|---|
-| `ExpenseForm` | Validação obrigatória, cálculo parcela↔total, toggle split requer valor positivo na 2ª forma, tipo Dinheiro não exibe campo parcelas, crédito parcelado exibe range de meses |
-| `SummaryCards` | Totalização correta de expenses/incomes, saldo líquido, parcelas futuras excluem mês atual |
-| `BudgetView` | Alertas de estouro (>80%, >100%), cálculo de percentual por categoria |
-| `TransactionsList` | Filtros por tipo/categoria/membro, busca, agrupamento por data, badge `✂️ dividido` quando `split_group_id` presente, badge `🔁 duplicata` |
-| `Modal` | Swipe-to-close no handle/header funciona; onTouchMove no body NÃO dispara fechamento |
+| `ExpenseForm` | Campo obrigatório vazio → não submete; cálculo parcela↔total em sincronia; tipo Dinheiro sem campo parcelas; toggle split requer valor > 0 na 2ª forma; crédito parcelado exibe range de meses |
+| `SummaryCards` | Totalização correta de expenses/incomes; saldo líquido = receitas − gastos; parcelas futuras excluem mês atual |
+| `BudgetView` | Barra verde < 80%, amarela 80–100%, vermelha > 100%; alerta aparece ao ultrapassar |
+| `TransactionsList` | Filtro por tipo mostra apenas itens do tipo; busca por descrição; badge `✂️ dividido` quando `split_group_id` presente; badge `🔁 duplicata` |
+| `Modal` | Swipe no handle/header fecha; onTouchMove no body **não** fecha; Esc fecha no desktop |
+
+#### Componentes de features futuras (adicionar ao implementar)
+| Componente | Cenários mínimos |
+|---|---|
+| `GoalsView` (#3) | Barra de progresso com % correto; meta concluída marca como ✅ |
+| `CoupleSplitView` (#7) | "Deve R$ X ao parceiro" com valor correto; sem gastos → "estão empatados" |
+
+---
 
 ### Fase 3 — E2E (Playwright)
-Fluxos críticos com viewport mobile (390px) e desktop:
 
-**Autenticação e sessão**
-- Login demo → dashboard carrega com dados
-- Toggle dark/light mode persiste entre navegações
+Viewports testados: **mobile 390×844** (iPhone 14) e **desktop 1440×900**.
 
-**Gastos**
-- Criar gasto PIX simples → aparece no Dashboard e em Lançamentos
-- Criar gasto em Dinheiro → tipo "Dinheiro" selecionado não exibe opção de parcelamento
-- Criar gasto crédito parcelado → cálculo parcela↔total em sincronia, `amount` gravado como parcela
-- Criar gasto com pagamento dividido (split) → dois cards em Lançamentos com badge `✂️ dividido`
-- Editar gasto → totais do Dashboard atualizados imediatamente
-- Deletar gasto → some da lista e recalcula totais
+#### Autenticação
+- Login demo (`demo@financacasal.app` / `demo1234`) → dashboard carrega com dados fake
+- Toggle dark/light mode → cor do background muda e persiste ao navegar entre tabs
 
-**Modal / UX mobile**
-- Scroll no formulário de gasto (mobile, 390px) → modal não fecha acidentalmente
-- Arrastar handle bar para baixo → modal fecha corretamente
+#### Gastos — registro
+- Criar gasto PIX simples → aparece no Dashboard (totais atualizados) e em Lançamentos
+- Criar gasto em Dinheiro → campo parcelas ausente do formulário
+- Criar gasto crédito 6x → `amount` exibido é o valor da parcela (total/6); range de meses exibido
+- Criar gasto com split (R$50 dinheiro + R$150 PIX) → dois cards em Lançamentos com badge `✂️ dividido`
 
-**Filtros e navegação**
-- Filtrar Lançamentos por tipo "Dinheiro" → apenas gastos em dinheiro visíveis
-- Navegar entre todas as 7 tabs → conteúdo carrega sem erro
-- Bottom bar fixa durante scroll no Dashboard (mobile)
+#### Gastos — edição e deleção
+- Editar descrição → card atualizado na lista
+- Deletar gasto → some da lista; totais do Dashboard recalculados
 
-**PWA**
-- `<link rel="apple-touch-icon">` aponta para `/apple-touch-icon.png` (não SVG)
-- `<meta name="theme-color">` presente com cor roxa `#7c6af7`
+#### Modal / UX mobile (390px)
+- Scroll longo no formulário de gasto → modal permanece aberto
+- Arrastar handle bar ≥ 80px para baixo → modal fecha
+- Bottom bar permanece fixa durante scroll do Dashboard
 
-### Scripts a adicionar no package.json
+#### Filtros e navegação
+- Filtrar Lançamentos por "Dinheiro" → apenas gastos tipo `dinheiro` visíveis
+- Navegar pelas 7 tabs (Dashboard, Calendário, Gráficos, Orçamento, Recorrentes, Lançamentos, Importar) → sem erro de renderização
+
+#### PWA e meta tags
+- `<link rel="apple-touch-icon">` aponta para `/apple-touch-icon.png` (não `.svg`)
+- `<meta name="theme-color" content="#7c6af7">` presente no `<head>`
+- `<meta name="apple-mobile-web-app-capable" content="yes">` presente
+
+---
+
+### Scripts a adicionar em package.json (quando implementar)
 ```json
 "test":        "vitest run",
 "test:watch":  "vitest",
 "test:ui":     "vitest --ui",
 "test:e2e":    "playwright test",
+"test:e2e:ui": "playwright test --ui",
 "test:all":    "vitest run && playwright test"
 ```
 
-### Dependências a instalar (quando for implementar)
+> O script `test:all` é o que roda no PR antes do merge.
+
+### Dependências a instalar (quando implementar)
 ```bash
 npm install -D vitest @vitest/ui jsdom
 npm install -D @testing-library/react @testing-library/jest-dom @testing-library/user-event
