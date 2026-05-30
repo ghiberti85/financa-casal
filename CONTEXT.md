@@ -39,11 +39,22 @@ src/
   main.jsx    ← entry point React
 public/
   favicon.svg            ← ícone SVG do app (diamante 5 facetas, gradiente roxo)
-  apple-touch-icon.png   ← ícone PNG 180×180 para iOS home screen (apple-touch-icon)
+  apple-touch-icon.png   ← ícone PNG 180×180 para iOS home screen
   og-image.svg           ← imagem Open Graph 1200×630
+.github/
+  pull_request_template.md ← checklist automático em todo PR aberto no GitHub
+.claude/
+  commands/
+    pr-check.md       ← /pr-check: roda checklist completo antes de abrir PR
+    feature-plan.md   ← /feature-plan <nome>: planeja feature antes de codificar
+    security-scan.md  ← /security-scan: varredura de segurança nas mudanças
 index.html    ← SEO, Open Graph, PWA meta tags (apple-touch-icon aponta para o PNG)
 vercel.json   ← headers HTTP de segurança e CSP
 vite.config.js
+CLAUDE.md     ← instruções, padrões e regras para o Claude Code
+CONTEXT.md    ← contexto técnico completo (este arquivo)
+DECISIONS.md  ← Architecture Decision Records (por que cada decisão foi tomada)
+README.md     ← visão geral do projeto (inglês, para recrutadores)
 ```
 
 **Decisões arquiteturais deliberadas — não alterar sem discussão:**

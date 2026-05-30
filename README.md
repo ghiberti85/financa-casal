@@ -397,23 +397,31 @@ Set the same variables from `.env.local` in:
 financa-casal/
 ├── api/
 │   └── auth/
-│       ├── login.js     # POST /api/auth/login — authenticates and sets HttpOnly cookie
-│       ├── signup.js    # POST /api/auth/signup — registers and sets HttpOnly cookie
-│       ├── refresh.js   # POST /api/auth/refresh — renews session via HttpOnly cookie
-│       └── logout.js    # POST /api/auth/logout — clears the session cookie
+│       ├── login.js      # POST /api/auth/login — authenticates and sets HttpOnly cookie
+│       ├── signup.js     # POST /api/auth/signup — registers and sets HttpOnly cookie
+│       ├── refresh.js    # POST /api/auth/refresh — renews session via HttpOnly cookie
+│       └── logout.js     # POST /api/auth/logout — clears the session cookie
 ├── src/
-│   ├── App.jsx          # Entire application (~6,100 lines)
-│   ├── index.css        # Base global styles
-│   └── main.jsx         # React entry point
+│   ├── App.jsx           # Entire application (~6,100 lines)
+│   ├── index.css         # Base global styles
+│   └── main.jsx          # React entry point
 ├── public/
-│   ├── favicon.svg           # SVG diamond icon (5-facet gem, purple gradient)
-│   ├── apple-touch-icon.png  # 180×180 PNG icon for iOS home screen
-│   └── og-image.svg          # Open Graph image (1200×630)
-├── index.html           # HTML with SEO, Open Graph and PWA meta tags
-├── vercel.json          # HTTP security headers and CSP
-├── vite.config.js       # Vite configuration
-├── CONTEXT.md           # Full technical context for AI-assisted development
-├── CLAUDE.md            # Instructions, patterns and gotchas for Claude Code
+│   ├── favicon.svg            # SVG diamond icon (5-facet gem, purple gradient)
+│   ├── apple-touch-icon.png   # 180×180 PNG icon for iOS home screen
+│   └── og-image.svg           # Open Graph image (1200×630)
+├── .github/
+│   └── pull_request_template.md  # Auto-filled PR checklist on GitHub
+├── .claude/
+│   └── commands/
+│       ├── pr-check.md        # /pr-check — full PR checklist before opening
+│       ├── feature-plan.md    # /feature-plan — plan a feature before coding
+│       └── security-scan.md   # /security-scan — security review of changes
+├── index.html            # HTML with SEO, Open Graph and PWA meta tags
+├── vercel.json           # HTTP security headers and CSP
+├── vite.config.js        # Vite configuration
+├── CLAUDE.md             # AI instructions: patterns, rules, checklists, gotchas
+├── CONTEXT.md            # Full technical context: schema, components, test plan
+├── DECISIONS.md          # Architecture Decision Records (why, not just what)
 ├── package.json
 └── README.md
 ```
