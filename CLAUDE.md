@@ -4,15 +4,26 @@
 Leia o `CONTEXT.md` antes de qualquer tarefa.
 Ele contém arquitetura, schema do banco, componentes, decisões técnicas e o **Roadmap de Lançamento Público** — verifique o status dos sprints antes de implementar qualquer nova feature.
 
+Leia também `DECISIONS.md` antes de qualquer refatoração ou mudança arquitetural.
+Ele documenta **por que** cada decisão foi tomada — não altere decisões aceitas sem abrir PR com justificativa.
+
 ---
 
 ## Primeira Coisa a Fazer em Cada Sessão
 
 ```
 1. Leia CONTEXT.md
-2. Leia src/App.jsx completo (é o arquivo principal — tudo está nele)
-3. Resuma o que entendeu antes de escrever qualquer código
+2. Leia DECISIONS.md (se a tarefa envolver refatoração ou mudança arquitetural)
+3. Leia src/App.jsx completo (é o arquivo principal — tudo está nele)
+4. Resuma o que entendeu antes de escrever qualquer código
 ```
+
+### Comandos disponíveis neste projeto
+| Comando | Quando usar |
+|---|---|
+| `/pr-check` | Antes de abrir qualquer PR — roda checklist completo |
+| `/feature-plan <nome>` | Antes de implementar qualquer feature nova |
+| `/security-scan` | Em PRs que tocam auth, banco, formulários ou uploads |
 
 ---
 
