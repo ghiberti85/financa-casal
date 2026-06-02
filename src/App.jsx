@@ -294,6 +294,8 @@ const CATEGORIES = [
   { id: "assinaturas", label: "Assinaturas", emoji: "📱" },
   { id: "presentes", label: "Presentes", emoji: "🎁" },
   { id: "tecnologia", label: "Tecnologia", emoji: "💻" },
+  { id: "gyovana", label: "Gyovana", emoji: "💳" },
+  { id: "metlife", label: "MetLife", emoji: "🛡️" },
   { id: "outros", label: "Outros", emoji: "📦" },
 ];
 
@@ -319,6 +321,8 @@ function autoCategory(description) {
   if (/escola|faculdade|curso|livro|udemy/.test(d)) return "educacao";
   if (/apple|samsung|amazon|shopee|notebook|celular/.test(d)) return "tecnologia";
   if (/mercado|supermercado|atacadão/.test(d)) return "supermercado";
+  if (/gyovana/.test(d)) return "gyovana";
+  if (/metlife/.test(d)) return "metlife";
   return "outros";
 }
 

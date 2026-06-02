@@ -394,6 +394,8 @@ const CATEGORIES = [
   { id: "assinaturas", label: "Assinaturas",  emoji: "📱" },
   { id: "presentes",   label: "Presentes",    emoji: "🎁" },
   { id: "tecnologia",  label: "Tecnologia",   emoji: "💻" },
+  { id: "gyovana",     label: "Gyovana",      emoji: "💳" },
+  { id: "metlife",     label: "MetLife",      emoji: "🛡️" },
   { id: "outros",      label: "Outros",       emoji: "📦" },
 ];
 
