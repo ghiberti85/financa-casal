@@ -783,6 +783,102 @@ function LoginLogo({ t }) {
   );
 }
 
+// ─── LOGIN I18N ───────────────────────────────────────────────────────────────
+const LOGIN_I18N = {
+  en: {
+    subtitle:              "Manage together, grow together",
+    emailLabel:            "Email",
+    emailPlaceholder:      "your@email.com",
+    passwordLabel:         "Password",
+    passwordPlaceholder:   "••••••••",
+    signIn:                "🔐 Sign in",
+    createAccount:         "✨ Create account",
+    loadingAuth:           "Please wait...",
+    waitLabel:             "Wait",
+    noAccount:             "Don't have an account?",
+    hasAccount:            "Already have an account?",
+    signUpLink:            "Sign up",
+    signInLink:            "Sign in",
+    or:                    "or",
+    viewDemo:              "👀 View demo",
+    profileSubtitle:       "Tell us a bit about yourself 😊",
+    firstNameLabel:        "First name *",
+    lastNameLabel:         "Last name",
+    phoneLabel:            "Phone",
+    firstNamePlaceholder:  "John",
+    lastNamePlaceholder:   "Smith",
+    continueBtn:           "Continue →",
+    saving:                "Saving...",
+    familySubtitle:        "Now set up your family 💑",
+    createFamilyTitle:     "👑 Create a new family",
+    createFamilyDesc:      "You will be the admin and can invite your partner with a code.",
+    familyNameLabel:       "Family name",
+    familyNamePlaceholder: "E.g.: The Smiths",
+    createFamilyBtn:       "🏠 Create family",
+    creating:              "Creating...",
+    joinFamilyTitle:       "🔗 Join a family",
+    joinFamilyDesc:        "Ask for the invite code from the person who created the family.",
+    inviteCodeLabel:       "Invite code (6 digits)",
+    inviteCodePlaceholder: "E.g.: AB12CD",
+    joinFamilyBtn:         "🔗 Join with code",
+    joining:               "Joining...",
+    toastFillFields:       "Please fill in email and password",
+    toastAccountCreated:   "Account created! Check your email before signing in.",
+    toastUserError:        "Failed to get user data. Please try signing in.",
+    toastWelcomeBack:      "Welcome back!",
+    toastEnterName:        "Please enter your first name",
+    toastFamilyCreated:    "Family created! Share the code with your partner 💑",
+    toastJoinedFamily:     "You joined the family! 🎉",
+    langToggle:            "🇧🇷 PT",
+  },
+  pt: {
+    subtitle:              "Gerencie juntos, cresçam juntos",
+    emailLabel:            "E-mail",
+    emailPlaceholder:      "seu@email.com",
+    passwordLabel:         "Senha",
+    passwordPlaceholder:   "••••••••",
+    signIn:                "🔐 Entrar",
+    createAccount:         "✨ Criar conta",
+    loadingAuth:           "Aguarde...",
+    waitLabel:             "Aguarde",
+    noAccount:             "Não tem conta?",
+    hasAccount:            "Já tem conta?",
+    signUpLink:            "Criar agora",
+    signInLink:            "Entrar",
+    or:                    "ou",
+    viewDemo:              "👀 Ver demonstração",
+    profileSubtitle:       "Conte um pouco sobre você 😊",
+    firstNameLabel:        "Nome *",
+    lastNameLabel:         "Sobrenome",
+    phoneLabel:            "Telefone",
+    firstNamePlaceholder:  "João",
+    lastNamePlaceholder:   "Silva",
+    continueBtn:           "Continuar →",
+    saving:                "Salvando...",
+    familySubtitle:        "Agora configure sua família 💑",
+    createFamilyTitle:     "👑 Criar nova família",
+    createFamilyDesc:      "Você será o administrador e poderá convidar seu cônjuge com um código.",
+    familyNameLabel:       "Nome da família",
+    familyNamePlaceholder: "Ex: Família Silva",
+    createFamilyBtn:       "🏠 Criar família",
+    creating:              "Criando...",
+    joinFamilyTitle:       "🔗 Entrar em uma família",
+    joinFamilyDesc:        "Peça o código de convite para quem criou a família.",
+    inviteCodeLabel:       "Código de convite (6 dígitos)",
+    inviteCodePlaceholder: "Ex: AB12CD",
+    joinFamilyBtn:         "🔗 Entrar com código",
+    joining:               "Entrando...",
+    toastFillFields:       "Preencha e-mail e senha",
+    toastAccountCreated:   "Conta criada! Verifique seu e-mail antes de entrar.",
+    toastUserError:        "Erro ao obter dados do usuário. Tente fazer login.",
+    toastWelcomeBack:      "Bem-vindo de volta!",
+    toastEnterName:        "Informe seu nome",
+    toastFamilyCreated:    "Família criada! Compartilhe o código com seu cônjuge 💑",
+    toastJoinedFamily:     "Entrou na família! 🎉",
+    langToggle:            "🇺🇸 EN",
+  },
+};
+
 // ─── LOGIN + PROFILE + FAMILY SETUP ─────────────────────────────────────────
 const DEMO_EMAIL    = "demo@financacasal.app";
 const DEMO_PASSWORD = "demo1234";
@@ -792,12 +888,14 @@ const DEMO_USER     = { id:"demo", email: DEMO_EMAIL };
 function LoginPage({ t, darkMode, onLogin, addToast }) {
   const [step, setStep] = useState("auth"); // auth | profile | family_setup
   const [mode, setMode] = useState("login");
+  const [lang, setLang] = useState("en");
+  const L = LOGIN_I18N[lang];
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [familyName, setFamilyName] = useState("Nossa Família");
+  const [familyName, setFamilyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
@@ -819,12 +917,11 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
 
   const handleAuth = async () => {
     if (loginCooldown > 0) return;
-    // Intercepta credenciais demo — sem tocar no Supabase
     if (email.trim().toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD) {
       enterDemo();
       return;
     }
-    if (!email || !password) { addToast("Preencha e-mail e senha", "error"); return; }
+    if (!email || !password) { addToast(L.toastFillFields, "error"); return; }
     setLoading(true);
     try {
       const data = await supabaseAuth(
@@ -832,21 +929,20 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
         email, password
       );
       if (mode === "signup" && !data.user?.id) {
-        addToast("Conta criada! Verifique seu e-mail antes de entrar.", "info");
+        addToast(L.toastAccountCreated, "info");
         setMode("login"); setLoading(false); return;
       }
       setAuthToken(data.access_token, data.refresh_token);
       const user = data.user;
       if (!user?.id) {
-        addToast("Erro ao obter dados do usuário. Tente fazer login.", "error");
+        addToast(L.toastUserError, "error");
         setMode("login"); setLoading(false); return;
       }
       const family = await getOrCreateFamily(user.id).catch(() => null);
       if (family) {
-        addToast("Bem-vindo de volta!", "success");
+        addToast(L.toastWelcomeBack, "success");
         onLogin(user, data.access_token, family);
       } else {
-        // New user: collect profile first, then family setup
         setPendingUser({ user, token: data.access_token });
         setStep(mode === "signup" ? "profile" : "family_setup");
       }
@@ -862,7 +958,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
   };
 
   const handleSaveProfile = async () => {
-    if (!firstName.trim()) { addToast("Informe seu nome", "error"); return; }
+    if (!firstName.trim()) { addToast(L.toastEnterName, "error"); return; }
     setLoading(true);
     try {
       await supabaseRpc("upsert_profile", {
@@ -882,7 +978,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     setLoading(true);
     try {
       const family = await createFamily(pendingUser.user.id, familyName.trim());
-      addToast("Família criada! Compartilhe o código com seu cônjuge 💑", "success");
+      addToast(L.toastFamilyCreated, "success");
       onLogin(pendingUser.user, pendingUser.token, family);
     } catch (err) { addToast(err.message, "error"); }
     finally { setLoading(false); }
@@ -893,7 +989,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     setLoading(true);
     try {
       const family = await joinFamily(pendingUser.user.id, inviteCode.trim());
-      addToast("Entrou na família! 🎉", "success");
+      addToast(L.toastJoinedFamily, "success");
       onLogin(pendingUser.user, pendingUser.token, family);
     } catch (err) { addToast(err.message, "error"); }
     finally { setLoading(false); }
@@ -908,46 +1004,53 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
 
   const wrap = (children) => (
     <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20,position:"relative",overflow:"hidden" }}>
-      <Bg/><LoginCard t={t}>{children}</LoginCard>
+      <Bg/>
+      <button onClick={() => setLang(l => l === "en" ? "pt" : "en")}
+        style={{ position:"absolute",top:20,right:20,background:t.surface,border:`1px solid ${t.border}`,borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:600,color:t.textSecondary,cursor:"pointer",display:"flex",alignItems:"center",gap:6,zIndex:10,transition:"all 0.2s" }}
+        onMouseEnter={e=>{ e.currentTarget.style.background=t.surfaceHover; e.currentTarget.style.color=t.text; }}
+        onMouseLeave={e=>{ e.currentTarget.style.background=t.surface; e.currentTarget.style.color=t.textSecondary; }}>
+        {L.langToggle}
+      </button>
+      <LoginCard t={t}>{children}</LoginCard>
     </div>
   );
 
   // ── Step auth ──
   if (step === "auth") return wrap(<>
     <LoginLogo t={t} />
-    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:28,marginTop:-16 }}>Gerencie juntos, cresçam juntos</p>
-    <Input label="E-mail" t={t} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@email.com" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
-    <Input label="Senha" t={t} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
+    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:28,marginTop:-16 }}>{L.subtitle}</p>
+    <Input label={L.emailLabel} t={t} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder={L.emailPlaceholder} onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
+    <Input label={L.passwordLabel} t={t} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={L.passwordPlaceholder} onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
     <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading || loginCooldown > 0}>
-      {loginCooldown > 0 ? `⏳ Aguarde ${loginCooldown}s` : loading ? "Aguarde..." : mode==="login" ? "🔐 Entrar" : "✨ Criar conta"}
+      {loginCooldown > 0 ? `⏳ ${L.waitLabel} ${loginCooldown}s` : loading ? L.loadingAuth : mode==="login" ? L.signIn : L.createAccount}
     </Btn>
     <p style={{ textAlign:"center",marginTop:18,fontSize:14,color:t.textMuted }}>
-      {mode==="login"?"Não tem conta? ":"Já tem conta? "}
-      <span onClick={()=>setMode(mode==="login"?"signup":"login")} style={{ color:t.accent,cursor:"pointer",fontWeight:600 }}>{mode==="login"?"Criar agora":"Entrar"}</span>
+      {mode==="login" ? `${L.noAccount} ` : `${L.hasAccount} `}
+      <span onClick={()=>setMode(mode==="login"?"signup":"login")} style={{ color:t.accent,cursor:"pointer",fontWeight:600 }}>{mode==="login" ? L.signUpLink : L.signInLink}</span>
     </p>
     <div style={{ display:"flex",alignItems:"center",gap:12,margin:"20px 0 4px" }}>
       <div style={{ flex:1,height:1,background:t.border }} />
-      <span style={{ fontSize:12,color:t.textMuted }}>ou</span>
+      <span style={{ fontSize:12,color:t.textMuted }}>{L.or}</span>
       <div style={{ flex:1,height:1,background:t.border }} />
     </div>
     <button onClick={enterDemo}
       style={{ width:"100%",padding:"11px",borderRadius:12,border:`1px solid ${t.border}`,
         background:"transparent",color:t.textMuted,fontSize:14,fontWeight:600,cursor:"pointer" }}>
-      👀 Ver demonstração
+      {L.viewDemo}
     </button>
   </>);
 
   // ── Step profile (new signup) ──
   if (step === "profile") return wrap(<>
     <LoginLogo t={t} />
-    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:24,marginTop:-16 }}>Conte um pouco sobre você 😊</p>
+    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:24,marginTop:-16 }}>{L.profileSubtitle}</p>
     <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16 }}>
-      <Input label="Nome *" t={t} value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="João" />
-      <Input label="Sobrenome" t={t} value={lastName} onChange={e=>setLastName(e.target.value)} placeholder="Silva" />
+      <Input label={L.firstNameLabel} t={t} value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder={L.firstNamePlaceholder} />
+      <Input label={L.lastNameLabel} t={t} value={lastName} onChange={e=>setLastName(e.target.value)} placeholder={L.lastNamePlaceholder} />
     </div>
-    <Input label="E-mail" t={t} type="email" value={email} readOnly style={{ opacity:0.6,cursor:"default" }} />
+    <Input label={L.emailLabel} t={t} type="email" value={email} readOnly style={{ opacity:0.6,cursor:"default" }} />
     <div style={{ marginBottom:16 }}>
-      <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em" }}>Telefone</label>
+      <label style={{ display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary,letterSpacing:"0.02em" }}>{L.phoneLabel}</label>
       <div style={{ display:"flex",gap:8 }}>
         <select value={phone.split(" ")[0]||"+55"} onChange={e=>setPhone(e.target.value+" ")} style={{ padding:"11px 10px",borderRadius:12,fontSize:13,fontFamily:"'DM Sans', sans-serif",background:t.inputBg,border:`1px solid ${t.border}`,color:t.text,outline:"none",cursor:"pointer",flexShrink:0,minWidth:90 }}>
           {DDI_LIST.map(d=><option key={d.code} value={d.code}>{d.flag} {d.code}</option>)}
@@ -957,28 +1060,28 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
       </div>
     </div>
     <Btn t={t} type="button" onClick={handleSaveProfile} style={{ width:"100%",marginTop:4 }} disabled={loading}>
-      {loading?"Salvando...":"Continuar →"}
+      {loading ? L.saving : L.continueBtn}
     </Btn>
   </>);
 
   // ── Step family_setup ──
   if (step === "family_setup") return wrap(<>
     <LoginLogo t={t} />
-    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:24,marginTop:-16 }}>Agora configure sua família 💑</p>
+    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:24,marginTop:-16 }}>{L.familySubtitle}</p>
     <div style={{ background:t.accentSoft,border:`1.5px solid ${t.accent}33`,borderRadius:16,padding:20,marginBottom:16 }}>
-      <div style={{ fontSize:15,fontWeight:700,color:t.text,marginBottom:4 }}>👑 Criar nova família</div>
-      <div style={{ fontSize:13,color:t.textMuted,marginBottom:14 }}>Você será o administrador e poderá convidar seu cônjuge com um código.</div>
-      <Input label="Nome da família" t={t} value={familyName} onChange={e=>setFamilyName(e.target.value)} placeholder="Ex: Família Silva" />
-      <Btn t={t} type="button" onClick={handleCreateFamily} style={{ width:"100%" }} disabled={loading}>{loading?"Criando...":"🏠 Criar família"}</Btn>
+      <div style={{ fontSize:15,fontWeight:700,color:t.text,marginBottom:4 }}>{L.createFamilyTitle}</div>
+      <div style={{ fontSize:13,color:t.textMuted,marginBottom:14 }}>{L.createFamilyDesc}</div>
+      <Input label={L.familyNameLabel} t={t} value={familyName} onChange={e=>setFamilyName(e.target.value)} placeholder={L.familyNamePlaceholder} />
+      <Btn t={t} type="button" onClick={handleCreateFamily} style={{ width:"100%" }} disabled={loading}>{loading ? L.creating : L.createFamilyBtn}</Btn>
     </div>
     <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
-      <div style={{ flex:1,height:1,background:t.border }} /><span style={{ fontSize:12,color:t.textMuted,fontWeight:600 }}>OU</span><div style={{ flex:1,height:1,background:t.border }} />
+      <div style={{ flex:1,height:1,background:t.border }} /><span style={{ fontSize:12,color:t.textMuted,fontWeight:600 }}>{L.or.toUpperCase()}</span><div style={{ flex:1,height:1,background:t.border }} />
     </div>
     <div style={{ background:t.successSoft,border:`1.5px solid ${t.success}33`,borderRadius:16,padding:20 }}>
-      <div style={{ fontSize:15,fontWeight:700,color:t.text,marginBottom:4 }}>🔗 Entrar em uma família</div>
-      <div style={{ fontSize:13,color:t.textMuted,marginBottom:14 }}>Peça o código de convite para quem criou a família.</div>
-      <Input label="Código de convite (6 dígitos)" t={t} value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder="Ex: AB12CD" maxLength={6} style={{ letterSpacing:"0.2em",fontWeight:700 }} />
-      <Btn t={t} variant="success" type="button" onClick={handleJoinFamily} style={{ width:"100%" }} disabled={loading}>{loading?"Entrando...":"🔗 Entrar com código"}</Btn>
+      <div style={{ fontSize:15,fontWeight:700,color:t.text,marginBottom:4 }}>{L.joinFamilyTitle}</div>
+      <div style={{ fontSize:13,color:t.textMuted,marginBottom:14 }}>{L.joinFamilyDesc}</div>
+      <Input label={L.inviteCodeLabel} t={t} value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder={L.inviteCodePlaceholder} maxLength={6} style={{ letterSpacing:"0.2em",fontWeight:700 }} />
+      <Btn t={t} variant="success" type="button" onClick={handleJoinFamily} style={{ width:"100%" }} disabled={loading}>{loading ? L.joining : L.joinFamilyBtn}</Btn>
     </div>
   </>);
 
