@@ -596,7 +596,7 @@ Pré-requisito: extrair para `src/utils/finance.js` e importar de volta em App.j
 |---|---|---|
 | `monthlyAmount(expense)` | **Alto** | PIX/débito/dinheiro (1x), crédito 1x vs Nx, crédito split |
 | `getBillingMonth(date, periods, closingDay)` | **Alto** | compra ≤ fechamento (mesmo mês), compra > fechamento (próximo mês), fechamento dia 1, dia 31 |
-| `autoCategory(description)` | Médio | "uber", "mercado", "netflix", string sem match → "outros" |
+| `autoCategory(description)` | Médio | "uber", "mercado", "netflix", "gyovana", "metlife", string sem match → "outros" |
 | `groupByDate(items)` | Médio | hoje, ontem, semana passada, array vazio |
 | `fmt(value)` | Baixo | zero, negativo, milhar, dois decimais |
 | `fmtShort(value)` | Baixo | < 1000 (passa inteiro), ≥ 1000 (converte para "k") |
