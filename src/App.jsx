@@ -804,6 +804,7 @@ const APP_I18N = {
       addExpense:"+ Expense", addIncome:"+ Income",
       fabExpense:"Expense", fabIncome:"Income",
       more:"More",
+      footer:"Built with 💜 by Fernando Ghiberti in partnership with Claude AI · 2026",
     },
     common: {
       save:"Save", saving:"Saving...", cancel:"Cancel", confirm:"Confirm", delete:"Delete",
@@ -1116,6 +1117,7 @@ const APP_I18N = {
       addExpense:"+ Gasto", addIncome:"+ Receita",
       fabExpense:"Gasto", fabIncome:"Receita",
       more:"Mais",
+      footer:"Desenvolvido com 💜 por Fernando Ghiberti em parceria com Claude IA · 2026",
     },
     common: {
       save:"Salvar", saving:"Salvando...", cancel:"Cancelar", confirm:"Confirmar", delete:"Excluir",
@@ -6704,7 +6706,7 @@ export default function App() {
 
           <footer style={{ borderTop:`1px solid ${t.border}`,padding:"18px 24px",textAlign:"center" }}>
             <div style={{ fontSize:12,color:t.textMuted }}>
-              Desenvolvido com 💜 por Fernando Ghiberti em parceria com Claude IA · 2026
+              {AL.app.footer}
             </div>
           </footer>
         </div>
