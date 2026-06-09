@@ -730,7 +730,7 @@ function DateInput({ label, t, value, onChange, placeholder, lang = "pt" }) {
         <span style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:16,pointerEvents:"none",color:t.textMuted }}>📅</span>
       </div>
       {open && createPortal(
-        <CalendarPickerModal value={value} t={t}
+        <CalendarPickerModal value={value} t={t} lang={lang}
           onChange={e=>{ onChange(e); setOpen(false); }}
           onClose={()=>setOpen(false)} />,
         document.body
@@ -1720,6 +1720,9 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
 
 // ─── CALENDAR ────────────────────────────────────────────────────────────────
 function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDeleteIncome, onEditExpense, onEditIncome, familyMembers, onDaySelect, family, isDemo }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const MONTH_FULL = APP_I18N[lang].months.full;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   // Store year/month as plain integers — completely avoids ALL timezone bugs
   const [viewYr, setViewYr] = useState(() => {
     const now = new Date();
@@ -1926,7 +1929,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
                       <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||"🔁"}</span>
                       <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
                         <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rule.description}</div>
-                        <div style={{ fontSize:11,color:"#f59e0b",marginTop:1 }}>{APP_I18N[lang].charts.recurringBadge} · {cat?.label||"Outros"}{rule.amount?` · ${fmt(rule.amount)}`:""}</div>
+                        <div style={{ fontSize:11,color:"#f59e0b",marginTop:1 }}>{APP_I18N[lang].charts.recurringBadge} · {getCatLabel(rule.category)}{rule.amount?` · ${fmt(rule.amount)}`:""}</div>
                       </div>
                     </div>
                     <span style={{ fontWeight:700,fontSize:14,color:"#f59e0b",flexShrink:0 }}>{rule.amount?fmt(parseFloat(rule.amount)||0):"—"}</span>
@@ -1961,7 +1964,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
                     <div style={{ minWidth:0,flex:1,textAlign:"center" }}>
                       <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{inc.description}</div>
                       <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>
-                        {inc.user_label} · {(inc.date||"").slice(8,10)+"/"+(inc.date||"").slice(5,7)+"/"+(inc.date||"").slice(2,4)}{incCat ? ` · ${incCat.label}` : ""}
+                        {inc.user_label} · {(inc.date||"").slice(8,10)+"/"+(inc.date||"").slice(5,7)+"/"+(inc.date||"").slice(2,4)}{incCat ? ` · ${getCatLabel(incCat?.id)}` : ""}
                       </div>
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
@@ -2073,6 +2076,9 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
 function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDeleteExpense, familyMembers, cards = [], recurringRules = [], billingPeriods = [] }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const MONTH_FULL = APP_I18N[lang].months.full;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
@@ -2122,7 +2128,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
     const exp = expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
     const _c = APP_I18N[lang].charts;
     return { name:MONTHS[mn], [_c.incomes]:Math.round(inc), [_c.expenses]:Math.round(exp), [_c.balance]:Math.round(inc-exp) };
-  }), [expenses, incomes, refYear, refMonth]);
+  }), [expenses, incomes, refYear, refMonth, lang]);
 
   // ── Category evolution: all categories available in the 6-month window ──
   const availableCatsEvolution = useMemo(() => {
@@ -2140,9 +2146,9 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       .sort((a,b) => b[1] - a[1])
       .map(([id, total]) => {
         const cat = CATEGORIES.find(c => c.id === id);
-        return { id, label:`${cat?.emoji||""} ${cat?.label||id}`.trim(), total };
+        return { id, label:`${cat?.emoji||""} ${getCatLabel(id)}`.trim(), total };
       });
-  }, [expenses, refYear, refMonth]);
+  }, [expenses, refYear, refMonth, lang]);
 
   const activeCatIdsForEvolution = useMemo(() => {
     const valid = availableCatsEvolution.map(c => c.id);
@@ -2185,8 +2191,8 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       : expenses.filter(e=>e.date?.startsWith(`${selectedYear}`));
     const map = {};
     filtered.forEach(e=>{ map[e.category]=(map[e.category]||0)+e.amount; });
-    return Object.entries(map).map(([id,value]) => { const cat=CATEGORIES.find(c=>c.id===id); return { id, name:cat?.label||id, value:Math.round(value), emoji:cat?.emoji||"📦" }; }).sort((a,b)=>b.value-a.value);
-  }, [expenses, period, selectedMonth, selectedYear]);
+    return Object.entries(map).map(([id,value]) => { const cat=CATEGORIES.find(c=>c.id===id); return { id, name:getCatLabel(id), value:Math.round(value), emoji:cat?.emoji||"📦" }; }).sort((a,b)=>b.value-a.value);
+  }, [expenses, period, selectedMonth, selectedYear, lang]);
 
   // ── Credit installments: 12 months from reference (always by purchase date) ──
   const creditData = useMemo(() => {
@@ -2209,7 +2215,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, selectedYear, selectedMonth]);
+  }, [expenses, selectedYear, selectedMonth, lang]);
 
   // ── Billing chart: crédito (compras + parcelas + recorrentes) → mês de VENCIMENTO via billing_periods ou fallback ──
   const billingChartData = useMemo(() => {
@@ -2277,7 +2283,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       }
     });
     return Object.values(result).map(r=>({...r,value:Math.round(r.value)}));
-  }, [expenses, cards, recurringRules, billingPeriods, selectedMonth, selectedYear]);
+  }, [expenses, cards, recurringRules, billingPeriods, selectedMonth, selectedYear, lang]);
 
   const CTip = ({ active, payload, label }) => {
     if (!active||!payload?.length) return null;
@@ -2377,7 +2383,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
             <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8 }}>
                 <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>
-                  {catObj?.emoji} {catObj?.label} — {period==="month"?MONTH_FULL[selectedMonth]:selectedYear}
+                  {catObj?.emoji} {getCatLabel(catObj?.id)} — {period==="month"?MONTH_FULL[selectedMonth]:selectedYear}
                 </h4>
                 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
                   <span style={{ fontSize:15,fontWeight:800,color }}>{fmt(total)}</span>
@@ -2653,6 +2659,8 @@ function MemberSelect({ label, t, value, onChange, familyMembers }) {
 
 // ─── EXPENSE FORM ─────────────────────────────────────────────────────────────
 function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDate, cards = [], currentUserLabel = "Você" }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:currentUserLabel, card_id:"" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
@@ -2736,7 +2744,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
       )}
       <Select label={APP_I18N[lang].expenseForm.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
         <option value="">{APP_I18N[lang].expenseForm.selectCategory}</option>
-        {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+        {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
       </Select>
       {isCredit ? (
         <>
@@ -2746,7 +2754,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
               <Input label={APP_I18N[lang].expenseForm.installmentCount} t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",e.target.value)} placeholder="12" />
               {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>{APP_I18N[lang].toasts.fillAmount}</div>}
             </div>
-            <DateInput label={APP_I18N[lang].expenseForm.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+            <DateInput label={APP_I18N[lang].expenseForm.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
           <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
             {lang==="pt" ? <>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</> : <>⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.</>}
@@ -2765,7 +2773,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
       ) : (
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
           <Input label={APP_I18N[lang].expenseForm.amount} t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-          <DateInput label={APP_I18N[lang].expenseForm.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+          <DateInput label={APP_I18N[lang].expenseForm.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
         </div>
       )}
       {form.category && (
@@ -2838,7 +2846,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
                 ))}
               </div>
             </div>
-            <DateInput label={APP_I18N[lang].expenseForm.recurringEndDate} t={t} value={recurringForm.end_date} onChange={e=>setR("end_date",e.target.value)} />
+            <DateInput label={APP_I18N[lang].expenseForm.recurringEndDate} t={t} lang={lang} value={recurringForm.end_date} onChange={e=>setR("end_date",e.target.value)} />
           </div>
         )}
       </div>
@@ -2874,7 +2882,7 @@ function IncomeForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDat
       </Select>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
         <Input label={APP_I18N[lang].incomeForm.amount} t={t} type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder={APP_I18N[lang].incomeForm.amountPlaceholder} />
-        <DateInput label={APP_I18N[lang].incomeForm.date} t={t} value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
+        <DateInput label={APP_I18N[lang].incomeForm.date} t={t} lang={lang} value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
         <Btn t={t} variant="ghost" type="button" onClick={onClose}>{APP_I18N[lang].common.cancel}</Btn>
@@ -2890,6 +2898,8 @@ function IncomeForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDat
 
 // ─── EDIT MODAL ───────────────────────────────────────────────────────────────
 function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards = [] }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const isExp = item._type === "expense";
   const initParc = item.parcelas || 1;
   const isCredit = isExp && (item.type || "pix") === "credito";
@@ -2993,7 +3003,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
           </Select>
         )}
         <Select label={APP_I18N[lang].editModal.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
-          {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+          {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
         </Select>
         {form.type === "credito" ? (() => {
           const parcelas = parseInt(form.parcelas) || 1;
@@ -3012,7 +3022,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
                   value={form.parcelas} onChange={e=>set("parcelas",e.target.value)} placeholder="Ex: 12" />
                 {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>{APP_I18N[lang].common.noData}</div>}
               </div>
-              <DateInput label={APP_I18N[lang].editModal.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+              <DateInput label={APP_I18N[lang].editModal.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
             </div>
             <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
               {lang==="pt" ? <>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</> : <>⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.</>}
@@ -3034,7 +3044,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
             <Input label={APP_I18N[lang].expenseForm.amount} t={t} type="number" step="0.01" value={form.amount}
               onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-            <DateInput label={APP_I18N[lang].editModal.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+            <DateInput label={APP_I18N[lang].editModal.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
         )}
       </>) : (<>
@@ -3045,7 +3055,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
         </Select>
         <Input label={APP_I18N[lang].expenseForm.amount} t={t} type="number" step="0.01" value={form.amount}
           onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-        <DateInput label={APP_I18N[lang].editModal.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+        <DateInput label={APP_I18N[lang].editModal.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
       </>)}
 
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
@@ -3071,7 +3081,7 @@ function formatDateHeader(iso, lang = "pt") {
   if (diff === 0) return tl.today;
   if (diff === -1) return tl.yesterday;
   if (diff === 1) return tl.tomorrow;
-  return `${dayNames[date.getDay()]}, ${d} ${MONTH_FULL[m-1]}`;
+  return `${dayNames[date.getDay()]}, ${d} ${APP_I18N[lang].months.full[m-1]}`;
 }
 
 function groupByDate(items, lang = "pt") {
@@ -3141,6 +3151,9 @@ function useLongPress(onTrigger, ms = 500) {
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você", billingPeriods = [] }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const MONTH_FULL = APP_I18N[lang].months.full;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   // ── Period / window state ──
   // anchorMonth/anchorYear = the reference month shown in the period header
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
@@ -3558,7 +3571,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                   border: `1px solid ${categoryFilter!=="all"?"rgba(124,92,255,0.4)":t.border}`,
                   color: categoryFilter!=="all"?"#C4B3FF":t.text, outline:"none" }}>
                 <option value="all">{AL.transactions.filterCategory}</option>
-                {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
               </select>
             )}
             {/* Pessoa */}
@@ -3745,7 +3758,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                     const _pt3 = AL.expenseForm.paymentTypes;
                     const typeLabel = item.type==="pix"?_pt3.pix:item.type==="debito"?_pt3.debito:item.type==="dinheiro"?_pt3.dinheiro:_pt3.credito;
                     const p = parseInt(item.parcelas)||1;
-                    const catLabel = cat?.label || "";
+                    const catLabel = getCatLabel(item.category);
                     if (item.type==="credito" && p>1) {
                       const startKey = item.description?.toLowerCase().trim();
                       const allSameItem = expenses.filter(e=>e.description?.toLowerCase().trim()===startKey&&e.type==="credito"&&parseInt(e.parcelas)===p).sort((a,b)=>a.date?.localeCompare(b.date));
@@ -3849,6 +3862,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
 
 // ─── BUDGET ALERT CARD (shown in Dashboard) ───────────────────────────────────
 function BudgetAlertCard({ expenses, t, lang = "pt", family, isDemo, onGoToBudget }) {
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const [budgets, setBudgets] = useState([]);
   const prefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
 
@@ -3886,7 +3900,7 @@ function BudgetAlertCard({ expenses, t, lang = "pt", family, isDemo, onGoToBudge
             <span style={{ fontSize:16 }}>{a.cat?.emoji || "📦"}</span>
             <div style={{ flex:1,minWidth:0 }}>
               <div style={{ display:"flex",justifyContent:"space-between",marginBottom:3 }}>
-                <span style={{ fontSize:12,fontWeight:600,color:t.text }}>{a.cat?.label}</span>
+                <span style={{ fontSize:12,fontWeight:600,color:t.text }}>{getCatLabel(a.category)}</span>
                 <span style={{ fontSize:12,fontWeight:700,color:a.pct>=100?t.danger:t.warning }}>
                   {a.pct.toFixed(0)}%
                 </span>
@@ -3905,6 +3919,9 @@ function BudgetAlertCard({ expenses, t, lang = "pt", family, isDemo, onGoToBudge
 
 // ─── RECURRING EXPENSES ───────────────────────────────────────────────────────
 function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expenses, setExpenses, familyMembers }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const MONTH_FULL = APP_I18N[lang].months.full;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const [rules, setRules]         = useState([]);
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -4122,7 +4139,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13,fontWeight:700,color:t.text }}>{rule.description}</div>
                       <div style={{ fontSize:11,color:t.textMuted }}>
-                        {cat?.label} · {APP_I18N[lang].recurring.pendingDay(rule.day_of_month)} · {rule.user_label}
+                        {getCatLabel(rule.category)} · {APP_I18N[lang].recurring.pendingDay(rule.day_of_month)} · {rule.user_label}
                         {isFixed && <span style={{ color:t.accent,fontWeight:600 }}> · {fmt(rule.amount)}</span>}
                         {!isFixed && <span style={{ color:t.warning,fontWeight:600 }}> · {APP_I18N[lang].recurring.variableAmount}</span>}
                       </div>
@@ -4238,7 +4255,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
                     <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
                       {freqLabel} · {APP_I18N[lang].recurring.pendingDay(rule.day_of_month)}
                       {rule.frequency==="yearly" && ` de ${MONTHS[rule.month_of_year-1]}`}
-                      {" · "}{cat?.label}{" · "}{typeLabel}{" · "}{rule.user_label}
+                      {" · "}{getCatLabel(rule.category)}{" · "}{typeLabel}{" · "}{rule.user_label}
                     </div>
                   </div>
                   <div style={{ flexShrink:0,textAlign:"right" }}>
@@ -4309,6 +4326,9 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
 
 // ─── RECURRING FORM ───────────────────────────────────────────────────────────
 function RecurringForm({ t, lang = "pt", rule, family, user, familyMembers, addToast, onClose, onSaved }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const MONTH_FULL = APP_I18N[lang].months.full;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const isEdit = !!rule;
   const _rfi18n = APP_I18N[lang];
   const [saving, setSaving] = useState(false);
@@ -4406,7 +4426,7 @@ function RecurringForm({ t, lang = "pt", rule, family, user, familyMembers, addT
 
         <Select label={_rfi18n.common.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
           <option value="">{_rfi18n.common.selectDots}</option>
-          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
         </Select>
 
         <Select label={_rfi18n.recurring.frequency} t={t} value={form.frequency} onChange={e=>set("frequency",e.target.value)}>
@@ -4446,7 +4466,7 @@ function RecurringForm({ t, lang = "pt", rule, family, user, familyMembers, addT
           </div>
         )}
 
-        <DateInput label={_rfi18n.recurring.endDate} t={t} value={form.end_date} onChange={e=>set("end_date",e.target.value)} />
+        <DateInput label={_rfi18n.recurring.endDate} t={t} lang={lang} value={form.end_date} onChange={e=>set("end_date",e.target.value)} />
 
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:4 }}>
           <Btn t={t} variant="ghost" type="button" onClick={onClose}>{_rfi18n.recurring.cancel}</Btn>
@@ -4510,6 +4530,9 @@ function RecurringAlertCard({ t, lang = "pt", family, isDemo, onGoToRecurring })
 
 // ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
 function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const MONTH_FULL = APP_I18N[lang].months.full;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCat, setEditingCat] = useState(null); // category id being edited
@@ -4671,7 +4694,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
                   <span style={{ fontSize:20,flexShrink:0 }}>{cat.emoji}</span>
                   <div style={{ flex:1,minWidth:0 }}>
                     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom: budget ? 6 : 0 }}>
-                      <span style={{ fontSize:13,fontWeight:600,color:t.text }}>{cat.label}</span>
+                      <span style={{ fontSize:13,fontWeight:600,color:t.text }}>{getCatLabel(cat.id)}</span>
                       <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
                         {budget && (
                           <span style={{ fontSize:12,color:over?t.danger:warn?t.warning:t.textMuted,fontWeight:600 }}>
@@ -4854,6 +4877,8 @@ function SummaryCards({ expenses, incomes, t, lang = "pt", only = null }) {
 
 // ─── IMPORT VIEW ─────────────────────────────────────────────────────────────
 function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported, addToast, existingExpenses, existingIncomes }) {
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
+  const getIncLabel = (id) => APP_I18N[lang].incomeForm?.sources?.[id] || INCOME_SOURCES.find(s=>s.id===id)?.label || id;
   const _iv = APP_I18N[lang].importView;
   const [step, setStep] = useState("upload");
   const [fileName, setFileName] = useState("");
@@ -5415,7 +5440,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
                     {lowConf && !row._duplicate && <span style={{ fontSize: 10, background: t.accentSoft, color: t.accent, padding: "2px 7px", borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>{_iv.lowConfidence}</span>}
                   </div>
                   <div style={{ fontSize: 11, color: t.textMuted, marginTop: 1 }}>
-                    {row.date} · {cat?.label || row.category}
+                    {row.date} · {isExp ? getCatLabel(cat?.id || row.category) : getIncLabel(cat?.id || row.category)}
                     {row.type && ` · ${row.type}`}
                     {row.parcelas > 1 && ` · ${row.parcelas}x`}
                     {row._notes && <span style={{ fontStyle: "italic" }}> · {row._notes}</span>}
@@ -5685,6 +5710,8 @@ function FamilyModal({ t, lang = "pt", family, currentUserId, familyMembers, set
 
 // ─── CARDS MANAGER ───────────────────────────────────────────────────────────
 function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods = [], setBillingPeriods = ()=>{} }) {
+  const MONTHS = APP_I18N[lang].months.short;
+  const MONTH_FULL = APP_I18N[lang].months.full;
   const _cm = APP_I18N[lang].cardsManager;
   const [cards, setCards] = useState([]);
   const [editId, setEditId] = useState(null);
@@ -5909,10 +5936,10 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <DateInput label={_cm.periodStart} t={t} value={bpForm.period_start} onChange={e=>sbp("period_start",e.target.value)} />
-                <DateInput label={_cm.periodEnd} t={t} value={bpForm.period_end} onChange={e=>sbp("period_end",e.target.value)} />
+                <DateInput label={_cm.periodStart} t={t} lang={lang} value={bpForm.period_start} onChange={e=>sbp("period_start",e.target.value)} />
+                <DateInput label={_cm.periodEnd} t={t} lang={lang} value={bpForm.period_end} onChange={e=>sbp("period_end",e.target.value)} />
               </div>
-              <DateInput label={_cm.periodDue} t={t} value={bpForm.due_date} onChange={e=>sbp("due_date",e.target.value)} />
+              <DateInput label={_cm.periodDue} t={t} lang={lang} value={bpForm.due_date} onChange={e=>sbp("due_date",e.target.value)} />
               <Input label={_cm.periodTotal} t={t} type="number" value={bpForm.total_pdf} onChange={e=>sbp("total_pdf",e.target.value)} placeholder="1250.00" />
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <Btn t={t} variant="ghost" onClick={resetBpForm}>{_cm.cancel}</Btn>
@@ -6015,6 +6042,8 @@ export default function App() {
   });
 
   const AL = APP_I18N[lang];
+  const MONTHS = AL.months.short;
+  const MONTH_FULL = AL.months.full;
 
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT") || user?.id === "demo";
