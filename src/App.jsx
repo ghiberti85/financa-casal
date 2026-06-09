@@ -264,6 +264,7 @@ const ICON_PATHS = {
   wallet:       ["M21 12V7H5a2 2 0 010-4h14v4","M3 5v14a2 2 0 002 2h16v-5","M21 12a2 2 0 000 4h0"],
   bell:         ["M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 01-3.46 0"],
   menuLines:    "M3 12h18M3 6h18M3 18h18",
+  globe:        ["M12 2a10 10 0 100 20A10 10 0 0012 2z","M2 12h20","M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"],
 };
 
 function Icon({ name, size = 20, color = "currentColor", style: extraStyle }) {
@@ -521,7 +522,7 @@ function Modal({ open, onClose, title, children, t, darkMode, size = 'form', foo
 }
 
 // ─── CONFIRM MODAL ────────────────────────────────────────────────────────────
-function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel = "Excluir", t }) {
+function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel, lang = "pt", t }) {
   if (!open) return null;
   return createPortal(
     <div
@@ -558,7 +559,7 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel 
               color: t.text, fontSize: 14, fontWeight: 600,
             }}
           >
-            Cancelar
+            {APP_I18N[lang].common.cancel}
           </button>
           <button
             onClick={onConfirm}
@@ -568,7 +569,7 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel 
               color: t.danger, fontSize: 14, fontWeight: 700,
             }}
           >
-            {confirmLabel}
+            {confirmLabel || APP_I18N[lang].common.delete}
           </button>
         </div>
       </div>
@@ -790,13 +791,15 @@ const APP_I18N = {
       dashboard:"Home", calendar:"Calendar", charts:"Charts",
       budget:"Budget", recurring:"Recurring", transactions:"Transactions", import:"Import",
     },
-    langToggle: "🇧🇷 PT",
+    langToggle: "PT — Português",
     app: {
       hello:"Hello", greeting:"!", darkMode:"Dark mode", lightMode:"Light mode",
       logout:"Sign out", loggedOut:"Signed out",
       profile:"My Profile", family:"Family", cards:"Cards",
       demoMode:"DEMO", exitDemo:"Exit demo",
       overview:"Overview", thisMonth:"This month",
+      overviewOf:(mo, yr) => `Overview of ${mo} ${yr}`,
+      last6months:"📊 Last 6 months",
       addExpense:"+ Expense", addIncome:"+ Income",
       fabExpense:"Expense", fabIncome:"Income",
       more:"More",
@@ -808,92 +811,213 @@ const APP_I18N = {
       noData:"No data", optional:"optional",
       description:"Description", amount:"Amount", date:"Date", category:"Category",
       month:"Month", year:"Year", type:"Type",
+      none:"None", selectDots:"Select...",
     },
     summary: {
       income:"Income", expenses:"Expenses", balance:"Balance", installments:"Future installments",
+      lastInstallment:"Last installment on",
     },
     budget: {
-      title:"Budget", noData:"No budget set up.", add:"Add category",
-      spent:"spent", of:"of", overBudget:"over budget",
-      alertTitle:"Budget Alert 🚨",
-      alertDesc:(cat, pct) => `${cat} at ${pct}% of limit`,
-      goToBudget:"Go to Budget",
-      newCategory:"New budget category",
-      editCategory:"Edit category",
-      categoryLabel:"Category", limitLabel:"Monthly limit (R$)",
+      title:"Monthly Budget", subtitle:"Set spending limits per category and track in real time",
+      noData:"No budget set up for this month.",
+      noDataHint:"Click <strong>+ Set</strong> on each category, or use <strong>Copy from last month</strong>.",
+      add:"+ Set", copyFromPrev:"📋 Copy from last month",
+      totalBudget:"Total budget", overBudget:"⚠️ Budget exceeded",
+      remaining:(pct) => `✅ ${pct}% remaining`,
+      nearLimit:(pct) => `⚡ ${pct}% remaining`,
+      loading:"Loading budgets...",
+      noLimit:"(no limit)",
+      alertTitle:"Budget Alert",
+      goToBudget:"View Budget",
       saveBtn:"Save", deleteBtn:"Remove",
-      totalSpent:"Total spent", totalLimit:"Total limit",
     },
     recurring: {
-      title:"Recurring Expenses", noData:"No recurring rules.",
-      active:"Active", inactive:"Inactive",
-      newRule:"New rule", editRule:"Edit rule",
-      description:"Description", category:"Category", type:"Type",
-      frequency:"Frequency", amount:"Amount",
-      dayOfMonth:"Day of month", endDate:"End date (optional)",
-      amountType:"Amount type", fixed:"Fixed", variable:"Variable",
-      save:"Save", cancel:"Cancel", delete:"Delete",
-      activate:"Activate", deactivate:"Deactivate",
-      alertTitle:"Recurring Reminders 🔔",
-      alertView:"See recurring",
+      title:"Recurring Expenses",
+      subtitle:"Rent, subscriptions, fixed bills and monthly reminders",
+      noData:"No recurring expenses yet.",
+      noDataHint:"Click <strong>+ New</strong> to add rent, subscriptions, fixed bills...",
+      newBtn:"+ New", editTitle:"Edit Recurring", newTitle:"New Recurring",
+      deleteConfirm:(n) => `Remove ${n} recurring rule(s)? Existing transactions won't be affected.`,
+      pendingTitle:(n, mo) => `🔔 ${n} reminder(s) pending — ${mo}`,
+      pendingDay:(d) => `day ${d}`,
+      variableAmount:"variable amount",
+      logged:(n, mo) => `✅ ${n} logged in ${mo}`,
+      totalLogged:"Total logged",
+      registeredTitle:"📋 Registered recurring expenses",
+      statusLogged:"✅ logged", statusSkipped:"⏭ skipped", statusPending:"🔔 pending",
+      recurringBadge:"🔁 Recurring",
       confirmNow:"Log now", skipMonth:"Skip this month",
+      alertTitle:"Recurring Reminders 🔔", alertView:"See recurring",
+      active:"Active", inactive:"Inactive",
       freq: { monthly:"Monthly", weekly:"Weekly", biweekly:"Every 2 weeks", yearly:"Yearly" },
+      amountType:"Amount type", fixed:"💰 Fixed", variable:"🔔 Variable",
+      variableHint:"Every month you'll get a reminder to enter the amount paid.",
+      who:"Who pays?", you:"Me",
+      descPlaceholder:"E.g.: Rent, Netflix, Electricity...",
+      frequency:"Frequency", dayOfMonth:"Due day", monthOfYear:"Month",
+      endDate:"End date (optional)",
+      save:"Save", saving:"Saving...", update:"Update", create:"Create", cancel:"Cancel",
+      type:"Type",
     },
     calendar: {
       title:"Calendar",
-      noEvents:"No records for this day.",
+      noEvents:"No transactions on this day.",
       today:"Today",
+      removeTitle:"Remove transactions",
+      removeConfirm:(n) => `Remove ${n} selected transaction(s)? This cannot be undone.`,
+      editTitle:"Edit Transaction",
+      removeBtn:(n) => `Remove ${n}`,
+      days:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],
+      expenseLabel:"Expenses", incomeLabel:"Incomes",
+      installmentLabel:"Installments", recurringLabel:"Recurring",
     },
     charts: {
       title:"Charts",
-      byCategory:"By category", monthly:"Monthly", billing:"Billing",
-      expenses:"Expenses", incomes:"Incomes",
-      noData:"No data for this period.",
-      month:"Month", value:"Value",
+      tabCategory:"By Category", tabMonthly:"Monthly", tabBilling:"Billing",
+      expenses:"Expenses", incomes:"Incomes", balance:"Balance", installments:"Installments",
+      noData:"No transactions found.",
+      categoryTitle:"Expenses by Category",
+      categoryHint:"Tap a slice or category to see the transactions.",
+      categorySubtitle:"Expenses by Category — Last 6 months",
+      selectCategories:"Select categories to display:",
+      monthlyTitle:"Income × Expenses — Last 6 months",
+      installmentTitle:"Credit Installments — Next 12 months",
+      installmentHint:"Tap a point to view and edit that month's installments.",
+      billingTitle:"Billing Chart — Next 12 months",
+      billingHint:"Tap a bar to see that billing period's transactions.",
+      billingLabel:"Billing",
+      installmentsIn:(mo) => `Installments in ${mo}`,
+      billingIn:(mo) => `Billing in ${mo}`,
+      purchaseDate:(d) => `purchase day ${d}`,
+      recurringBadge:"🔁 Recurring",
+      editTitle:"Edit Transaction",
     },
     transactions: {
       title:"Transactions",
       all:"All", expenses:"Expenses", incomes:"Incomes",
       noData:"No transactions found.",
+      noResults:"No results",
+      noResultsSearch:(q) => `Nothing found for "${q}"`,
+      clearSearch:"Clear search",
+      noDuplicates:"No duplicates found in this period.",
       deleteAll:"Delete all", confirmDeleteAll:"Delete all transactions? This cannot be undone.",
       filterBy:"Filter by", filterAll:"All",
       removed:"Removed", removedAll:"All removed",
+      win1m:"1 month", win3m:"3 months", win6m:"6 months", win9m:"9 months", win1y:"1 year",
+      lastMonths:(n) => `LAST ${n} MONTHS`,
+      searchPlaceholder:"Search transactions…",
+      selectTransactions:"Select transactions",
+      deleteFiltered:"Delete filtered…",
+      byPurchase:"📅 By purchase", byBilling:"💳 By billing",
+      filterType:"📁 Type", filterCategory:"📂 Category", filterPerson:"👤 Person",
+      clearFilters:"✕ Clear",
+      dupAlert:(n) => `${n} possible duplicate(s) detected`,
+      dupDesc:"Items with the same name, category and amount on the same day. The most recent are marked with 🔁.",
+      showDuplicates:"Show duplicates", showAll:"Show all",
+      removeDuplicates:"Remove duplicates",
+      removeAll:"Remove all",
+      expensesHeader:"EXPENSES", incomesHeader:"INCOMES",
+      dupBadge:"🔁 duplicate", splitBadge:"✂️ split",
+      installment:(n, total) => `Credit ${n} of ${total}`,
+      suggestedRemoval:"suggested for removal",
+      billingMonth:(mo, yr) => `→ Billing ${mo}/${yr}`,
+      removeSelected:(n) => `Remove ${n}`,
+      editTitle:"Edit Transaction",
+      selectAll:"All", deselectAll:"None",
+      today:"Today", yesterday:"Yesterday", tomorrow:"Tomorrow",
+      transactionCount:(n) => `${n} transaction${n!==1?"s":""}`,
     },
     expenseForm: {
       title:"New Expense",
-      description:"Description", descPlaceholder:"E.g.: Supermarket",
+      description:"Description", descPlaceholder:"E.g.: Delivery, Uber, Supermarket...",
       amount:"Amount (R$)", amountPlaceholder:"0,00",
       date:"Date", category:"Category", selectCategory:"Select category",
       type:"Type", parcelas:"Installments",
-      card:"Card", selectCard:"Select card",
+      card:"Card", selectCard:"No specific card",
       paidBy:"Paid by",
       splitPayment:"Split payment",
-      splitType:"Split type", splitAmount:"Split amount",
-      recurring:"Mark as recurring",
+      splitActive:"Split payment enabled", splitToggle:"Split payment?",
+      splitHide:"▲ hide", splitSetup:"▼ setup",
+      splitDesc:"The total amount will be split between two payment methods.",
+      splitPrimary:(type) => `💳 Primary payment (${type})`,
+      splitSecondType:"2nd payment method",
+      splitSecondAmount:"Amount for this method (R$)",
+      splitTotal:"Total purchase",
+      recurringActive:"Recurring enabled", recurringToggle:"Make recurring?",
+      recurringFreq:"Frequency", recurringDay:"Due day",
+      recurringType:"Amount type", recurringFixed:"💰 Fixed", recurringVariable:"🔔 Variable",
+      recurringEndDate:"End date (optional)",
+      creditWarning:"⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.",
+      installmentCount:"No. of installments",
+      installmentAmt:"Installment (R$)", totalAmt:"Total (R$)",
+      installmentInfo:(from, to, total) => `Spread from ${from} to ${to} · Total: ${total}`,
       save:"Save expense", saving:"Saving...",
       paymentTypes: { debito:"Debit", credito:"Credit", pix:"Pix", dinheiro:"Cash", outro:"Other" },
     },
     incomeForm: {
       title:"New Income",
-      description:"Description", descPlaceholder:"E.g.: Salary",
+      description:"Description", descPlaceholder:"E.g.: Salary, Freelance...",
       amount:"Amount (R$)", amountPlaceholder:"0,00",
-      date:"Date", source:"Source", selectSource:"Select source",
+      date:"Date", source:"Category", selectSource:"Select source",
       receivedBy:"Received by",
       save:"Save income", saving:"Saving...",
       sources: { salario:"Salary", freelance:"Freelance", investimento:"Investment", aluguel:"Rental", outros:"Other" },
     },
     editModal: {
       titleExpense:"Edit Expense", titleIncome:"Edit Income",
-      save:"Save changes", saving:"Saving...",
+      description:"Description", paidBy:"Paid by", receivedBy:"Received by",
+      type:"Payment type", card:"Card", noCard:"No specific card",
+      category:"Category", date:"Date",
+      installments:"No. of installments", installmentAmt:"Installment (R$)", totalAmt:"Total (R$)",
+      creditWarning:"⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.",
+      save:"Save changes", saving:"Saving...", cancel:"Cancel",
+      paymentTypes: { debito:"Debit", credito:"Credit", pix:"Pix", dinheiro:"Cash", outro:"Other" },
     },
     importView: {
-      title:"Import",
-      dropzone:"Drop your file here or click to select",
-      supportedFormats:"Supported: CSV, XLSX, XLS, PDF (bank statements)",
-      review:"Review Import",
-      expensesLabel:"Expenses ✓", incomesLabel:"Incomes ✓", lowConfidence:"⚠ review",
-      confirm:"💾 Confirm import", importMore:"📥 Import more",
+      title:"Import Transactions",
+      subtitle:"AI reads and maps any bank statement or spreadsheet format automatically",
+      dropzone:"Drop your file here",
+      dropzoneOr:"or click to select",
+      formats:"CSV", formatsXlsx:"XLSX", formatsPdf:"PDF",
+      howItWorks:"✨ How it works",
+      step1title:"Drop CSV, Excel or PDF",
+      step1desc:"Bank statements, credit card statements, custom spreadsheets",
+      step2title:"AI maps the data",
+      step2desc:"Detects amounts, dates, descriptions and categories",
+      step3title:"Review and confirm",
+      step3desc:"Edit any row before saving",
+      bankTitle:"💡 How to export from your bank",
+      nubank:"🟣 Nubank: App → Profile → Export data → CSV",
+      itau:"🟠 Itaú: Internet Banking → Statement → Export → CSV/OFX",
+      santander:"🔴 Santander: App → Statement → Share → CSV",
+      bradesco:"🔵 Bradesco: Internet Banking → Statement → Save → XLS",
+      sheets:"📊 Own spreadsheet: Google Sheets → File → Download → CSV",
+      reviewTitle:"📋 Review Import",
+      reviewDesc:(file, n) => `${file} — ${n} items detected`,
+      backBtn:"← Back",
+      expensesLabel:"Expenses ✓", incomesLabel:"Incomes ✓", skippedLabel:"Skipped", lowConfidence:"⚠ review",
+      confirmBtn:(n) => `💾 Confirm import (${n})`,
+      saving:"Saving...",
+      importMore:"📥 Import more",
       viewTransactions:"📋 View transactions",
+      done:"Import complete!",
+      doneDesc:"Data is now available across the dashboard",
+      allFilter:"All", newFilter:"New", dupFilter:"Duplicates",
+      noItems:"No items in this category",
+      markAll:"Mark all", unmarkAll:"Unmark all",
+      selectedCount:(n) => `${n} selected`,
+      dupCount:(n) => `${n} possible duplicate(s) detected`,
+      dupDesc:"Unchecked automatically",
+      dupDetected:(n) => `⚠️ ${n} possible duplicate(s) detected`,
+      dupDescFull:"Items unchecked automatically",
+      loadingCSV:"📄 Reading CSV...",
+      loadingExcel:"📊 Reading Excel spreadsheet...",
+      loadingPDF:"📄 Sending PDF for analysis...",
+      loadingAI:"🤖 Mapping data with AI...",
+      detected:(n) => `✅ ${n} transactions detected!`,
+      dupWarning:(n) => `⚠️ ${n} possible duplicate(s) detected — unchecked automatically`,
+      errorNoData:"No transactions found in the file. Make sure it contains financial data.",
+      errorFormat:"Unsupported format. Use CSV, XLSX or PDF.",
     },
     profile: {
       title:"My Profile", firstName:"First name", lastName:"Last name", phone:"Phone",
@@ -913,14 +1037,31 @@ const APP_I18N = {
       newCard:"New card", editCard:"Edit card",
       cardName:"Card name", cardNamePlaceholder:"E.g.: Santander Family",
       holder:"Cardholder", closingDay:"Closing day", dueDay:"Due day", color:"Color",
-      save:"Save changes", create:"Create card", saving:"Saving...",
+      closingDayFmt:(d) => `Closes day ${d}`, dueDayFmt:(d) => `Due day ${d}`,
+      save:"Save changes", create:"Create card", saving:"Saving...", cancel:"Cancel",
       cantDeleteLast:"Cannot delete the only card.",
       deleteTitle:"Delete card", deleteMsg:"Delete this card? This cannot be undone.",
-      billingPeriods:"Billing Periods", addPeriod:"+ Add",
-      noPeriods:"No periods added.",
-      periodCard:"Card", periodMonth:"Billing month", periodStart:"Period start",
-      periodEnd:"Period end", periodDue:"Due date", periodTotal:"PDF total (optional)",
-      periodSave:"Save", periodAdd:"Add period", periodSaving:"Saving...",
+      deleted:"Card deleted.", updated:"Card updated!", created:"Card created!",
+      fillNameHolder:"Please fill in name and cardholder.",
+      billingPeriods:"📅 Billing Periods", addPeriod:"+ Add",
+      noPeriods:"No periods added. Add one so the billing chart reflects your exact bank statement.",
+      newPeriod:"New billing period", editPeriod:"Edit period",
+      dueDateFmt:(d) => `Due ${d}`,
+      periodCard:"Card", periodCardPlaceholder:"Select card",
+      periodMonth:"Billing month", periodYear:"Billing year",
+      periodStart:"Period start", periodEnd:"Period end",
+      periodDue:"Due date", periodTotal:"PDF total (optional)",
+      periodSave:"Save changes", periodAdd:"Add period", periodSaving:"Saving...",
+      periodDeleteTitle:"Delete period", periodDeleteMsg:"Delete this billing period?",
+      periodDeleted:"Period deleted.", periodUpdated:"Period updated!", periodAdded:"Period added!",
+      periodFillAll:"Please fill in card, period dates and due date.",
+      dueFmt:(dd,dm,dy) => `Due ${dd}/${dm}/${dy}`,
+      billingOpen:"Open Billing",
+    },
+    billingCard: {
+      dueOn:(dd,dm,dy) => `Due ${dd}/${dm}/${dy}`,
+      dueDay:(d,m,y) => `Due day ${d}/${String(m).padStart(2,"0")}/${y}`,
+      openBilling:"Open Billing",
     },
     toasts: {
       expenseSaved:"Expense saved! ✓", expenseUpdated:"Expense updated! ✓",
@@ -930,8 +1071,19 @@ const APP_I18N = {
       splitSaved:"Split payment saved! ✂️",
       recurringCreated:"Expense saved and recurring rule created! ✅",
       fillAmount:"Enter a valid amount", fillDescription:"Enter a description",
+      fillFirstName:"Please enter your first name",
       selectCategory:"Select a category",
+      phoneFormat:"Format",
       profileSaved:"Profile saved!",
+      cardUpdated:"Card updated!", cardCreated:"Card created!", cardDeleted:"Card deleted.",
+      periodUpdated:"Period updated!", periodAdded:"Period added!", periodDeleted:"Period deleted.",
+      budgetSaved:"Budget saved!", budgetCopied:(n) => `${n} budget(s) copied!`,
+      recurringUpdated:"Recurring rule updated!", recurringCreatedRule:"Recurring rule created!",
+      recurringDeleted:"Rule(s) removed.", codeRegenerated:"New code generated!", codeError:"Error generating code",
+      profileUpdated:"Profile updated!", roleUpdated:"Permission updated!",
+      errorLoading:"Error loading data", errorSaving:(m) => `Error saving: ${m}`,
+      errorRemoving:(m) => `Error removing: ${m}`, errorEditing:(m) => `Error editing: ${m}`,
+      errorGeneric:(m) => `Error: ${m}`,
     },
   },
   pt: {
@@ -939,13 +1091,15 @@ const APP_I18N = {
       dashboard:"Início", calendar:"Calendário", charts:"Gráficos",
       budget:"Orçamento", recurring:"Recorrentes", transactions:"Lançamentos", import:"Importar",
     },
-    langToggle: "🇺🇸 EN",
+    langToggle: "EN — English",
     app: {
       hello:"Olá", greeting:"!", darkMode:"Modo escuro", lightMode:"Modo claro",
       logout:"Sair", loggedOut:"Saiu com sucesso",
       profile:"Meu Perfil", family:"Família", cards:"Cartões",
       demoMode:"DEMO", exitDemo:"Sair do demo",
       overview:"Visão geral", thisMonth:"Este mês",
+      overviewOf:(mo, yr) => `Visão geral de ${mo} ${yr}`,
+      last6months:"📊 Últimos 6 meses",
       addExpense:"+ Gasto", addIncome:"+ Receita",
       fabExpense:"Gasto", fabIncome:"Receita",
       more:"Mais",
@@ -957,92 +1111,213 @@ const APP_I18N = {
       noData:"Sem dados", optional:"opcional",
       description:"Descrição", amount:"Valor", date:"Data", category:"Categoria",
       month:"Mês", year:"Ano", type:"Tipo",
+      none:"Nenhum", selectDots:"Selecione...",
     },
     summary: {
       income:"Receitas", expenses:"Gastos", balance:"Saldo", installments:"Parcelas futuras",
+      lastInstallment:"Última parcela em",
     },
     budget: {
-      title:"Orçamento", noData:"Nenhum orçamento configurado.", add:"Adicionar categoria",
-      spent:"gasto", of:"de", overBudget:"acima do limite",
-      alertTitle:"Alerta de Orçamento 🚨",
-      alertDesc:(cat, pct) => `${cat} em ${pct}% do limite`,
+      title:"Orçamento Mensal", subtitle:"Defina limites de gastos por categoria e acompanhe em tempo real",
+      noData:"Nenhum orçamento definido para este mês.",
+      noDataHint:"Clique em <strong>+ Definir</strong> em cada categoria, ou use <strong>Copiar do mês anterior</strong>.",
+      add:"+ Definir", copyFromPrev:"📋 Copiar do mês anterior",
+      totalBudget:"Total do orçamento", overBudget:"⚠️ Orçamento estourado",
+      remaining:(pct) => `✅ ${pct}% restante`,
+      nearLimit:(pct) => `⚡ ${pct}% restante`,
+      loading:"Carregando orçamentos...",
+      noLimit:"(sem limite)",
+      alertTitle:"Alerta de Orçamento",
       goToBudget:"Ver Orçamento",
-      newCategory:"Nova categoria de orçamento",
-      editCategory:"Editar categoria",
-      categoryLabel:"Categoria", limitLabel:"Limite mensal (R$)",
       saveBtn:"Salvar", deleteBtn:"Remover",
-      totalSpent:"Total gasto", totalLimit:"Limite total",
     },
     recurring: {
-      title:"Recorrentes", noData:"Nenhuma regra recorrente.",
-      active:"Ativo", inactive:"Inativo",
-      newRule:"Nova regra", editRule:"Editar regra",
-      description:"Descrição", category:"Categoria", type:"Tipo",
-      frequency:"Frequência", amount:"Valor",
-      dayOfMonth:"Dia do mês", endDate:"Data de encerramento (opcional)",
-      amountType:"Tipo de valor", fixed:"Fixo", variable:"Variável",
-      save:"Salvar", cancel:"Cancelar", delete:"Excluir",
-      activate:"Ativar", deactivate:"Desativar",
-      alertTitle:"Lembretes de Recorrentes 🔔",
-      alertView:"Ver recorrentes",
+      title:"Recorrentes",
+      subtitle:"Aluguel, contas fixas, assinaturas e lembretes mensais",
+      noData:"Nenhum gasto recorrente cadastrado ainda.",
+      noDataHint:"Clique em <strong>+ Novo</strong> para adicionar aluguel, contas fixas, assinaturas...",
+      newBtn:"+ Novo", editTitle:"Editar Recorrente", newTitle:"Novo Recorrente",
+      deleteConfirm:(n) => `Remover ${n} regra(s) recorrente(s)? Os lançamentos já feitos não serão afetados.`,
+      pendingTitle:(n, mo) => `🔔 ${n} lembrete(s) aguardando valor — ${mo}`,
+      pendingDay:(d) => `dia ${d}`,
+      variableAmount:"valor variável",
+      logged:(n, mo) => `✅ ${n} lançado(s) em ${mo}`,
+      totalLogged:"Total lançado",
+      registeredTitle:"📋 Gastos recorrentes cadastrados",
+      statusLogged:"✅ lançado", statusSkipped:"⏭ ignorado", statusPending:"🔔 pendente",
+      recurringBadge:"🔁 Recorrente",
       confirmNow:"Lançar agora", skipMonth:"Ignorar este mês",
+      alertTitle:"Lembretes de Recorrentes 🔔", alertView:"Ver recorrentes",
+      active:"Ativo", inactive:"Inativo",
       freq: { monthly:"Mensal", weekly:"Semanal", biweekly:"A cada 2 semanas", yearly:"Anual" },
+      amountType:"Tipo de valor", fixed:"💰 Valor fixo", variable:"🔔 Variável",
+      variableHint:"Todo mês você receberá um lembrete para inserir o valor pago.",
+      who:"Quem paga?", you:"Você",
+      descPlaceholder:"Ex: Conta de Luz, Netflix, Aluguel...",
+      frequency:"Frequência", dayOfMonth:"Dia de vencimento", monthOfYear:"Mês",
+      endDate:"Data de término (opcional)",
+      save:"Salvar", saving:"Salvando...", update:"Atualizar", create:"Criar", cancel:"Cancelar",
+      type:"Tipo",
     },
     calendar: {
       title:"Calendário",
-      noEvents:"Nenhum registro neste dia.",
+      noEvents:"Nenhum lançamento neste dia.",
       today:"Hoje",
+      removeTitle:"Remover lançamentos",
+      removeConfirm:(n) => `Remover ${n} lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.`,
+      editTitle:"Editar Lançamento",
+      removeBtn:(n) => `Excluir ${n}`,
+      days:["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"],
+      expenseLabel:"Gastos", incomeLabel:"Receitas",
+      installmentLabel:"Parcelas", recurringLabel:"Recorrentes",
     },
     charts: {
       title:"Gráficos",
-      byCategory:"Por categoria", monthly:"Mensal", billing:"Fatura",
-      expenses:"Gastos", incomes:"Receitas",
-      noData:"Sem dados para o período.",
-      month:"Mês", value:"Valor",
+      tabCategory:"Por Categoria", tabMonthly:"Receitas × Gastos", tabBilling:"Parcelas",
+      expenses:"Gastos", incomes:"Receitas", balance:"Saldo", installments:"Parcelas",
+      noData:"Nenhum lançamento encontrado.",
+      categoryTitle:"Gastos por categoria",
+      categoryHint:"Toque em uma fatia ou categoria para ver os lançamentos.",
+      categorySubtitle:"Gastos por Categoria — Últimos 6 meses",
+      selectCategories:"Selecione as categorias que deseja visualizar:",
+      monthlyTitle:"Receitas × Gastos — Últimos 6 meses",
+      installmentTitle:"Parcelas de Crédito — Próximos 12 meses",
+      installmentHint:"Toque em um ponto para ver e editar as parcelas daquele mês.",
+      billingTitle:"Gráfico de Faturas — Próximos 12 meses",
+      billingHint:"Toque em uma barra para ver os lançamentos daquela fatura.",
+      billingLabel:"Fatura",
+      installmentsIn:(mo) => `Parcelas em ${mo}`,
+      billingIn:(mo) => `Fatura de ${mo}`,
+      purchaseDate:(d) => `compra dia ${d}`,
+      recurringBadge:"🔁 Recorrente",
+      editTitle:"Editar Lançamento",
     },
     transactions: {
       title:"Lançamentos",
       all:"Todos", expenses:"Gastos", incomes:"Receitas",
       noData:"Nenhuma transação encontrada.",
+      noResults:"Nenhum resultado",
+      noResultsSearch:(q) => `Nada encontrado para "${q}"`,
+      clearSearch:"Limpar busca",
+      noDuplicates:"Nenhuma duplicata encontrada neste período.",
       deleteAll:"Excluir todos", confirmDeleteAll:"Excluir todos os lançamentos? Esta ação não pode ser desfeita.",
       filterBy:"Filtrar por", filterAll:"Todos",
       removed:"Removido", removedAll:"Todos removidos",
+      win1m:"1 mês", win3m:"3 meses", win6m:"6 meses", win9m:"9 meses", win1y:"1 ano",
+      lastMonths:(n) => `ÚLTIMOS ${n} MESES`,
+      searchPlaceholder:"Buscar lançamento…",
+      selectTransactions:"Selecionar lançamentos",
+      deleteFiltered:"Apagar filtrados…",
+      byPurchase:"📅 Por compra", byBilling:"💳 Por fatura",
+      filterType:"📁 Tipo", filterCategory:"📂 Categoria", filterPerson:"👤 Pessoa",
+      clearFilters:"✕ Limpar",
+      dupAlert:(n) => `${n} lançamento(s) duplicado(s) detectado(s)`,
+      dupDesc:"Itens com mesmo nome, categoria e valor no mesmo dia. Os mais recentes estão marcados com 🔁.",
+      showDuplicates:"Ver duplicatas", showAll:"Ver todos",
+      removeDuplicates:"Remover duplicatas",
+      removeAll:"Remover todos",
+      expensesHeader:"GASTOS", incomesHeader:"RECEITAS",
+      dupBadge:"🔁 duplicata", splitBadge:"✂️ dividido",
+      installment:(n, total) => `Crédito ${n} de ${total}`,
+      suggestedRemoval:"sugerido para remoção",
+      billingMonth:(mo, yr) => `→ Fatura ${mo}/${yr}`,
+      removeSelected:(n) => `Excluir ${n}`,
+      editTitle:"Editar Lançamento",
+      selectAll:"Todos", deselectAll:"Nenhum",
+      today:"Hoje", yesterday:"Ontem", tomorrow:"Amanhã",
+      transactionCount:(n) => `${n} lançamento${n!==1?"s":""}`,
     },
     expenseForm: {
       title:"Novo Gasto",
-      description:"Descrição", descPlaceholder:"Ex: Supermercado",
+      description:"Descrição", descPlaceholder:"Ex: iFood, Uber, Supermercado...",
       amount:"Valor (R$)", amountPlaceholder:"0,00",
       date:"Data", category:"Categoria", selectCategory:"Selecione a categoria",
       type:"Tipo", parcelas:"Parcelas",
-      card:"Cartão", selectCard:"Selecione o cartão",
-      paidBy:"Pago por",
+      card:"Cartão", selectCard:"Sem cartão específico",
+      paidBy:"Quem pagou?",
       splitPayment:"Pagamento dividido",
-      splitType:"Tipo do segundo pagamento", splitAmount:"Valor do segundo pagamento",
-      recurring:"Marcar como recorrente",
+      splitActive:"Pagamento dividido ativado", splitToggle:"Dividir pagamento?",
+      splitHide:"▲ ocultar", splitSetup:"▼ configurar",
+      splitDesc:"O valor total da compra será dividido em duas formas de pagamento.",
+      splitPrimary:(type) => `💳 Pagamento principal (${type})`,
+      splitSecondType:"2º forma de pagamento",
+      splitSecondAmount:"Valor pago nesta forma (R$)",
+      splitTotal:"Total da compra",
+      recurringActive:"Gasto recorrente ativado", recurringToggle:"Tornar recorrente?",
+      recurringFreq:"Frequência", recurringDay:"Dia de vencimento",
+      recurringType:"Tipo de valor", recurringFixed:"💰 Fixo", recurringVariable:"🔔 Variável",
+      recurringEndDate:"Data de término (opcional)",
+      creditWarning:"⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.",
+      installmentCount:"Nº de parcelas",
+      installmentAmt:"Parcela (R$)", totalAmt:"Total (R$)",
+      installmentInfo:(from, to, total) => `Propagado de ${from} até ${to} · Total: ${total}`,
       save:"Salvar gasto", saving:"Salvando...",
       paymentTypes: { debito:"Débito", credito:"Crédito", pix:"Pix", dinheiro:"Dinheiro", outro:"Outro" },
     },
     incomeForm: {
       title:"Nova Receita",
-      description:"Descrição", descPlaceholder:"Ex: Salário",
+      description:"Descrição", descPlaceholder:"Ex: Salário, Freelance...",
       amount:"Valor (R$)", amountPlaceholder:"0,00",
-      date:"Data", source:"Fonte", selectSource:"Selecione a fonte",
-      receivedBy:"Recebido por",
+      date:"Data", source:"Categoria", selectSource:"Selecione a fonte",
+      receivedBy:"Quem recebeu?",
       save:"Salvar receita", saving:"Salvando...",
       sources: { salario:"Salário", freelance:"Freelance", investimento:"Investimento", aluguel:"Aluguel", outros:"Outros" },
     },
     editModal: {
       titleExpense:"Editar Gasto", titleIncome:"Editar Receita",
-      save:"Salvar alterações", saving:"Salvando...",
+      description:"Descrição", paidBy:"Quem pagou?", receivedBy:"Quem recebeu?",
+      type:"Tipo de pagamento", card:"Cartão", noCard:"Sem cartão específico",
+      category:"Categoria", date:"Data",
+      installments:"Nº de parcelas", installmentAmt:"Parcela (R$)", totalAmt:"Total (R$)",
+      creditWarning:"⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.",
+      save:"Salvar alterações", saving:"Salvando...", cancel:"Cancelar",
+      paymentTypes: { debito:"Débito", credito:"Crédito", pix:"Pix", dinheiro:"Dinheiro", outro:"Outro" },
     },
     importView: {
-      title:"Importar",
-      dropzone:"Solte o arquivo aqui ou clique para selecionar",
-      supportedFormats:"Suportado: CSV, XLSX, XLS, PDF (extratos bancários)",
-      review:"Revisar Importação",
-      expensesLabel:"Gastos ✓", incomesLabel:"Receitas ✓", lowConfidence:"⚠ verificar",
-      confirm:"💾 Confirmar importação", importMore:"📥 Importar mais",
+      title:"Importar Lançamentos",
+      subtitle:"A IA lê e mapeia automaticamente qualquer formato de extrato ou planilha",
+      dropzone:"Arraste seu arquivo aqui",
+      dropzoneOr:"ou clique para selecionar",
+      formats:"CSV", formatsXlsx:"XLSX", formatsPdf:"PDF",
+      howItWorks:"✨ Como funciona",
+      step1title:"Arraste CSV, Excel ou PDF",
+      step1desc:"Extratos bancários, faturas de cartão, planilhas próprias",
+      step2title:"A IA mapeia os dados",
+      step2desc:"Detecta valores, datas, descrições e categorias",
+      step3title:"Revise e confirme",
+      step3desc:"Edite qualquer linha antes de salvar",
+      bankTitle:"💡 Como exportar do seu banco",
+      nubank:"🟣 Nubank: App → Perfil → Exportar dados → CSV",
+      itau:"🟠 Itaú: Internet Banking → Extrato → Exportar → CSV/OFX",
+      santander:"🔴 Santander: App → Extrato → Compartilhar → CSV",
+      bradesco:"🔵 Bradesco: Internet Banking → Extrato → Salvar → XLS",
+      sheets:"📊 Planilha própria: Google Sheets → Arquivo → Download → CSV",
+      reviewTitle:"📋 Revisar Importação",
+      reviewDesc:(file, n) => `${file} — ${n} itens detectados`,
+      backBtn:"← Voltar",
+      expensesLabel:"Gastos ✓", incomesLabel:"Receitas ✓", skippedLabel:"Ignorados", lowConfidence:"⚠ verificar",
+      confirmBtn:(n) => `💾 Confirmar importação (${n})`,
+      saving:"Salvando...",
+      importMore:"📥 Importar mais",
       viewTransactions:"📋 Ver lançamentos",
+      done:"Importação concluída!",
+      doneDesc:"Os dados já estão disponíveis em todo o dashboard",
+      allFilter:"Todos", newFilter:"Novos", dupFilter:"Duplicatas",
+      noItems:"Nenhum item nesta categoria",
+      markAll:"Marcar todas", unmarkAll:"Ignorar todas",
+      selectedCount:(n) => `${n} selecionados`,
+      dupCount:(n) => `${n} possível(is) duplicata(s) detectada(s)`,
+      dupDesc:"Desmarcadas automaticamente",
+      dupDetected:(n) => `⚠️ ${n} possível(is) duplicata(s) detectada(s)`,
+      dupDescFull:"Itens desmarcados automaticamente",
+      loadingCSV:"📄 Lendo CSV...",
+      loadingExcel:"📊 Lendo planilha Excel...",
+      loadingPDF:"📄 Enviando PDF para análise...",
+      loadingAI:"🤖 Mapeando dados com IA...",
+      detected:(n) => `✅ ${n} transações detectadas!`,
+      dupWarning:(n) => `⚠️ ${n} possível(is) duplicata(s) detectada(s) — desmarcadas automaticamente`,
+      errorNoData:"Nenhuma transação encontrada no arquivo. Verifique se contém dados financeiros.",
+      errorFormat:"Formato não suportado. Use CSV, XLSX ou PDF.",
     },
     profile: {
       title:"Meu Perfil", firstName:"Nome", lastName:"Sobrenome", phone:"Telefone",
@@ -1062,14 +1337,31 @@ const APP_I18N = {
       newCard:"Novo cartão", editCard:"Editar cartão",
       cardName:"Nome do cartão", cardNamePlaceholder:"Ex: Santander Casal",
       holder:"Titular", closingDay:"Dia de fechamento", dueDay:"Dia de vencimento", color:"Cor",
-      save:"Salvar alterações", create:"Criar cartão", saving:"Salvando...",
+      closingDayFmt:(d) => `Fecha dia ${d}`, dueDayFmt:(d) => `Vence dia ${d}`,
+      save:"Salvar alterações", create:"Criar cartão", saving:"Salvando...", cancel:"Cancelar",
       cantDeleteLast:"Não é possível excluir o único cartão.",
       deleteTitle:"Excluir cartão", deleteMsg:"Excluir este cartão? Esta ação não pode ser desfeita.",
-      billingPeriods:"Períodos de Fatura", addPeriod:"+ Adicionar",
-      noPeriods:"Nenhum período cadastrado.",
-      periodCard:"Cartão", periodMonth:"Mês da fatura", periodStart:"Início do período",
-      periodEnd:"Fim do período", periodDue:"Data de vencimento", periodTotal:"Total do extrato PDF (opcional)",
+      deleted:"Cartão excluído.", updated:"Cartão atualizado!", created:"Cartão criado!",
+      fillNameHolder:"Preencha nome e titular.",
+      billingPeriods:"📅 Períodos de Fatura", addPeriod:"+ Adicionar",
+      noPeriods:"Nenhum período cadastrado. Adicione para que o gráfico de faturas reflita exatamente o extrato do banco.",
+      newPeriod:"Novo período de fatura", editPeriod:"Editar período",
+      dueDateFmt:(d) => `Vence ${d}`,
+      periodCard:"Cartão", periodCardPlaceholder:"Selecione o cartão",
+      periodMonth:"Mês da fatura", periodYear:"Ano da fatura",
+      periodStart:"Início do período", periodEnd:"Fim do período",
+      periodDue:"Data de vencimento", periodTotal:"Total do extrato PDF (opcional)",
       periodSave:"Salvar alterações", periodAdd:"Adicionar período", periodSaving:"Salvando...",
+      periodDeleteTitle:"Excluir período", periodDeleteMsg:"Excluir este período de fatura?",
+      periodDeleted:"Período excluído.", periodUpdated:"Período atualizado!", periodAdded:"Período adicionado!",
+      periodFillAll:"Preencha cartão, datas do período e vencimento.",
+      dueFmt:(dd,dm,dy) => `Vence ${dd}/${dm}/${dy}`,
+      billingOpen:"Fatura em Aberto",
+    },
+    billingCard: {
+      dueOn:(dd,dm,dy) => `Vence ${dd}/${dm}/${dy}`,
+      dueDay:(d,m,y) => `Vence dia ${d}/${String(m).padStart(2,"0")}/${y}`,
+      openBilling:"Fatura em Aberto",
     },
     toasts: {
       expenseSaved:"Gasto salvo! ✓", expenseUpdated:"Gasto atualizado! ✓",
@@ -1079,8 +1371,19 @@ const APP_I18N = {
       splitSaved:"Pagamento dividido registrado! ✂️",
       recurringCreated:"Gasto registrado e regra recorrente criada! ✅",
       fillAmount:"Informe um valor válido", fillDescription:"Informe a descrição",
+      fillFirstName:"Informe seu nome",
       selectCategory:"Selecione uma categoria",
+      phoneFormat:"Formato",
       profileSaved:"Perfil atualizado!",
+      cardUpdated:"Cartão atualizado!", cardCreated:"Cartão criado!", cardDeleted:"Cartão excluído.",
+      periodUpdated:"Período atualizado!", periodAdded:"Período adicionado!", periodDeleted:"Período excluído.",
+      budgetSaved:"Orçamento salvo!", budgetCopied:(n) => `${n} orçamento(s) copiado(s)!`,
+      recurringUpdated:"Regra recorrente atualizada!", recurringCreatedRule:"Regra recorrente criada!",
+      recurringDeleted:"Regra(s) removida(s).", codeRegenerated:"Novo código gerado!", codeError:"Erro ao gerar código",
+      profileUpdated:"Perfil atualizado!", roleUpdated:"Permissão atualizada!",
+      errorLoading:"Erro ao carregar dados", errorSaving:(m) => `Erro ao salvar: ${m}`,
+      errorRemoving:(m) => `Erro ao remover: ${m}`, errorEditing:(m) => `Erro ao editar: ${m}`,
+      errorGeneric:(m) => `Erro: ${m}`,
     },
   },
 };
@@ -1417,8 +1720,8 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
   const calDeleteSelected = () => {
     const arr = Array.from(calSelectedIds);
     setCalConfirmOpts({
-      title: "Remover lançamentos",
-      message: `Remover ${arr.length} lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.`,
+      title: APP_I18N[lang].calendar.removeTitle,
+      message: APP_I18N[lang].calendar.removeConfirm(arr.length),
       onConfirm: async () => {
         await Promise.all(arr.map(id => { const isInc = incomes.some(i=>i.id===id); return isInc?onDeleteIncome(id):onDeleteExpense(id); }));
         calExitSel();
@@ -1533,20 +1836,20 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 8 }}>
-        {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
+        {APP_I18N[lang].calendar.days.map((d) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: t.textMuted, padding: "6px 0" }}>{d}</div>)}
       </div>
       <div style={{ display:"flex",gap:16,marginBottom:10,justifyContent:"flex-end",flexWrap:"wrap" }}>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.danger,display:"inline-block" }}/>Gastos
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.danger,display:"inline-block" }}/>{APP_I18N[lang].calendar.expenseLabel}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.accent,display:"inline-block" }}/>Parcelas
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.accent,display:"inline-block" }}/>{APP_I18N[lang].calendar.installmentLabel}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:t.success,display:"inline-block" }}/>Receitas
+          <span style={{ width:7,height:7,borderRadius:"50%",background:t.success,display:"inline-block" }}/>{APP_I18N[lang].calendar.incomeLabel}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:t.textMuted }}>
-          <span style={{ width:7,height:7,borderRadius:"50%",background:"#f59e0b",display:"inline-block" }}/>Recorrentes
+          <span style={{ width:7,height:7,borderRadius:"50%",background:"#f59e0b",display:"inline-block" }}/>{APP_I18N[lang].calendar.recurringLabel}
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
@@ -1584,7 +1887,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
               {sExp.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(sExp.reduce((s,e)=>s+(parseFloat(e.amount)||0),0))}</span>}
             </div>
           </div>
-          {sExp.length===0&&sInc.length===0&&(recurByDay[selectedDay]||[]).length===0 ? <p style={{ color:t.textMuted,fontSize:14,margin:0,textAlign:"center" }}>Nenhum lançamento neste dia</p> : (
+          {sExp.length===0&&sInc.length===0&&(recurByDay[selectedDay]||[]).length===0 ? <p style={{ color:t.textMuted,fontSize:14,margin:0,textAlign:"center" }}>{APP_I18N[lang].calendar.noEvents}</p> : (
             <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
               {(recurByDay[selectedDay]||[]).map((rule) => {
                 const cat = CATEGORIES.find(c=>c.id===rule.category);
@@ -1598,7 +1901,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
                       <span style={{ fontSize:22,flexShrink:0 }}>{cat?.emoji||"🔁"}</span>
                       <div style={{ minWidth:0,flex:1,textAlign:"left" }}>
                         <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{rule.description}</div>
-                        <div style={{ fontSize:11,color:"#f59e0b",marginTop:1 }}>🔁 Recorrente · {cat?.label||"Outros"}{rule.amount?` · ${fmt(rule.amount)}`:""}</div>
+                        <div style={{ fontSize:11,color:"#f59e0b",marginTop:1 }}>{APP_I18N[lang].charts.recurringBadge} · {cat?.label||"Outros"}{rule.amount?` · ${fmt(rule.amount)}`:""}</div>
                       </div>
                     </div>
                     <span style={{ fontWeight:700,fontSize:14,color:"#f59e0b",flexShrink:0 }}>{rule.amount?fmt(parseFloat(rule.amount)||0):"—"}</span>
@@ -1638,7 +1941,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
                       <span style={{ fontWeight:700,fontSize:14,color:t.success }}>{fmt(parseFloat(inc.amount)||0)}</span>
-                      {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...inc,_type:"income"}); }} title="Editar"
+                      {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...inc,_type:"income"}); }} title={APP_I18N[lang].common.edit}
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
                         onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>}
@@ -1649,11 +1952,12 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
               {sExp.map((exp) => {
                 const cat = CATEGORIES.find(c=>c.id===exp.category);
                 const p = parseInt(exp.parcelas)||1;
-                const typeLabel = exp.type==="pix"?"PIX":exp.type==="debito"?"Débito":exp.type==="dinheiro"?"Dinheiro":"Crédito";
+                const _pt = APP_I18N[lang].expenseForm.paymentTypes;
+                const typeLabel = exp.type==="pix"?_pt.pix:exp.type==="debito"?_pt.debito:exp.type==="dinheiro"?_pt.dinheiro:_pt.credito;
                 let subtitleExtra = "";
                 if(exp.type==="credito" && p>1){
                   const nth = exp._installNum || 1;
-                  subtitleExtra = ` · Crédito ${nth} de ${p}`;
+                  subtitleExtra = ` · ${APP_I18N[lang].transactions.installment(nth, p)}`;
                 } else {
                   subtitleExtra = ` · ${typeLabel}`;
                 }
@@ -1689,7 +1993,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
                       <span style={{ fontWeight:700,fontSize:14,color:t.danger }}>{fmt(parseFloat(exp.amount)||0)}</span>
-                      {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...exp,_type:"expense"}); }} title="Editar"
+                      {!calSelMode && <button onClick={e=>{ e.stopPropagation(); setEditItem({...exp,_type:"expense"}); }} title={APP_I18N[lang].common.edit}
                         style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6,transition:"color 0.2s" }}
                         onMouseEnter={e=>e.currentTarget.style.color=t.accent}
                         onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>}
@@ -1705,10 +2009,10 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
       {/* Floating delete bar — CalendarView */}
       {calSelMode && calSelectedIds.size > 0 && (
         <div style={{ position:"fixed",bottom:"calc(64px + env(safe-area-inset-bottom) + 10px)",left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
-          <button onClick={calExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>Cancelar</button>
+          <button onClick={calExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>{APP_I18N[lang].common.cancel}</button>
           <button onClick={calDeleteSelected} style={{ flex:1,height:40,borderRadius:12,background:"rgba(255,107,107,0.18)",border:"1px solid rgba(255,107,107,0.35)",color:"#FF9B9B",fontSize:13.5,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Excluir {calSelectedIds.size}
+            {APP_I18N[lang].calendar.removeBtn(calSelectedIds.size)}
           </button>
         </div>
       )}
@@ -1720,10 +2024,10 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />{APP_I18N[lang].calendar.editTitle}</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
-            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers}
+            <EditModal t={t} lang={lang} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers}
               onSave={async(payload)=>{ if(payload._type==="expense") await onEditExpense(payload); else await onEditIncome(payload); setEditItem(null); }} />
           </div>
         </div>
@@ -1735,6 +2039,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
         message={calConfirmOpts?.message}
         onConfirm={() => { calConfirmOpts?.onConfirm(); setCalConfirmOpts(null); }}
         onCancel={() => setCalConfirmOpts(null)}
+        lang={lang}
         t={t}
       />
     </div>
@@ -1752,10 +2057,11 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
   const [editItem, setEditItem] = useState(null);
   const [selectedCatIds, setSelectedCatIds] = useState(new Set());
   const [chartTab, setChartTab] = useState("categories");
+  const AL = APP_I18N[lang];
   const TAB_DEFS = [
-    {id:"categories",   icon:"pieChart", label:"Categorias"},
-    {id:"incomeExpense",icon:"chart",    label:"Receitas × Gastos"},
-    {id:"installments", icon:"card",     label:"Parcelas"},
+    {id:"categories",   icon:"pieChart", label:AL.charts.tabCategory},
+    {id:"incomeExpense",icon:"chart",    label:AL.charts.tabMonthly},
+    {id:"installments", icon:"card",     label:AL.charts.tabBilling},
   ];
   const TAB_ORDER = ["categories","incomeExpense","installments"];
   const swipeRef = useRef({});
@@ -1789,7 +2095,8 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
     const prefix=`${yr}-${String(mn+1).padStart(2,"0")}`;
     const inc = incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
     const exp = expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
-    return { name:MONTHS[mn], Receitas:Math.round(inc), Gastos:Math.round(exp), Saldo:Math.round(inc-exp) };
+    const _c = APP_I18N[lang].charts;
+    return { name:MONTHS[mn], [_c.incomes]:Math.round(inc), [_c.expenses]:Math.round(exp), [_c.balance]:Math.round(inc-exp) };
   }), [expenses, incomes, refYear, refMonth]);
 
   // ── Category evolution: all categories available in the 6-month window ──
@@ -1996,8 +2303,8 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} key={chartTab} style={{ display:"flex",flexDirection:"column",gap:24,animation:"fadeInUp 0.22s ease" }}>
 
       {chartTab === "categories" && <>
-      <Card title={`🥧 Gastos por categoria — ${period==="month" ? MONTH_FULL[selectedMonth] : "Ano"} ${selectedYear}`}>
-        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma fatia ou categoria para ver os lançamentos.</p>
+      <Card title={`🥧 ${AL.charts.categoryTitle} — ${period==="month" ? MONTH_FULL[selectedMonth] : AL.common.year} ${selectedYear}`}>
+        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>{AL.charts.categoryHint}</p>
         <div style={{ display:"flex",flexWrap:"wrap",gap:24,alignItems:"center" }}>
           <ResponsiveContainer width="100%" height={220} style={{ minWidth:200 }}>
             <PieChart>
@@ -2040,7 +2347,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
           const total = catExpenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
           const colorIdx = pieData.findIndex(d=>d.id===selectedPieCategory);
           const color = t.chartColors[colorIdx>=0 ? colorIdx%t.chartColors.length : 0];
-          if (!catExpenses.length) return <div style={{ marginTop:16,textAlign:"center",fontSize:13,color:t.textMuted }}>Nenhum lançamento encontrado.</div>;
+          if (!catExpenses.length) return <div style={{ marginTop:16,textAlign:"center",fontSize:13,color:t.textMuted }}>{AL.charts.noData}</div>;
           return (
             <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8 }}>
@@ -2054,7 +2361,8 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
               </div>
               <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
                 {catExpenses.map((e,i)=>{
-                  const typeLabel = e.type==="pix"?"PIX":e.type==="debito"?"Débito":e.type==="dinheiro"?"Dinheiro":"Crédito";
+                  const _pt2 = AL.expenseForm.paymentTypes;
+                  const typeLabel = e.type==="pix"?_pt2.pix:e.type==="debito"?_pt2.debito:e.type==="dinheiro"?_pt2.dinheiro:_pt2.credito;
                   return (
                     <div key={e.id||i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:12,background:t.surface,border:`1px solid ${color}22` }}>
                       <span style={{ fontSize:18,flexShrink:0 }}>{catObj?.emoji||"📦"}</span>
@@ -2068,7 +2376,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
                       <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
                         <span style={{ fontSize:14,fontWeight:700,color }}>{fmt(parseFloat(e.amount)||0)}</span>
                         {onEditExpense && (
-                          <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
+                          <button onClick={()=>setEditItem({...e,_type:"expense"})} title={APP_I18N[lang].common.edit}
                             style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                             onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
@@ -2083,8 +2391,8 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
         })()}
       </Card>
 
-      <Card title="📈 Gastos por Categoria — Últimos 6 meses">
-        <p style={{ fontSize:12, color:t.textMuted, marginTop:-12, marginBottom:10 }}>Selecione as categorias que deseja visualizar:</p>
+      <Card title={`📈 ${AL.charts.categorySubtitle}`}>
+        <p style={{ fontSize:12, color:t.textMuted, marginTop:-12, marginBottom:10 }}>{AL.charts.selectCategories}</p>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
           {availableCatsEvolution.map(cat => {
             const isActive = activeCatIdsForEvolution.includes(cat.id);
@@ -2126,7 +2434,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       </>}
 
       {chartTab === "incomeExpense" && <>
-      <Card title="📊 Receitas × Gastos — Últimos 6 meses">
+      <Card title={`📊 ${AL.charts.monthlyTitle}`}>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={barData} barGap={4} barCategoryGap="25%">
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
@@ -2134,17 +2442,17 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
             <Legend wrapperStyle={{ fontSize:13,color:t.textSecondary }} />
-            <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
-            <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
-            <Bar dataKey="Saldo" fill={t.accent} radius={[6,6,0,0]} />
+            <Bar dataKey={AL.charts.incomes} fill={t.success} radius={[6,6,0,0]} />
+            <Bar dataKey={AL.charts.expenses} fill={t.danger} radius={[6,6,0,0]} />
+            <Bar dataKey={AL.charts.balance} fill={t.accent} radius={[6,6,0,0]} />
           </BarChart>
         </ResponsiveContainer>
       </Card>
       </>}
 
       {chartTab === "installments" && <>
-      <Card title="💳 Parcelas de Crédito — Próximos 12 meses">
-        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em um ponto para ver e editar as parcelas daquele mês.</p>
+      <Card title={`💳 ${AL.charts.installmentTitle}`}>
+        <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>{AL.charts.installmentHint}</p>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={creditData}>
             <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
@@ -2152,7 +2460,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
             <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CTip/>} cursor={{ stroke:t.accent,strokeWidth:1,strokeDasharray:"4 4" }} />
             <Line type="monotone" dataKey="value" stroke={t.accent} strokeWidth={2.5}
-              name="Parcelas" activeDot={false}
+              name={AL.charts.installments} activeDot={false}
               dot={(props) => {
                 const { cx, cy, payload } = props;
                 const k = `${payload.yr}-${payload.mo}`;
@@ -2173,7 +2481,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
           return (
             <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>💳 Parcelas em {md.name}</h4>
+                <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>💳 {AL.charts.installmentsIn(md.name)}</h4>
                 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
                   <span style={{ fontSize:15,fontWeight:800,color:t.accent }}>{fmt(md.value)}</span>
                   <button onClick={()=>setSelectedCreditMonth(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
@@ -2187,12 +2495,12 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
                       <span style={{ fontSize:20,flexShrink:0 }}>{cat?.emoji||"💳"}</span>
                       <div style={{ flex:1,minWidth:0 }}>
                         <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.description}</div>
-                        <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>{e.user_label} · Parcela {e._installNum} de {e._installTotal} · dia {e.date?.slice(8,10)}</div>
+                        <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>{e.user_label} · {AL.transactions.installment(e._installNum, e._installTotal)} · {AL.charts.purchaseDate(e.date?.slice(8,10))}</div>
                       </div>
                       <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
                         <span style={{ fontSize:14,fontWeight:700,color:t.danger }}>{fmt(parseFloat(e.amount)||0)}</span>
                         {onEditExpense && (
-                          <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
+                          <button onClick={()=>setEditItem({...e,_type:"expense"})} title={APP_I18N[lang].common.edit}
                             style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                             onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                             onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
@@ -2207,8 +2515,8 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
         })()}
       </Card>
 
-      <Card title="💳 Gráfico de Faturas — Próximos 12 meses">
-          <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>Toque em uma barra para ver os lançamentos daquela fatura.</p>
+      <Card title={`💳 ${AL.charts.billingTitle}`}>
+          <p style={{ fontSize:12,color:t.textMuted,marginTop:-12,marginBottom:16 }}>{AL.charts.billingHint}</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={billingChartData} barCategoryGap="30%"
               onClick={d=>{ if(d?.activePayload?.[0]) { const p=d.activePayload[0].payload; const k=`${p.yr}-${p.mo}`; setSelectedBillingMonth(prev=>prev===k?null:k); } }}>
@@ -2216,7 +2524,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
               <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
               <Tooltip content={<CTip/>} cursor={{ fill:t.chartCursorFill }} />
-              <Bar dataKey="value" name="Fatura" fill={t.accent} radius={[6,6,0,0]}
+              <Bar dataKey="value" name={AL.charts.billingLabel} fill={t.accent} radius={[6,6,0,0]}
                 onClick={d=>{ const k=`${d.yr}-${d.mo}`; setSelectedBillingMonth(prev=>prev===k?null:k); }}
                 style={{ cursor:"pointer" }}
               />
@@ -2228,7 +2536,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
             return (
               <div style={{ marginTop:20,borderTop:`1px solid ${t.border}`,paddingTop:16,animation:"fadeInUp 0.2s ease" }}>
                 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-                  <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>💳 Fatura de {md.name}</h4>
+                  <h4 style={{ margin:0,fontSize:14,fontWeight:700,color:t.text }}>💳 {AL.charts.billingIn(md.name)}</h4>
                   <div style={{ display:"flex",alignItems:"center",gap:12 }}>
                     <span style={{ fontSize:15,fontWeight:800,color:t.accent }}>{fmt(md.value)}</span>
                     <button onClick={()=>setSelectedBillingMonth(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:20,lineHeight:1,padding:"0 4px" }}>×</button>
@@ -2243,15 +2551,15 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
                         <div style={{ flex:1,minWidth:0 }}>
                           <div style={{ fontSize:13,fontWeight:600,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.description}</div>
                           <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
-                            {e._isRecurring ? "🔁 Recorrente" : e.user_label}
-                            {!e._isRecurring && (e._installTotal>1?` · Parcela ${e._installNum} de ${e._installTotal}`:"")}
-                            {` · compra dia ${e.date?.slice(8,10)}`}
+                            {e._isRecurring ? AL.charts.recurringBadge : e.user_label}
+                            {!e._isRecurring && (e._installTotal>1?` · ${AL.transactions.installment(e._installNum, e._installTotal)}`:"")}
+                            {` · ${AL.charts.purchaseDate(e.date?.slice(8,10))}`}
                           </div>
                         </div>
                         <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
                           <span style={{ fontSize:14,fontWeight:700,color:e._isRecurring?t.warning:t.accent }}>{fmt(parseFloat(e.amount)||0)}</span>
                           {!e._isRecurring && onEditExpense && (
-                            <button onClick={()=>setEditItem({...e,_type:"expense"})} title="Editar"
+                            <button onClick={()=>setEditItem({...e,_type:"expense"})} title={APP_I18N[lang].common.edit}
                               style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                               onMouseEnter={ev=>ev.currentTarget.style.color=t.accent}
                               onMouseLeave={ev=>ev.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
@@ -2283,10 +2591,10 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />{AL.charts.editTitle}</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
-            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]} cards={cards}
+            <EditModal t={t} lang={lang} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers||[]} cards={cards}
               onSave={async(payload)=>{ if(onEditExpense) await onEditExpense(payload); setEditItem(null); }} />
           </div>
         </div>
@@ -2410,16 +2718,18 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
           {/* Credit: parcelas + date row, then installAmount ↔ total row */}
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
             <div>
-              <Input label="Nº de parcelas" t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",e.target.value)} placeholder="Ex: 12" />
-              {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>Informe um valor maior que zero.</div>}
+              <Input label={APP_I18N[lang].expenseForm.installmentCount} t={t} type="number" min={1} max={48} value={form.parcelas} onChange={e=>set("parcelas",e.target.value)} placeholder="12" />
+              {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>{APP_I18N[lang].toasts.fillAmount}</div>}
             </div>
-            <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+            <DateInput label={APP_I18N[lang].expenseForm.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
-          <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
+          <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
+            {lang==="pt" ? <>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</> : <>⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.</>}
+          </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
-            <Input label="Parcela (R$)" t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
+            <Input label={APP_I18N[lang].expenseForm.installmentAmt} t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
             <div style={{ paddingTop:18,color:t.textMuted,fontSize:16,textAlign:"center",userSelect:"none" }}>↔</div>
-            <Input label="Total (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+            <Input label={APP_I18N[lang].expenseForm.totalAmt} t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
           </div>
           {creditInfo && (
             <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:"rgba(124,106,247,0.08)",fontSize:12,color:"#7c6af7",fontWeight:600,border:"1px solid rgba(124,106,247,0.2)",display:"flex",alignItems:"center",gap:8 }}>
@@ -2429,8 +2739,8 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
         </>
       ) : (
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
-          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-          <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+          <Input label={APP_I18N[lang].expenseForm.amount} t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+          <DateInput label={APP_I18N[lang].expenseForm.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
         </div>
       )}
       {form.category && (
@@ -2445,29 +2755,29 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
           <button type="button" onClick={()=>{ setIsSplit(v=>!v); setSplitForm({ type:"dinheiro", amount:"" }); }}
             style={{ width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${isSplit?"#3b82f6":t.border}`,background:isSplit?"rgba(59,130,246,0.08)":"transparent",color:isSplit?"#60a5fa":t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.2s",textAlign:"left" }}>
             <span style={{ fontSize:16 }}>✂️</span>
-            {isSplit ? "Pagamento dividido ativado" : "Dividir pagamento?"}
-            <span style={{ marginLeft:"auto",fontSize:11,opacity:0.7 }}>{isSplit?"▲ ocultar":"▼ configurar"}</span>
+            {isSplit ? APP_I18N[lang].expenseForm.splitActive : APP_I18N[lang].expenseForm.splitToggle}
+            <span style={{ marginLeft:"auto",fontSize:11,opacity:0.7 }}>{isSplit?APP_I18N[lang].expenseForm.splitHide:APP_I18N[lang].expenseForm.splitSetup}</span>
           </button>
           {isSplit && (
             <div style={{ marginTop:12,padding:"14px 14px 10px",borderRadius:12,background:t.surface,border:"1px solid rgba(59,130,246,0.25)" }}>
               <div style={{ fontSize:12,color:"#60a5fa",fontWeight:700,marginBottom:12,display:"flex",alignItems:"center",gap:6 }}>
-                ✂️ O valor total da compra será dividido em duas formas de pagamento.
+                ✂️ {APP_I18N[lang].expenseForm.splitDesc}
               </div>
               {/* Primary row summary */}
               <div style={{ fontSize:12,color:t.textMuted,marginBottom:10,padding:"8px 12px",borderRadius:8,background:t.bg,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-                <span>💳 Pagamento principal ({form.type==="pix"?"PIX":form.type==="debito"?"Débito":form.type==="dinheiro"?"Dinheiro":"Crédito"})</span>
+                <span>{APP_I18N[lang].expenseForm.splitPrimary(form.type==="pix"?"PIX":APP_I18N[lang].expenseForm.paymentTypes[form.type]||form.type)}</span>
                 <span style={{ fontWeight:700,color:t.text }}>{parseFloat(form.amount||form.installAmount)>0?fmt(parseFloat(form.amount||form.installAmount)):"R$ —"}</span>
               </div>
               {/* Split type + amount */}
-              <Select label="2º forma de pagamento" t={t} value={splitForm.type} onChange={e=>setSplitForm(p=>({...p,type:e.target.value}))}>
-                <option value="dinheiro">💵 Dinheiro</option>
+              <Select label={APP_I18N[lang].expenseForm.splitSecondType} t={t} value={splitForm.type} onChange={e=>setSplitForm(p=>({...p,type:e.target.value}))}>
+                <option value="dinheiro">💵 {APP_I18N[lang].expenseForm.paymentTypes.dinheiro}</option>
                 <option value="pix">💸 PIX</option>
-                <option value="debito">🏦 Débito</option>
+                <option value="debito">🏦 {APP_I18N[lang].expenseForm.paymentTypes.debito}</option>
               </Select>
-              <Input label="Valor pago nesta forma (R$)" t={t} type="number" step="0.01" value={splitForm.amount} onChange={e=>setSplitForm(p=>({...p,amount:e.target.value}))} placeholder="0,00" />
+              <Input label={APP_I18N[lang].expenseForm.splitSecondAmount} t={t} type="number" step="0.01" value={splitForm.amount} onChange={e=>setSplitForm(p=>({...p,amount:e.target.value}))} placeholder="0,00" />
               {parseFloat(splitForm.amount)>0 && parseFloat(form.amount||form.installAmount)>0 && (
                 <div style={{ fontSize:12,fontWeight:700,color:t.textMuted,padding:"8px 12px",borderRadius:8,background:t.bg,display:"flex",justifyContent:"space-between" }}>
-                  <span>Total da compra</span>
+                  <span>{APP_I18N[lang].expenseForm.splitTotal}</span>
                   <span style={{ color:t.text }}>{fmt(parseFloat(form.amount||form.installAmount)+parseFloat(splitForm.amount))}</span>
                 </div>
               )}
@@ -2481,21 +2791,21 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
         <button type="button" onClick={()=>setIsRecurring(v=>!v)}
           style={{ width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${isRecurring?t.accent:t.border}`,background:isRecurring?t.accentSoft:"transparent",color:isRecurring?t.accent:t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.2s",textAlign:"left" }}>
           <span style={{ fontSize:16 }}>{isRecurring?"🔁":"🔁"}</span>
-          {isRecurring ? "Gasto recorrente ativado" : "Tornar recorrente?"}
-          <span style={{ marginLeft:"auto",fontSize:11,opacity:0.7 }}>{isRecurring?"▲ ocultar":"▼ configurar"}</span>
+          {isRecurring ? APP_I18N[lang].expenseForm.recurringActive : APP_I18N[lang].expenseForm.recurringToggle}
+          <span style={{ marginLeft:"auto",fontSize:11,opacity:0.7 }}>{isRecurring?APP_I18N[lang].expenseForm.splitHide:APP_I18N[lang].expenseForm.splitSetup}</span>
         </button>
         {isRecurring && (
           <div style={{ marginTop:12,padding:"14px 14px 2px",borderRadius:12,background:t.surface,border:`1px solid ${t.accent}33` }}>
-            <Select label="Frequência" t={t} value={recurringForm.frequency} onChange={e=>setR("frequency",e.target.value)}>
-              <option value="monthly">📅 Mensal</option>
-              <option value="weekly">📅 Semanal</option>
-              <option value="yearly">📅 Anual</option>
+            <Select label={APP_I18N[lang].expenseForm.recurringFreq} t={t} value={recurringForm.frequency} onChange={e=>setR("frequency",e.target.value)}>
+              <option value="monthly">📅 {APP_I18N[lang].recurring.freq.monthly}</option>
+              <option value="weekly">📅 {APP_I18N[lang].recurring.freq.weekly}</option>
+              <option value="yearly">📅 {APP_I18N[lang].recurring.freq.yearly}</option>
             </Select>
-            <Input label="Dia de vencimento" t={t} type="number" min={1} max={31} value={recurringForm.day_of_month} onChange={e=>setR("day_of_month",e.target.value)} />
+            <Input label={APP_I18N[lang].expenseForm.recurringDay} t={t} type="number" min={1} max={31} value={recurringForm.day_of_month} onChange={e=>setR("day_of_month",e.target.value)} />
             <div style={{ marginBottom:16 }}>
-              <label style={{ display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary }}>Tipo de valor</label>
+              <label style={{ display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary }}>{APP_I18N[lang].expenseForm.recurringType}</label>
               <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-                {[{v:"fixed",label:"💰 Fixo"},{v:"variable",label:"🔔 Variável"}].map(opt=>(
+                {[{v:"fixed",label:APP_I18N[lang].expenseForm.recurringFixed},{v:"variable",label:APP_I18N[lang].expenseForm.recurringVariable}].map(opt=>(
                   <button key={opt.v} type="button" onClick={()=>setR("amount_type",opt.v)}
                     style={{ padding:"9px 10px",borderRadius:10,border:`1.5px solid ${recurringForm.amount_type===opt.v?t.accent:t.border}`,background:recurringForm.amount_type===opt.v?t.accentSoft:"transparent",color:recurringForm.amount_type===opt.v?t.accent:t.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s" }}>
                     {opt.label}
@@ -2503,7 +2813,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
                 ))}
               </div>
             </div>
-            <DateInput label="Data de término (opcional)" t={t} value={recurringForm.end_date} onChange={e=>setR("end_date",e.target.value)} />
+            <DateInput label={APP_I18N[lang].expenseForm.recurringEndDate} t={t} value={recurringForm.end_date} onChange={e=>setR("end_date",e.target.value)} />
           </div>
         )}
       </div>
@@ -2635,29 +2945,29 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
         border: `1px solid ${isExp ? "rgba(248,113,113,0.2)" : "rgba(52,211,153,0.2)"}` }}>
         <span style={{ fontSize:22 }}>{isExp ? "💸" : "💰"}</span>
         <span style={{ fontSize:13,fontWeight:700,color: isExp ? "#f87171" : "#34d399" }}>
-          {isExp ? "Editar Gasto" : "Editar Receita"}
+          {isExp ? APP_I18N[lang].editModal.titleExpense : APP_I18N[lang].editModal.titleIncome}
         </span>
       </div>
 
-      <Input label="Descrição" t={t} value={form.description}
-        onChange={e=>set("description",e.target.value)} placeholder="Ex: iFood, Salário..." />
+      <Input label={APP_I18N[lang].editModal.description} t={t} value={form.description}
+        onChange={e=>set("description",e.target.value)} placeholder={APP_I18N[lang].expenseForm.descPlaceholder} />
 
       {isExp ? (<>
         {/* Same layout as ExpenseForm: Quem pagou → Tipo → Categoria → values */}
-        <MemberSelect label="Quem pagou?" t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)} familyMembers={familyMembers} />
-        <Select label="Tipo de pagamento" t={t} value={form.type} onChange={e=>set("type",e.target.value)}>
-          <option value="pix">💸 PIX</option>
-          <option value="debito">🏦 Débito</option>
-          <option value="credito">💳 Crédito</option>
-          <option value="dinheiro">💵 Dinheiro</option>
+        <MemberSelect label={APP_I18N[lang].editModal.paidBy} t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)} familyMembers={familyMembers} />
+        <Select label={APP_I18N[lang].editModal.type} t={t} value={form.type} onChange={e=>set("type",e.target.value)}>
+          <option value="pix">💸 {APP_I18N[lang].editModal.paymentTypes.pix}</option>
+          <option value="debito">🏦 {APP_I18N[lang].editModal.paymentTypes.debito}</option>
+          <option value="credito">💳 {APP_I18N[lang].editModal.paymentTypes.credito}</option>
+          <option value="dinheiro">💵 {APP_I18N[lang].editModal.paymentTypes.dinheiro}</option>
         </Select>
         {form.type === "credito" && cards.length > 0 && (
-          <Select label="Cartão" t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
-            <option value="">Sem cartão específico</option>
+          <Select label={APP_I18N[lang].editModal.card} t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
+            <option value="">{APP_I18N[lang].editModal.noCard}</option>
             {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
           </Select>
         )}
-        <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
+        <Select label={APP_I18N[lang].editModal.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
           {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
         </Select>
         {form.type === "credito" ? (() => {
@@ -2668,23 +2978,25 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
             const d = new Date(form.date + "T12:00:00");
             const last = new Date(d);
             last.setMonth(last.getMonth() + parcelas - 1);
-            return `Propagado de ${MONTHS[d.getMonth()]}/${d.getFullYear()} até ${MONTHS[last.getMonth()]}/${last.getFullYear()} · Total: ${fmt(totalVal)}`;
+            return APP_I18N[lang].expenseForm.installmentInfo(`${MONTHS[d.getMonth()]}/${d.getFullYear()}`, `${MONTHS[last.getMonth()]}/${last.getFullYear()}`, fmt(totalVal));
           })() : null;
           return (<>
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
               <div>
-                <Input label="Nº de parcelas" t={t} type="number" min={1} max={48}
+                <Input label={APP_I18N[lang].editModal.installments} t={t} type="number" min={1} max={48}
                   value={form.parcelas} onChange={e=>set("parcelas",e.target.value)} placeholder="Ex: 12" />
-                {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>Informe um valor maior que zero.</div>}
+                {(form.parcelas===""||parseInt(form.parcelas)<1)&&<div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>{APP_I18N[lang].common.noData}</div>}
               </div>
-              <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+              <DateInput label={APP_I18N[lang].editModal.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
             </div>
-            <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</div>
+            <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
+              {lang==="pt" ? <>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</> : <>⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.</>}
+            </div>
             <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
-              <Input label="Parcela (R$)" t={t} type="number" step="0.01"
+              <Input label={APP_I18N[lang].editModal.installmentAmt} t={t} type="number" step="0.01"
                 value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
               <div style={{ paddingTop:18,color:t.textMuted,fontSize:16,textAlign:"center",userSelect:"none" }}>↔</div>
-              <Input label="Total (R$)" t={t} type="number" step="0.01"
+              <Input label={APP_I18N[lang].editModal.totalAmt} t={t} type="number" step="0.01"
                 value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
             </div>
             {creditInfo && (
@@ -2695,26 +3007,26 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
           </>);
         })() : (
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
-            <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
+            <Input label={APP_I18N[lang].expenseForm.amount} t={t} type="number" step="0.01" value={form.amount}
               onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-            <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+            <DateInput label={APP_I18N[lang].editModal.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
         )}
       </>) : (<>
         {/* Income: Quem recebeu → Categoria → Valor + Data */}
-        <MemberSelect label="Quem recebeu?" t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)} familyMembers={familyMembers} />
-        <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value,set("source",e.target.value))}>
+        <MemberSelect label={APP_I18N[lang].editModal.receivedBy} t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)} familyMembers={familyMembers} />
+        <Select label={APP_I18N[lang].editModal.category} t={t} value={form.category} onChange={e=>set("category",e.target.value,set("source",e.target.value))}>
           {INCOME_SOURCES.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
         </Select>
-        <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount}
+        <Input label={APP_I18N[lang].expenseForm.amount} t={t} type="number" step="0.01" value={form.amount}
           onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
-        <DateInput label="Data" t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
+        <DateInput label={APP_I18N[lang].editModal.date} t={t} value={form.date} onChange={e=>set("date",e.target.value)} />
       </>)}
 
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
-        <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
+        <Btn t={t} variant="ghost" type="button" onClick={onClose}>{APP_I18N[lang].editModal.cancel}</Btn>
         <Btn t={t} type="button" onClick={handle} disabled={loading}>
-          {loading ? "Salvando..." : "💾 Salvar"}
+          {loading ? APP_I18N[lang].editModal.saving : `💾 ${APP_I18N[lang].editModal.save}`}
         </Btn>
       </div>
     </div>
@@ -2722,22 +3034,22 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
 }
 
 // ─── DATE GROUPING HELPERS ────────────────────────────────────────────────────
-const WEEK_DAYS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
-
-function formatDateHeader(iso) {
+function formatDateHeader(iso, lang = "pt") {
   if (!iso) return "";
   const [y, m, d] = iso.slice(0,10).split("-").map(Number);
   const date = new Date(y, m-1, d);
   const now = new Date();
   const todayD = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diff = Math.round((date - todayD) / 86400000);
-  if (diff === 0) return "Hoje";
-  if (diff === -1) return "Ontem";
-  if (diff === 1) return "Amanhã";
-  return `${WEEK_DAYS[date.getDay()]}, ${d} de ${MONTH_FULL[m-1]}`;
+  const tl = APP_I18N[lang].transactions;
+  const dayNames = APP_I18N[lang].calendar.days;
+  if (diff === 0) return tl.today;
+  if (diff === -1) return tl.yesterday;
+  if (diff === 1) return tl.tomorrow;
+  return `${dayNames[date.getDay()]}, ${d} ${MONTH_FULL[m-1]}`;
 }
 
-function groupByDate(items) {
+function groupByDate(items, lang = "pt") {
   const map = new Map();
   items.forEach(item => {
     const key = (item.date||"").slice(0,10);
@@ -2748,7 +3060,7 @@ function groupByDate(items) {
     .sort((a,b) => b[0].localeCompare(a[0]))
     .map(([date, its]) => ({
       date,
-      label: formatDateHeader(date),
+      label: formatDateHeader(date, lang),
       items: its,
       net: its.reduce((s,i) => s + (i._type==="income"?1:-1)*(parseFloat(i.amount)||0), 0),
     }));
@@ -2832,13 +3144,15 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
   // ── Edit modal state ──
   const [editItem, setEditItem] = useState(null);
 
+  const AL = APP_I18N[lang];
+
   // ── Window definitions ──
   const WINDOWS = [
-    { id: "1m",  label: "1 mês"   },
-    { id: "3m",  label: "3 meses" },
-    { id: "6m",  label: "6 meses" },
-    { id: "9m",  label: "9 meses" },
-    { id: "1y",  label: "1 ano"   },
+    { id: "1m",  label: AL.transactions.win1m },
+    { id: "3m",  label: AL.transactions.win3m },
+    { id: "6m",  label: AL.transactions.win6m },
+    { id: "9m",  label: AL.transactions.win9m },
+    { id: "1y",  label: AL.transactions.win1y },
   ];
 
   // Period header title & subtitle
@@ -2862,7 +3176,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
   const periodSubtitle = useMemo(() => {
     if (win === "1m") return null; // will show count
     const winMonths = win==="3m"?3:win==="6m"?6:win==="9m"?9:12;
-    return `ÚLTIMOS ${winMonths} MESES`;
+    return AL.transactions.lastMonths(winMonths);
   }, [win]);
 
   // Navigate anchor month
@@ -2969,7 +3283,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
   const dupCount = dupIds.size;
   const dupIdsArray = Array.from(dupIds);
 
-  const grouped = useMemo(() => groupByDate(filtered), [filtered]);
+  const grouped = useMemo(() => groupByDate(filtered, lang), [filtered, lang]);
 
   const hasActiveChipFilters = paymentFilter!=="all" || categoryFilter!=="all" || memberFilter!=="all";
 
@@ -3002,8 +3316,10 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
     const incIds = selArr.filter(id => all.find(i=>i.id===id&&i._type==="income"));
     const hasSplit = expIds.length > selArr.filter(id=>all.find(i=>i.id===id&&i._type==="expense")).length;
     openConfirm(
-      "Remover lançamentos",
-      `Remover ${selArr.length} lançamento(s) selecionado(s)?${hasSplit?" O par do pagamento dividido também será removido.":""}`,
+      AL.calendar.removeTitle,
+      lang === "pt"
+        ? `Remover ${selArr.length} lançamento(s) selecionado(s)?${hasSplit?" O par do pagamento dividido também será removido.":""}`
+        : `Remove ${selArr.length} selected transaction(s)?${hasSplit?" The split payment partner will also be removed.":""}`,
       () => {
         if (expIds.length) onDeleteAllExpenses(expIds);
         if (incIds.length) onDeleteAllIncomes(incIds);
@@ -3019,8 +3335,8 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
     const incIds = filtered.filter(i=>i._type==="income").map(i=>i.id);
     if (!filtered.length) return;
     openConfirm(
-      "Remover lançamentos filtrados",
-      `Remover ${filtered.length} lançamento(s) filtrado(s)?`,
+      AL.calendar.removeTitle,
+      AL.calendar.removeConfirm(filtered.length),
       () => {
         if (expIds.length) onDeleteAllExpenses(expIds);
         if (incIds.length) onDeleteAllIncomes(incIds);
@@ -3059,7 +3375,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 0 14px", gap:10 }}>
           <button onClick={exitSelMode}
             style={{ background:"none", border:"none", color:t.accent, fontSize:14, fontWeight:600, padding:"4px 0", cursor:"pointer" }}>
-            Cancelar
+            {AL.common.cancel}
           </button>
           <div style={{ textAlign:"center" }}>
             <div style={{ fontSize:15, fontWeight:700, color:t.text }}>{selectedIds.size} selecionado{selectedIds.size!==1?"s":""}</div>
@@ -3067,7 +3383,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
           </div>
           <button onClick={isAllSel?exitSelMode:selectAll}
             style={{ background:"none", border:"none", color:t.accent, fontSize:14, fontWeight:600, padding:"4px 0", cursor:"pointer" }}>
-            {isAllSel ? "Nenhum" : "Todos"}
+            {isAllSel ? AL.transactions.deselectAll : AL.transactions.selectAll}
           </button>
         </div>
       ) : (
@@ -3105,7 +3421,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
               display:"flex", alignItems:"center", gap:8, padding:"0 14px", color:t.textMuted, fontSize:13, position:"relative" }}>
               <Icon name="search" size={14} color={t.textMuted} />
               <input value={search} onChange={e=>setSearch(e.target.value)}
-                placeholder="Buscar lançamento…"
+                placeholder={AL.transactions.searchPlaceholder}
                 style={{ flex:1, background:"transparent", border:"none", outline:"none", color:t.text, fontSize:13 }} />
               {search && (
                 <button onClick={()=>setSearch("")}
@@ -3151,7 +3467,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                       <rect x="2" y="2" width="12" height="12" rx="3" stroke={t.text} strokeWidth="1.3"/>
                       <path d="M5 8.2l2.2 2.2L11.2 6" stroke={t.text} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Selecionar lançamentos
+                    {AL.transactions.selectTransactions}
                   </button>
                   <div style={{ height:0.5, background:t.border, margin:"4px 10px" }} />
                   <button onClick={handleDeleteFiltered}
@@ -3160,7 +3476,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF6B6B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Apagar filtrados…
+                    {AL.transactions.deleteFiltered}
                   </button>
                 </div>
               )}
@@ -3190,8 +3506,8 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                 background: billingMode!=="purchase"?"rgba(124,92,255,0.14)":t.surface,
                 border: `1px solid ${billingMode!=="purchase"?"rgba(124,92,255,0.4)":t.border}`,
                 color: billingMode!=="purchase"?"#C4B3FF":t.text, outline:"none" }}>
-              <option value="purchase">📅 Por compra</option>
-              <option value="billing">💳 Por fatura</option>
+              <option value="purchase">{AL.transactions.byPurchase}</option>
+              <option value="billing">{AL.transactions.byBilling}</option>
             </select>
             {/* Tipo */}
             {filter !== "income" && (
@@ -3201,11 +3517,11 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                   background: paymentFilter!=="all"?"rgba(124,92,255,0.14)":t.surface,
                   border: `1px solid ${paymentFilter!=="all"?"rgba(124,92,255,0.4)":t.border}`,
                   color: paymentFilter!=="all"?"#C4B3FF":t.text, outline:"none" }}>
-                <option value="all">📁 Tipo</option>
-                <option value="pix">💸 PIX</option>
-                <option value="debito">🏦 Débito</option>
-                <option value="credito">💳 Crédito</option>
-                <option value="dinheiro">💵 Dinheiro</option>
+                <option value="all">{AL.transactions.filterType}</option>
+                <option value="pix">💸 {AL.expenseForm.paymentTypes.pix}</option>
+                <option value="debito">🏦 {AL.expenseForm.paymentTypes.debito}</option>
+                <option value="credito">💳 {AL.expenseForm.paymentTypes.credito}</option>
+                <option value="dinheiro">💵 {AL.expenseForm.paymentTypes.dinheiro}</option>
               </select>
             )}
             {/* Categoria */}
@@ -3216,7 +3532,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                   background: categoryFilter!=="all"?"rgba(124,92,255,0.14)":t.surface,
                   border: `1px solid ${categoryFilter!=="all"?"rgba(124,92,255,0.4)":t.border}`,
                   color: categoryFilter!=="all"?"#C4B3FF":t.text, outline:"none" }}>
-                <option value="all">📂 Categoria</option>
+                <option value="all">{AL.transactions.filterCategory}</option>
                 {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
               </select>
             )}
@@ -3228,7 +3544,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                   background: memberFilter!=="all"?"rgba(124,92,255,0.14)":t.surface,
                   border: `1px solid ${memberFilter!=="all"?"rgba(124,92,255,0.4)":t.border}`,
                   color: memberFilter!=="all"?"#C4B3FF":t.text, outline:"none" }}>
-                <option value="all">👤 Pessoa</option>
+                <option value="all">{AL.transactions.filterPerson}</option>
                 {memberOptions.map(m=><option key={m} value={m}>{m}</option>)}
               </select>
             )}
@@ -3238,7 +3554,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                 style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 11px", borderRadius:999,
                   fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap",
                   background:"rgba(255,107,107,0.12)", border:"1px solid rgba(255,107,107,0.35)", color:"#FF9B9B" }}>
-                ✕ Limpar
+                {AL.transactions.clearFilters}
               </button>
             )}
           </div>
@@ -3251,23 +3567,23 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
           <span style={{ fontSize:20,flexShrink:0,marginTop:1 }}>⚠️</span>
           <div style={{ flex:1,minWidth:200 }}>
             <div style={{ fontSize:13,fontWeight:700,color:t.warning,marginBottom:3 }}>
-              {dupCount} lançamento{dupCount>1?"s":""} duplicado{dupCount>1?"s":""} detectado{dupCount>1?"s":""}
+              {AL.transactions.dupAlert(dupCount)}
             </div>
             <div style={{ fontSize:12,color:t.textMuted,lineHeight:1.5 }}>
-              Itens com mesmo nome, categoria e valor no mesmo dia. Os mais recentes estão marcados com 🔁.
+              {AL.transactions.dupDesc}
             </div>
           </div>
           <div style={{ display:"flex",gap:8,flexShrink:0,flexWrap:"wrap" }}>
             <button onClick={()=>setShowDupsOnly(v=>!v)}
               style={{ padding:"7px 14px",borderRadius:10,border:"1px solid rgba(217,119,6,0.4)",background:showDupsOnly?"rgba(217,119,6,0.15)":"transparent",color:t.warning,fontSize:12,fontWeight:700,cursor:"pointer" }}>
-              {showDupsOnly ? "Ver todos" : "Ver duplicatas"}
+              {showDupsOnly ? AL.transactions.showAll : AL.transactions.showDuplicates}
             </button>
             <button onClick={()=>{
               const expDups = dupIdsArray.filter(id=>all.find(i=>i.id===id&&i._type==="expense"));
               const incDups = dupIdsArray.filter(id=>all.find(i=>i.id===id&&i._type==="income"));
               openConfirm(
-                "Remover duplicatas",
-                `Remover ${dupCount} lançamento(s) duplicado(s)? Esta ação não pode ser desfeita.`,
+                AL.transactions.removeDuplicates,
+                AL.calendar.removeConfirm(dupCount),
                 () => {
                   if(expDups.length) onDeleteAllExpenses(expDups);
                   if(incDups.length) onDeleteAllIncomes(incDups);
@@ -3276,7 +3592,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
               );
             }}
               style={{ padding:"7px 14px",borderRadius:10,border:"1px solid rgba(217,119,6,0.4)",background:"rgba(217,119,6,0.12)",color:t.warning,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}>
-              <Icon name="trash" size={13} color={t.warning} />Remover todos
+              <Icon name="trash" size={13} color={t.warning} />{AL.transactions.removeAll}
             </button>
           </div>
         </div>
@@ -3286,16 +3602,16 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
       <div style={{ display:"grid", gridTemplateColumns: filter==="income"?"1fr":filter==="expense"?"1fr":"1fr 1fr", gap:10, marginBottom:20 }}>
         {filter !== "income" && (
           <div style={{ background:t.dangerSoft, border:`1px solid ${t.danger}33`, borderRadius:14, padding:"14px 18px" }}>
-            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>GASTOS</div>
+            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>{AL.transactions.expensesHeader}</div>
             <div style={{ fontSize:20,fontWeight:800,color:t.danger }}>{fmt(totalExp)}</div>
-            <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{filtered.filter(i=>i._type==="expense").length} lançamento{filtered.filter(i=>i._type==="expense").length!==1?"s":""}</div>
+            <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{AL.transactions.transactionCount(filtered.filter(i=>i._type==="expense").length)}</div>
           </div>
         )}
         {filter !== "expense" && (
           <div style={{ background:t.successSoft, border:`1px solid ${t.success}33`, borderRadius:14, padding:"14px 18px" }}>
-            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>RECEITAS</div>
+            <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,marginBottom:4,letterSpacing:"0.04em" }}>{AL.transactions.incomesHeader}</div>
             <div style={{ fontSize:20,fontWeight:800,color:t.success }}>{fmt(totalInc)}</div>
-            <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{filtered.filter(i=>i._type==="income").length} lançamento{filtered.filter(i=>i._type==="income").length!==1?"s":""}</div>
+            <div style={{ fontSize:11,color:t.textMuted,marginTop:3 }}>{AL.transactions.transactionCount(filtered.filter(i=>i._type==="income").length)}</div>
           </div>
         )}
       </div>
@@ -3306,13 +3622,13 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
           debouncedSearch ? (
             <div style={{ textAlign:"center", padding:"48px 20px", color:t.textMuted }}>
               <Icon name="search" size={40} color={t.border} style={{ marginBottom:12 }} />
-              <div style={{ fontSize:15, fontWeight:600, color:t.textSecondary, marginBottom:4 }}>Nenhum resultado</div>
-              <div style={{ fontSize:13, marginBottom:16 }}>Nada encontrado para "{debouncedSearch}"</div>
-              <button onClick={()=>setSearch("")} style={{ padding:"8px 20px", borderRadius:10, border:`1px solid ${t.border}`, background:t.surface, color:t.text, fontSize:13, fontWeight:600, cursor:"pointer" }}>Limpar busca</button>
+              <div style={{ fontSize:15, fontWeight:600, color:t.textSecondary, marginBottom:4 }}>{AL.transactions.noResults}</div>
+              <div style={{ fontSize:13, marginBottom:16 }}>{AL.transactions.noResultsSearch(debouncedSearch)}</div>
+              <button onClick={()=>setSearch("")} style={{ padding:"8px 20px", borderRadius:10, border:`1px solid ${t.border}`, background:t.surface, color:t.text, fontSize:13, fontWeight:600, cursor:"pointer" }}>{AL.transactions.clearSearch}</button>
             </div>
           ) : (
             <div style={{ textAlign:"center", padding:"40px 0", color:t.textMuted, fontSize:14 }}>
-              {showDupsOnly ? "Nenhuma duplicata encontrada neste período" : "Nenhum lançamento encontrado"}
+              {showDupsOnly ? AL.transactions.noDuplicates : AL.transactions.noData}
             </div>
           )
         ) : grouped.map(group => (
@@ -3389,19 +3705,20 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                   </span>
                   {isDup && (
                     <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(217,119,6,0.15)",color:t.warning,border:"1px solid rgba(217,119,6,0.3)",flexShrink:0 }}>
-                      🔁 duplicata
+                      {AL.transactions.dupBadge}
                     </span>
                   )}
                   {isExp && item.split_group_id && (
                     <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"rgba(59,130,246,0.12)",color:"#60a5fa",border:"1px solid rgba(59,130,246,0.3)",flexShrink:0 }}>
-                      ✂️ dividido
+                      {AL.transactions.splitBadge}
                     </span>
                   )}
                 </div>
                 <div style={{ fontSize:11, color:t.textMuted, marginTop:2, lineHeight:1.4 }}>
                   {item.user_label} · {(item.date||"").slice(8,10)+"/"+(item.date||"").slice(5,7)+"/"+(item.date||"").slice(2,4)}
                   {isExp && (() => {
-                    const typeLabel = item.type==="pix"?"PIX":item.type==="debito"?"Débito":item.type==="dinheiro"?"Dinheiro":"Crédito";
+                    const _pt3 = AL.expenseForm.paymentTypes;
+                    const typeLabel = item.type==="pix"?_pt3.pix:item.type==="debito"?_pt3.debito:item.type==="dinheiro"?_pt3.dinheiro:_pt3.credito;
                     const p = parseInt(item.parcelas)||1;
                     const catLabel = cat?.label || "";
                     if (item.type==="credito" && p>1) {
@@ -3412,17 +3729,17 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                       const thisD  = new Date((item.date||"").slice(0,10)+"T12:00:00");
                       const diffM  = (thisD.getFullYear()-startD.getFullYear())*12+(thisD.getMonth()-startD.getMonth());
                       const nthInstall = Math.max(1, Math.min(p, diffM+1));
-                      return ` · Crédito ${nthInstall} de ${p}${catLabel?" · "+catLabel:""}`;
+                      return ` · ${AL.transactions.installment(nthInstall, p)}${catLabel?" · "+catLabel:""}`;
                     }
                     return ` · ${typeLabel}${catLabel?" · "+catLabel:""}`;
                   })()}
-                  {isDup && <span style={{ color:t.warning, fontWeight:600 }}> · sugerido para remoção</span>}
+                  {isDup && <span style={{ color:t.warning, fontWeight:600 }}> · {AL.transactions.suggestedRemoval}</span>}
                   {billingMode==="billing" && isExp && item.type==="credito" && (() => {
                     const card = cards.find(c=>c.id===item.card_id);
                     const cardPeriods = billingPeriods.filter(p=>p.card_id===item.card_id);
                     const bm = getBillingMonth(item.date, cardPeriods, card?.closing_day??28);
                     if (!bm) return null;
-                    return <span style={{ color:bm.fromPeriod?t.accent:t.textMuted, fontWeight:bm.fromPeriod?700:500, borderBottom:bm.fromPeriod?"none":`1px dashed ${t.textMuted}` }}> · → Fatura {MONTH_FULL[bm.month-1]}/{bm.year}</span>;
+                    return <span style={{ color:bm.fromPeriod?t.accent:t.textMuted, fontWeight:bm.fromPeriod?700:500, borderBottom:bm.fromPeriod?"none":`1px dashed ${t.textMuted}` }}> · {AL.transactions.billingMonth(MONTH_FULL[bm.month-1], bm.year)}</span>;
                   })()}
                 </div>
               </div>
@@ -3435,7 +3752,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
                 {!selMode && <>
                   <button
                     onClick={e=>{ e.stopPropagation(); setEditItem(item); }}
-                    title="Editar"
+                    title={APP_I18N[lang].common.edit}
                     style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:13,padding:"4px 6px",borderRadius:6 }}
                     onMouseEnter={e=>e.currentTarget.style.color=t.accent}
                     onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}>
@@ -3469,7 +3786,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Excluir {selectedIds.size}
+            {AL.transactions.removeSelected(selectedIds.size)}
           </button>
         </div>
       )}
@@ -3481,10 +3798,10 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
           <div onClick={e=>e.stopPropagation()}
             style={{ background:t.glassModal,border:`1.5px solid ${t.glassBorder}`,borderRadius:24,padding:"24px 20px 20px",width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",boxShadow:t.shadow,animation:"modalIn 0.25s ease" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />Editar Lançamento</h3>
+              <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}><Icon name="edit" size={17} color={t.accent} />{AL.transactions.editTitle}</h3>
               <button onClick={()=>setEditItem(null)} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,lineHeight:1,padding:"2px 8px",borderRadius:8 }}>×</button>
             </div>
-            <EditModal t={t} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers} cards={cards}
+            <EditModal t={t} lang={lang} item={editItem} onClose={()=>setEditItem(null)} familyMembers={familyMembers} cards={cards}
               onSave={async(payload)=>{ if(payload._type==="expense") await onEditExpense(payload); else await onEditIncome(payload); setEditItem(null); }} />
           </div>
         </div>
@@ -3496,6 +3813,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
         message={confirmOpts?.message}
         onConfirm={() => { confirmOpts?.onConfirm(); closeConfirm(); }}
         onCancel={closeConfirm}
+        lang={lang}
         t={t}
       />
     </div>
@@ -3581,8 +3899,8 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
   const rDeleteSelected = () => {
     const arr = Array.from(rSelectedIds);
     setRConfirmOpts({
-      title: "Remover recorrentes",
-      message: `Remover ${arr.length} regra(s) recorrente(s)? Os lançamentos já feitos não serão afetados.`,
+      title: `${APP_I18N[lang].common.delete} ${APP_I18N[lang].recurring.title}`,
+      message: APP_I18N[lang].recurring.deleteConfirm(arr.length),
       onConfirm: async () => {
         await Promise.all(arr.map(id => { const rule = rules.find(r=>r.id===id); return rule ? deleteRule(rule) : Promise.resolve(); }));
         rExitSel();
@@ -3604,7 +3922,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
       ]);
       setRules(r || []);
       setReminders(rem || []);
-    } catch (e) { addToast("Erro ao carregar: " + e.message, "error"); }
+    } catch (e) { addToast((lang === "pt" ? "Erro ao carregar: " : "Error loading: ") + e.message, "error"); }
     finally { setLoading(false); }
   }, [family, isDemo, curMonth, curYear, addToast]);
 
@@ -3648,7 +3966,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
   const confirmRule = async (rule) => {
     const rem = reminders.find(r => r.recurring_id === rule.id);
     const amt = parseFloat(pendingAmt[rule.id] ?? rem?.amount ?? (rule.amount_type === "fixed" ? rule.amount : ""));
-    if (!amt || amt <= 0) { addToast("Informe um valor válido", "error"); return; }
+    if (!amt || amt <= 0) { addToast(APP_I18N[lang].toasts.fillAmount, "error"); return; }
     setConfirmingId(rule.id);
     const day = rule.day_of_month || 1;
     const dateStr = `${curYear}-${String(curMonth).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
@@ -3693,8 +4011,8 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
         });
         if (created?.[0]) setReminders(p => [...p, created[0]]);
       }
-      addToast(existing ? `${rule.description} — já registrado ✓` : `${rule.description} — ${fmt(amt)} lançado!`, "success");
-    } catch (e) { addToast("Erro: " + e.message, "error"); }
+      addToast(`${rule.description} — ${existing ? (lang === "pt" ? "já registrado ✓" : "already logged ✓") : `${fmt(amt)} ${lang === "pt" ? "lançado!" : "logged!"}`}`, "success");
+    } catch (e) { addToast((lang === "pt" ? "Erro: " : "Error: ") + e.message, "error"); }
     finally { setConfirmingId(null); }
   };
 
@@ -3716,8 +4034,8 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
         });
         if (created?.[0]) setReminders(p => [...p, created[0]]);
       }
-      addToast("Lembrete ignorado para este mês", "info");
-    } catch (e) { addToast("Erro: " + e.message, "error"); }
+      addToast(APP_I18N[lang].recurring.skipMonth, "info");
+    } catch (e) { addToast(APP_I18N[lang].toasts.errorGeneric(e.message), "error"); }
   };
 
   const toggleActive = async (rule) => {
@@ -3728,8 +4046,8 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
         headers: { "Prefer": "return=minimal" },
       });
       setRules(p => p.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
-      addToast(rule.active ? "Recorrente pausado" : "Recorrente reativado", "info");
-    } catch (e) { addToast("Erro: " + e.message, "error"); }
+      addToast(rule.active ? APP_I18N[lang].recurring.inactive : APP_I18N[lang].recurring.active, "info");
+    } catch (e) { addToast(APP_I18N[lang].toasts.errorGeneric(e.message), "error"); }
   };
 
   const deleteRule = async (rule) => {
@@ -3737,8 +4055,8 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
       await supabaseFetch(`/recurring_expenses?id=eq.${rule.id}`, { method: "DELETE" });
       setRules(p => p.filter(r => r.id !== rule.id));
       setReminders(p => p.filter(r => r.recurring_id !== rule.id));
-      addToast("Recorrente removido", "info");
-    } catch (e) { addToast("Erro: " + e.message, "error"); }
+      addToast(APP_I18N[lang].toasts.recurringDeleted, "info");
+    } catch (e) { addToast(APP_I18N[lang].toasts.errorGeneric(e.message), "error"); }
   };
 
 
@@ -3756,7 +4074,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
   });
   const confirmed = reminders.filter(r => r.status === "confirmed");
 
-  if (loading) return <div style={{ textAlign:"center",padding:"48px 0",color:t.textMuted,fontSize:14 }}>Carregando...</div>;
+  if (loading) return <div style={{ textAlign:"center",padding:"48px 0",color:t.textMuted,fontSize:14 }}>{APP_I18N[lang].common.loading}</div>;
 
   return (
     <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
@@ -3765,7 +4083,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
       {pending.length > 0 && (
         <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:20,padding:20 }}>
           <div style={{ fontSize:14,fontWeight:700,color:t.warning,marginBottom:14,display:"flex",alignItems:"center",gap:8 }}>
-            🔔 {pending.length} lembrete{pending.length>1?"s":""} aguardando valor — {MONTH_FULL[today.getMonth()]}
+            {APP_I18N[lang].recurring.pendingTitle(pending.length, MONTH_FULL[today.getMonth()])}
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
             {pending.map(rule => {
@@ -3779,9 +4097,9 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13,fontWeight:700,color:t.text }}>{rule.description}</div>
                       <div style={{ fontSize:11,color:t.textMuted }}>
-                        {cat?.label} · dia {rule.day_of_month} · {rule.user_label}
+                        {cat?.label} · {APP_I18N[lang].recurring.pendingDay(rule.day_of_month)} · {rule.user_label}
                         {isFixed && <span style={{ color:t.accent,fontWeight:600 }}> · {fmt(rule.amount)}</span>}
-                        {!isFixed && <span style={{ color:t.warning,fontWeight:600 }}> · valor variável</span>}
+                        {!isFixed && <span style={{ color:t.warning,fontWeight:600 }}> · {APP_I18N[lang].recurring.variableAmount}</span>}
                       </div>
                     </div>
                   </div>
@@ -3796,7 +4114,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
                       style={{ background:t.success,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap",opacity:isConfirming?0.7:1 }}>
                       {isConfirming ? "..." : "✓"}
                     </button>
-                    <button onClick={() => skipRule(rule)} title="Ignorar este mês"
+                    <button onClick={() => skipRule(rule)} title={APP_I18N[lang].recurring.skipMonth}
                       style={{ background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"9px 10px",cursor:"pointer",color:t.textMuted,fontSize:12 }}>
                       ✕
                     </button>
@@ -3812,7 +4130,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
       {confirmed.length > 0 && (
         <div style={{ background:t.successSoft,border:`1px solid ${t.success}33`,borderRadius:16,padding:"14px 18px" }}>
           <div style={{ fontSize:13,fontWeight:700,color:t.success,marginBottom:10 }}>
-            ✅ {confirmed.length} lançado{confirmed.length>1?"s":""} em {MONTH_FULL[today.getMonth()]}
+            {APP_I18N[lang].recurring.logged(confirmed.length, MONTH_FULL[today.getMonth()])}
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
             {confirmed.map(rem => {
@@ -3829,7 +4147,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
             })}
           </div>
           <div style={{ marginTop:12,paddingTop:10,borderTop:`1px solid ${t.success}44`,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-            <span style={{ fontSize:13,fontWeight:700,color:t.success }}>Total lançado</span>
+            <span style={{ fontSize:13,fontWeight:700,color:t.success }}>{APP_I18N[lang].recurring.totalLogged}</span>
             <span style={{ fontSize:16,fontWeight:800,color:t.success }}>
               {fmt(confirmed.reduce((s,r)=>s+(parseFloat(r.amount)||0),0))}
             </span>
@@ -3840,27 +4158,29 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
       {/* ── Rules list ── */}
       <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,borderRadius:20,padding:20 }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
-          <span style={{ fontSize:14,fontWeight:700,color:t.text }}>📋 Gastos recorrentes cadastrados</span>
+          <span style={{ fontSize:14,fontWeight:700,color:t.text }}>{APP_I18N[lang].recurring.registeredTitle}</span>
           {!isDemo && (
             <button onClick={() => { setEditRule(null); setShowForm(true); }}
               style={{ background:t.accent,border:"none",borderRadius:10,padding:"7px 14px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
-              + Novo
+              {APP_I18N[lang].recurring.newBtn}
             </button>
           )}
         </div>
 
         {rules.length === 0 ? (
           <div style={{ textAlign:"center",padding:"32px 0",color:t.textMuted,fontSize:13,lineHeight:1.8 }}>
-            Nenhum gasto recorrente cadastrado ainda.<br/>
-            Clique em <strong style={{ color:t.accent }}>+ Novo</strong> para adicionar aluguel, contas fixas, assinaturas...
+            {APP_I18N[lang].recurring.noData}<br/>
+            {APP_I18N[lang].recurring.newBtn}
           </div>
         ) : (
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {rules.map(rule => {
               const cat = CATEGORIES.find(c => c.id === rule.category);
               const hasReminder = reminders.find(r => r.recurring_id === rule.id);
-              const freqLabel = rule.frequency==="monthly" ? "Mensal" : rule.frequency==="weekly" ? "Semanal" : "Anual";
-              const typeLabel = rule.type==="pix" ? "PIX" : rule.type==="debito" ? "Débito" : rule.type==="dinheiro" ? "Dinheiro" : "Crédito";
+              const _freq = APP_I18N[lang].recurring.freq;
+              const freqLabel = rule.frequency==="monthly" ? _freq.monthly : rule.frequency==="weekly" ? _freq.weekly : rule.frequency==="biweekly" ? _freq.biweekly : _freq.yearly;
+              const _rpt = APP_I18N[lang].expenseForm.paymentTypes;
+              const typeLabel = rule.type==="pix" ? _rpt.pix : rule.type==="debito" ? _rpt.debito : rule.type==="dinheiro" ? _rpt.dinheiro : _rpt.credito;
               const rIsSel = rSelectedIds.has(rule.id);
               const rIsLp = rLpId === rule.id;
               return (
@@ -3891,7 +4211,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
                       {rule.description}
                     </div>
                     <div style={{ fontSize:11,color:t.textMuted,marginTop:2 }}>
-                      {freqLabel} · dia {rule.day_of_month}
+                      {freqLabel} · {APP_I18N[lang].recurring.pendingDay(rule.day_of_month)}
                       {rule.frequency==="yearly" && ` de ${MONTHS[rule.month_of_year-1]}`}
                       {" · "}{cat?.label}{" · "}{typeLabel}{" · "}{rule.user_label}
                     </div>
@@ -3899,16 +4219,16 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
                   <div style={{ flexShrink:0,textAlign:"right" }}>
                     {rule.amount_type === "fixed"
                       ? <div style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(rule.amount)}</div>
-                      : <div style={{ fontSize:11,color:t.warning,fontWeight:600 }}>Variável</div>
+                      : <div style={{ fontSize:11,color:t.warning,fontWeight:600 }}>{APP_I18N[lang].recurring.variableAmount}</div>
                     }
                     {hasReminder && (
                       <div style={{ fontSize:10,color:hasReminder.status==="confirmed"?t.success:t.warning,fontWeight:600,marginTop:2 }}>
-                        {hasReminder.status==="confirmed" ? "✅ lançado" : hasReminder.status==="skipped" ? "⏭ ignorado" : "🔔 pendente"}
+                        {hasReminder.status==="confirmed" ? APP_I18N[lang].recurring.statusLogged : hasReminder.status==="skipped" ? APP_I18N[lang].recurring.statusSkipped : APP_I18N[lang].recurring.statusPending}
                       </div>
                     )}
                   </div>
                   <div style={{ display:"flex",gap:4,flexShrink:0 }}>
-                    <button onClick={() => { setEditRule(rule); setShowForm(true); }} title="Editar"
+                    <button onClick={() => { setEditRule(rule); setShowForm(true); }} title={APP_I18N[lang].common.edit}
                       style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:8,width:30,height:30,cursor:"pointer",color:t.textMuted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}
                       onMouseEnter={e=>e.currentTarget.style.color=t.accent}
                       onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
@@ -3927,10 +4247,10 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
       {/* Floating delete bar — RecurringView */}
       {rSelMode && rSelectedIds.size > 0 && (
         <div style={{ position:"fixed",bottom:"calc(64px + env(safe-area-inset-bottom) + 10px)",left:20,right:20,zIndex:200,padding:"10px 12px",borderRadius:18,background:"rgba(20,14,36,0.92)",backdropFilter:"blur(22px)",border:`1px solid rgba(255,255,255,0.1)`,display:"flex",alignItems:"center",gap:10,boxShadow:"0 20px 40px rgba(0,0,0,0.5)" }}>
-          <button onClick={rExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>Cancelar</button>
+          <button onClick={rExitSel} style={{ padding:"0 14px",height:40,borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)",fontSize:13,fontWeight:600,cursor:"pointer" }}>{APP_I18N[lang].common.cancel}</button>
           <button onClick={rDeleteSelected} style={{ flex:1,height:40,borderRadius:12,background:"rgba(255,107,107,0.18)",border:"1px solid rgba(255,107,107,0.35)",color:"#FF9B9B",fontSize:13.5,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4l.5 9a1 1 0 001 1h3a1 1 0 001-1L11 4" stroke="#FF9B9B" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Excluir {rSelectedIds.size}
+            {APP_I18N[lang].transactions.removeSelected(rSelectedIds.size)}
           </button>
         </div>
       )}
@@ -3938,7 +4258,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
       {/* ── Form modal (create / edit) ── */}
       {showForm && (
         <RecurringForm
-          t={t} rule={editRule} family={family} user={user}
+          t={t} lang={lang} rule={editRule} family={family} user={user}
           familyMembers={familyMembers} addToast={addToast}
           onClose={() => { setShowForm(false); setEditRule(null); }}
           onSaved={(saved, isEdit) => {
@@ -3955,6 +4275,7 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
         message={rConfirmOpts?.message}
         onConfirm={() => { rConfirmOpts?.onConfirm(); setRConfirmOpts(null); }}
         onCancel={() => setRConfirmOpts(null)}
+        lang={lang}
         t={t}
       />
     </div>
@@ -3962,8 +4283,9 @@ function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expense
 }
 
 // ─── RECURRING FORM ───────────────────────────────────────────────────────────
-function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose, onSaved }) {
+function RecurringForm({ t, lang = "pt", rule, family, user, familyMembers, addToast, onClose, onSaved }) {
   const isEdit = !!rule;
+  const _rfi18n = APP_I18N[lang];
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     description:   rule?.description   || "",
@@ -3981,10 +4303,10 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handle = async () => {
-    if (!form.description.trim()) { addToast("Informe a descrição", "error"); return; }
-    if (!form.category) { addToast("Selecione uma categoria", "error"); return; }
+    if (!form.description.trim()) { addToast(APP_I18N[lang].toasts.fillDescription, "error"); return; }
+    if (!form.category) { addToast(APP_I18N[lang].toasts.selectCategory, "error"); return; }
     if (form.amount_type === "fixed" && (!form.amount || parseFloat(form.amount) <= 0)) {
-      addToast("Informe o valor", "error"); return;
+      addToast(APP_I18N[lang].toasts.fillAmount, "error"); return;
     }
     setSaving(true);
     const payload = {
@@ -4009,7 +4331,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
           headers: { "Prefer": "return=minimal" },
         });
         onSaved({ ...rule, ...payload }, true);
-        addToast("Recorrente atualizado!", "success");
+        addToast(_rfi18n.toasts.recurringUpdated, "success");
       } else {
         const rows = await supabaseFetch("/recurring_expenses", {
           method: "POST",
@@ -4017,9 +4339,9 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
           headers: { "Prefer": "return=representation" },
         });
         onSaved(rows[0], false);
-        addToast("Recorrente criado!", "success");
+        addToast(_rfi18n.toasts.recurringCreatedRule, "success");
       }
-    } catch (e) { addToast("Erro: " + e.message, "error"); setSaving(false); }
+    } catch (e) { addToast(APP_I18N[lang].toasts.errorGeneric(e.message), "error"); setSaving(false); }
   };
 
   return (
@@ -4031,47 +4353,47 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
           <h3 style={{ margin:0,fontSize:17,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>
             <span style={{ display:"flex",alignItems:"center",gap:8 }}>
               <Icon name={isEdit?"edit":"repeat"} size={17} color={t.accent} />
-              {isEdit ? "Editar Recorrente" : "Novo Recorrente"}
+              {isEdit ? _rfi18n.recurring.editTitle : _rfi18n.recurring.newTitle}
             </span>
           </h3>
           <button onClick={onClose} style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,fontSize:22,padding:"2px 8px" }}>×</button>
         </div>
 
-        <Input label="Descrição" t={t} value={form.description} onChange={e=>set("description",e.target.value)} placeholder="Ex: Conta de Luz, Netflix, Aluguel..." />
+        <Input label={_rfi18n.common.description} t={t} value={form.description} onChange={e=>set("description",e.target.value)} placeholder={_rfi18n.recurring.descPlaceholder} />
 
         {/* Who pays */}
-        <Select label="Quem paga?" t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)}>
+        <Select label={_rfi18n.recurring.who} t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)}>
           {familyMembers.length > 0
             ? familyMembers.map(m => {
                 const name = [m.first_name, m.last_name].filter(Boolean).join(" ") || m.email;
                 return <option key={m.user_id} value={name}>{name}</option>;
               })
-            : <option value="Você">Você</option>
+            : <option value="Você">{_rfi18n.recurring.you}</option>
           }
         </Select>
 
-        <Select label="Tipo de pagamento" t={t} value={form.type} onChange={e=>set("type",e.target.value)}>
-          <option value="pix">💸 PIX</option>
-          <option value="debito">🏦 Débito</option>
-          <option value="credito">💳 Crédito</option>
-          <option value="dinheiro">💵 Dinheiro</option>
+        <Select label={_rfi18n.recurring.type} t={t} value={form.type} onChange={e=>set("type",e.target.value)}>
+          <option value="pix">💸 {_rfi18n.expenseForm.paymentTypes.pix}</option>
+          <option value="debito">🏦 {_rfi18n.expenseForm.paymentTypes.debito}</option>
+          <option value="credito">💳 {_rfi18n.expenseForm.paymentTypes.credito}</option>
+          <option value="dinheiro">💵 {_rfi18n.expenseForm.paymentTypes.dinheiro}</option>
         </Select>
 
-        <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
-          <option value="">Selecione...</option>
+        <Select label={_rfi18n.common.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
+          <option value="">{_rfi18n.common.selectDots}</option>
           {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
         </Select>
 
-        <Select label="Frequência" t={t} value={form.frequency} onChange={e=>set("frequency",e.target.value)}>
-          <option value="monthly">📅 Mensal</option>
-          <option value="weekly">📅 Semanal</option>
-          <option value="yearly">📅 Anual</option>
+        <Select label={_rfi18n.recurring.frequency} t={t} value={form.frequency} onChange={e=>set("frequency",e.target.value)}>
+          <option value="monthly">📅 {_rfi18n.recurring.freq.monthly}</option>
+          <option value="weekly">📅 {_rfi18n.recurring.freq.weekly}</option>
+          <option value="yearly">📅 {_rfi18n.recurring.freq.yearly}</option>
         </Select>
 
         <div style={{ display:"grid",gridTemplateColumns: form.frequency==="yearly" ? "1fr 1fr" : "1fr",gap:12 }}>
-          <Input label="Dia de vencimento" t={t} type="number" min={1} max={31} value={form.day_of_month} onChange={e=>set("day_of_month",e.target.value)} />
+          <Input label={_rfi18n.recurring.dayOfMonth} t={t} type="number" min={1} max={31} value={form.day_of_month} onChange={e=>set("day_of_month",e.target.value)} />
           {form.frequency === "yearly" && (
-            <Select label="Mês" t={t} value={form.month_of_year} onChange={e=>set("month_of_year",e.target.value)}>
+            <Select label={_rfi18n.recurring.monthOfYear} t={t} value={form.month_of_year} onChange={e=>set("month_of_year",e.target.value)}>
               {MONTH_FULL.map((m,i) => <option key={i} value={i+1}>{m}</option>)}
             </Select>
           )}
@@ -4079,9 +4401,9 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
 
         {/* Amount type toggle */}
         <div style={{ marginBottom:16 }}>
-          <label style={{ display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary }}>Tipo de valor</label>
+          <label style={{ display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary }}>{_rfi18n.recurring.amountType}</label>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-            {[{v:"fixed",label:"💰 Valor fixo"},{v:"variable",label:"🔔 Variável"}].map(opt=>(
+            {[{v:"fixed",label:_rfi18n.recurring.fixed},{v:"variable",label:_rfi18n.recurring.variable}].map(opt=>(
               <button key={opt.v} type="button" onClick={()=>set("amount_type",opt.v)}
                 style={{ padding:"10px 12px",borderRadius:12,border:`1.5px solid ${form.amount_type===opt.v?t.accent:t.border}`,background:form.amount_type===opt.v?t.accentSoft:"transparent",color:form.amount_type===opt.v?t.accent:t.textMuted,fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.2s" }}>
                 {opt.label}
@@ -4091,20 +4413,20 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
         </div>
 
         {form.amount_type === "fixed" && (
-          <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
+          <Input label={_rfi18n.expenseForm.amount} t={t} type="number" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} placeholder="0,00" />
         )}
         {form.amount_type === "variable" && (
           <div style={{ marginBottom:16,padding:"10px 14px",borderRadius:12,background:t.warningSoft,border:`1px solid ${t.warning}33`,fontSize:12,color:t.warning,fontWeight:600 }}>
-            🔔 Todo mês você receberá um lembrete para inserir o valor pago.
+            🔔 {_rfi18n.recurring.variableHint}
           </div>
         )}
 
-        <DateInput label="Data de término (opcional)" t={t} value={form.end_date} onChange={e=>set("end_date",e.target.value)} />
+        <DateInput label={_rfi18n.recurring.endDate} t={t} value={form.end_date} onChange={e=>set("end_date",e.target.value)} />
 
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:4 }}>
-          <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
+          <Btn t={t} variant="ghost" type="button" onClick={onClose}>{_rfi18n.recurring.cancel}</Btn>
           <Btn t={t} type="button" onClick={handle} disabled={saving}>
-            {saving ? "Salvando..." : isEdit ? "💾 Atualizar" : "💾 Criar"}
+            {saving ? _rfi18n.recurring.saving : isEdit ? `💾 ${_rfi18n.recurring.update}` : `💾 ${_rfi18n.recurring.create}`}
           </Btn>
         </div>
       </div>
@@ -4209,8 +4531,8 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
         });
         if (rows?.[0]) setBudgets(p => [...p, rows[0]]);
       }
-      addToast("Orçamento salvo!", "success");
-    } catch (e) { addToast("Erro ao salvar: " + e.message, "error"); }
+      addToast(APP_I18N[lang].toasts.budgetSaved, "success");
+    } catch (e) { addToast(APP_I18N[lang].toasts.errorSaving(e.message), "error"); }
     setEditingCat(null);
   };
 
@@ -4220,7 +4542,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
     try {
       await supabaseFetch(`/budgets?id=eq.${existing.id}`, { method: "DELETE" });
       setBudgets(p => p.filter(b => b.id !== existing.id));
-    } catch (e) { addToast("Erro ao remover", "error"); }
+    } catch (e) { addToast(APP_I18N[lang].toasts.errorGeneric(e.message), "error"); }
     setEditingCat(null);
   };
 
@@ -4232,19 +4554,19 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
       const prevBudgets = await supabaseFetch(
         `/budgets?family_id=eq.${family.family_id}&month=eq.${prevMonth+1}&year=eq.${prevYear}&select=*`
       );
-      if (!prevBudgets?.length) { addToast("Nenhum orçamento encontrado no mês anterior", "info"); return; }
+      if (!prevBudgets?.length) { addToast(APP_I18N[lang].budget.loading, "info"); return; }
       const inserts = prevBudgets
         .filter(b => !getBudget(b.category))
         .map(b => ({ family_id: family.family_id, category: b.category, amount: b.amount, month: viewMonth+1, year: viewYear }));
-      if (!inserts.length) { addToast("Todas as categorias já têm orçamento este mês", "info"); return; }
+      if (!inserts.length) { addToast(APP_I18N[lang].budget.loading, "info"); return; }
       const rows = await supabaseFetch("/budgets", {
         method: "POST",
         body: JSON.stringify(inserts),
         headers: { "Prefer": "return=representation" },
       });
       if (rows) setBudgets(p => [...p, ...rows]);
-      addToast(`${inserts.length} orçamento(s) copiado(s)!`, "success");
-    } catch (e) { addToast("Erro ao copiar: " + e.message, "error"); }
+      addToast(APP_I18N[lang].toasts.budgetCopied(inserts.length), "success");
+    } catch (e) { addToast(APP_I18N[lang].toasts.errorGeneric(e.message), "error"); }
   };
 
   // Totals
@@ -4274,7 +4596,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
         {!isDemo && (
           <button onClick={copyFromPrevMonth}
             style={{ background:t.accentSoft,border:`1px solid ${t.accent}33`,borderRadius:10,padding:"7px 14px",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6 }}>
-            📋 Copiar do mês anterior
+            {APP_I18N[lang].budget.copyFromPrev}
           </button>
         )}
       </div>
@@ -4283,7 +4605,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
       {totalBudgeted > 0 && (
         <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:"16px 20px" }}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
-            <span style={{ fontSize:13,fontWeight:700,color:t.text }}>Total do orçamento</span>
+            <span style={{ fontSize:13,fontWeight:700,color:t.text }}>{APP_I18N[lang].budget.totalBudget}</span>
             <span style={{ fontSize:13,fontWeight:700,color:totalPct>=100?t.danger:totalPct>=80?t.warning:t.success }}>
               {fmt(totalSpent)} <span style={{ color:t.textMuted,fontWeight:400 }}>de {fmt(totalBudgeted)}</span>
             </span>
@@ -4293,7 +4615,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
               background: totalPct>=100 ? t.danger : totalPct>=80 ? t.warning : t.success }} />
           </div>
           <div style={{ fontSize:11,color:t.textMuted,marginTop:6 }}>
-            {totalPct>=100 ? "⚠️ Orçamento estourado" : totalPct>=80 ? `⚡ ${(100-totalPct).toFixed(0)}% restante` : `✅ ${(100-totalPct).toFixed(0)}% restante`}
+            {totalPct>=100 ? APP_I18N[lang].budget.overBudget : totalPct>=80 ? APP_I18N[lang].budget.nearLimit((100-totalPct).toFixed(0)) : APP_I18N[lang].budget.remaining((100-totalPct).toFixed(0))}
             {" · "}{fmt(Math.max(0, totalBudgeted - totalSpent))} disponível
           </div>
         </div>
@@ -4301,7 +4623,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
 
       {/* Category list */}
       {loading ? (
-        <div style={{ textAlign:"center",padding:"32px 0",color:t.textMuted,fontSize:14 }}>Carregando orçamentos...</div>
+        <div style={{ textAlign:"center",padding:"32px 0",color:t.textMuted,fontSize:14 }}>{APP_I18N[lang].budget.loading}</div>
       ) : (
         <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
           {CATEGORIES.map(cat => {
@@ -4333,7 +4655,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
                         )}
                         {!budget && spent > 0 && (
                           <span style={{ fontSize:12,color:t.textMuted }}>
-                            {fmt(spent)} <span style={{ color:t.textMuted,opacity:0.6 }}>(sem limite)</span>
+                            {fmt(spent)} <span style={{ color:t.textMuted,opacity:0.6 }}>{APP_I18N[lang].budget.noLimit}</span>
                           </span>
                         )}
                         {/* Edit/Set button */}
@@ -4387,9 +4709,9 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
 
       {!isDemo && budgets.length === 0 && !loading && (
         <div style={{ textAlign:"center",padding:"24px 0",color:t.textMuted,fontSize:13,lineHeight:1.7 }}>
-          Nenhum orçamento definido para este mês.<br/>
-          Clique em <strong style={{color:t.accent}}>+ Definir</strong> em cada categoria para estabelecer limites.<br/>
-          Ou use <strong style={{color:t.accent}}>Copiar do mês anterior</strong> se já configurou antes.
+            {APP_I18N[lang].budget.noData}<br/>
+          {APP_I18N[lang].budget.add} {APP_I18N[lang].common.selectDots}<br/>
+          {APP_I18N[lang].budget.copyFromPrev}
         </div>
       )}
     </div>
@@ -4507,6 +4829,7 @@ function SummaryCards({ expenses, incomes, t, lang = "pt", only = null }) {
 
 // ─── IMPORT VIEW ─────────────────────────────────────────────────────────────
 function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported, addToast, existingExpenses, existingIncomes }) {
+  const _iv = APP_I18N[lang].importView;
   const [step, setStep] = useState("upload");
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -4699,13 +5022,13 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
     if (!file) return;
     const ext = file.name.split(".").pop().toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      addToast("Formato não suportado. Use CSV, XLSX ou PDF.", "error"); return;
+      addToast(_iv.errorFormat, "error"); return;
     }
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      addToast("Tipo de arquivo inválido.", "error"); return;
+      addToast(_iv.errorFormat, "error"); return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      addToast("Arquivo muito grande. Limite: 10 MB.", "error"); return;
+      addToast(lang === "pt" ? "Arquivo muito grande. Limite: 10 MB." : "File too large. Limit: 10 MB.", "error"); return;
     }
     setFileName(file.name);
     setStep("mapping"); setLoading(true);
@@ -4713,10 +5036,10 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
     try {
       let textData = "";
       if (ext === "csv" || ext === "txt") {
-        setLoadingMsg("📄 Lendo CSV...");
+        setLoadingMsg(_iv.loadingCSV);
         textData = await file.text();
       } else if (ext === "xlsx" || ext === "xls") {
-        setLoadingMsg("📊 Lendo planilha Excel...");
+        setLoadingMsg(_iv.loadingExcel);
         const buf = await file.arrayBuffer();
         const ExcelJS = (await import("exceljs")).default;
         const workbook = new ExcelJS.Workbook();
@@ -4738,7 +5061,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         });
         textData = csvRows.join("\n");
       } else if (ext === "pdf") {
-        setLoadingMsg("📄 Enviando PDF para análise...");
+        setLoadingMsg(_iv.loadingPDF);
         const buf = await file.arrayBuffer();
         const bytes = new Uint8Array(buf);
         let binary = "";
@@ -4747,20 +5070,20 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         await analyzeWithAI("", file.name, pdfBase64);
         return;
       } else {
-        throw new Error("Formato não suportado. Use CSV, XLSX ou PDF.");
+        throw new Error(_iv.errorFormat);
       }
 
       // Try local parser first (fast, accurate for known formats)
       const localRows = detectAndParseLocal(textData, file.name);
       if (localRows && localRows.length > 0) {
-        setLoadingMsg(`✅ ${localRows.length} transações detectadas!`);
+        setLoadingMsg(_iv.detected(localRows.length));
         const processed = localRows.map((r, i) => {
           const existingList = r.record_type === "expense" ? (existingExpenses || []) : (existingIncomes || []);
           const dup = isDuplicate(r, existingList);
           return { ...r, _id: `imp_${Date.now()}_${i}`, _selected: !dup, _duplicate: dup };
         });
         const dupCount = processed.filter(r => r._duplicate).length;
-        if (dupCount > 0) addToast("⚠️ " + dupCount + " possível(is) duplicata(s) detectada(s)", "info");
+        if (dupCount > 0) addToast(_iv.dupWarning(dupCount), "info");
         setMapped(processed);
         setStep("preview");
         setLoading(false);
@@ -4770,14 +5093,14 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
       // Fallback to AI for unknown formats
       await analyzeWithAI(textData, file.name);
     } catch(e) {
-      addToast(e.message || "Erro ao ler arquivo", "error");
+      addToast(e.message || (lang === "pt" ? "Erro ao ler arquivo" : "Error reading file"), "error");
       setStep("upload"); setLoading(false);
     }
   };
 
   // ── AI mapping via Supabase Edge Function (Anthropic API key stays server-side) ──
   const analyzeWithAI = async (textData, filename, pdfBase64 = null) => {
-    setLoadingMsg("🤖 Mapeando dados com IA...");
+    setLoadingMsg(_iv.loadingAI);
 
     try {
       const body = pdfBase64
@@ -4802,7 +5125,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       const rows = data.rows;
-      if (!rows || !rows.length) throw new Error("Nenhuma transação encontrada no arquivo. Verifique se contém dados financeiros.");
+      if (!rows || !rows.length) throw new Error(_iv.errorNoData);
 
       // Detect duplicates against existing data
       const processed = rows.map((r, i) => {
@@ -4812,12 +5135,12 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
       });
 
       const dupCount = processed.filter(r => r._duplicate).length;
-      if (dupCount > 0) addToast(`⚠️ ${dupCount} possível(is) duplicata(s) detectada(s) — desmarcadas automaticamente`, "info");
+      if (dupCount > 0) addToast(_iv.dupWarning(dupCount), "info");
 
       setMapped(processed);
       setStep("preview");
     } catch(e) {
-      addToast("Erro na análise: " + e.message, "error");
+      addToast((lang === "pt" ? "Erro na análise: " : "Analysis error: ") + e.message, "error");
       setStep("upload");
     } finally { setLoading(false); setLoadingMsg(""); }
   };
@@ -4845,8 +5168,8 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
   // ── Import ──
   const handleImport = async () => {
     const selected = mapped.filter(r => r._selected);
-    if (!selected.length) { addToast("Nenhum item selecionado", "error"); return; }
-    setLoading(true); setLoadingMsg("💾 Salvando...");
+    if (!selected.length) { addToast(_iv.noItems, "error"); return; }
+    setLoading(true); setLoadingMsg(_iv.saving);
     const expenses = selected.filter(r => r.record_type === "expense").map(r => ({
       description: r.description, amount: parseFloat(r.amount) || 0, date: sanitizeDate(r.date),
       category: r.category, type: r.type || "pix", parcelas: parseInt(r.parcelas) || 1,
@@ -4863,7 +5186,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         const sendBatch = async (table, items) => {
           for (let i = 0; i < items.length; i += BATCH) {
             const chunk = items.slice(i, i + BATCH);
-            setLoadingMsg("Salvando... " + Math.min(i + BATCH, items.length) + "/" + items.length);
+            setLoadingMsg(_iv.saving + " " + Math.min(i + BATCH, items.length) + "/" + items.length);
             const res = await fetch(SUPABASE_URL + "/rest/v1/" + table, {
               method: "POST",
               headers: {
@@ -4883,7 +5206,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         };
         if (expenses.length) await sendBatch("expenses", expenses);
         if (incomes.length) await sendBatch("incomes", incomes);
-      } catch(e) { addToast("Erro ao salvar: " + e.message, "error"); setLoading(false); return; }
+      } catch(e) { addToast((lang === "pt" ? "Erro ao salvar: " : "Error saving: ") + e.message, "error"); setLoading(false); return; }
     }
     // Add local IDs for in-memory state (not sent to Supabase)
     const expensesWithId = expenses.map(e => ({ ...e, id: crypto.randomUUID() }));
@@ -4891,7 +5214,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
     onImported(expensesWithId, incomesWithId);
     setStats({ expenses: expenses.length, incomes: incomes.length, skipped: mapped.filter(r => !r._selected).length, duplicates: mapped.filter(r => r._duplicate).length });
     setStep("done"); setLoading(false);
-    addToast(`✅ ${selected.length} itens importados!`, "success");
+    addToast(_iv.detected(selected.length), "success");
   };
 
   const toggleRow = (id) => setMapped(p => p.map(r => r._id === id ? { ...r, _selected: !r._selected, _duplicate: r._duplicate && r._selected ? r._duplicate : r._duplicate } : r));
@@ -4905,8 +5228,8 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
   if (step === "upload") return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>📥 Importar Lançamentos</h2>
-        <p style={{ color: t.textMuted, fontSize: 14 }}>A IA lê e mapeia automaticamente qualquer formato de extrato ou planilha</p>
+        <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>📥 {_iv.title}</h2>
+        <p style={{ color: t.textMuted, fontSize: 14 }}>{_iv.subtitle}</p>
       </div>
       <div
         onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = t.accent; e.currentTarget.style.background = t.accentSoft; }}
@@ -4918,8 +5241,8 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         onMouseLeave={e => { e.currentTarget.style.borderColor = t.glassBorder; e.currentTarget.style.background = t.surface; }}
       >
         <div style={{ fontSize: 52, marginBottom: 12 }}>📂</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 6 }}>Arraste seu arquivo aqui</div>
-        <div style={{ fontSize: 13, color: t.textMuted, marginBottom: 16 }}>ou clique para selecionar</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 6 }}>{_iv.dropzone}</div>
+        <div style={{ fontSize: 13, color: t.textMuted, marginBottom: 16 }}>{_iv.dropzoneOr}</div>
         <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
           {[["CSV","text"], ["XLSX","spreadsheet"], ["PDF","document"]].map(([f, icon]) => (
             <span key={f} style={{ padding: "5px 14px", borderRadius: 10, background: t.accentSoft, color: t.accent, fontSize: 12, fontWeight: 700 }}>{f}</span>
@@ -4930,13 +5253,12 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
       </div>
 
       <ICard>
-        <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: t.text, textAlign: "left" }}>✨ Como funciona</h3>
+        <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: t.text, textAlign: "left" }}>{_iv.howItWorks}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {[
-            ["1", "Arraste CSV, Excel ou PDF", "Extrato do banco, planilha do Google Sheets ou Excel — qualquer formato"],
-            ["2", "IA analisa e mapeia automaticamente", "Detecta datas, valores, categorias, tipo de pagamento e parcelas"],
-            ["3", "Duplicatas são marcadas automaticamente", "Itens que já existem no app ficam desmarcados — você decide o que importar"],
-            ["4", "Revise e confirme", "Veja o preview completo antes de salvar qualquer coisa"],
+            ["1", _iv.step1title, _iv.step1desc],
+            ["2", _iv.step2title, _iv.step2desc],
+            ["3", _iv.step3title, _iv.step3desc],
           ].map(([n, title, desc]) => (
             <div key={n} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
               <div style={{ width: 28, height: 28, minWidth: 28, borderRadius: "50%", background: t.accentSoft, color: t.accent, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{n}</div>
@@ -4950,13 +5272,13 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
       </ICard>
 
       <ICard style={{ background: t.warningSoft, border: `1px solid ${t.warning}33` }}>
-        <div style={{ fontSize: 13, color: t.warning, fontWeight: 700, marginBottom: 10, textAlign: "left" }}>💡 Como exportar do seu banco</div>
+        <div style={{ fontSize: 13, color: t.warning, fontWeight: 700, marginBottom: 10, textAlign: "left" }}>{_iv.bankTitle}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: t.textSecondary, textAlign: "left" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🟣</span><span><strong>Nubank:</strong> App → Perfil → Exportar dados → CSV</span></div>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🟠</span><span><strong>Itaú:</strong> Internet Banking → Extrato → Exportar → CSV/OFX</span></div>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🔴</span><span><strong>Santander:</strong> App → Extrato → Compartilhar → CSV</span></div>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🔵</span><span><strong>Bradesco:</strong> Internet Banking → Extrato → Salvar → XLS</span></div>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>📊</span><span><strong>Planilha própria:</strong> Google Sheets → Arquivo → Download → CSV</span></div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🟣</span><span>{_iv.nubank}</span></div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🟠</span><span>{_iv.itau}</span></div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🔴</span><span>{_iv.santander}</span></div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>🔵</span><span>{_iv.bradesco}</span></div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><span style={{ flexShrink: 0 }}>📊</span><span>{_iv.sheets}</span></div>
         </div>
       </ICard>
     </div>
@@ -4989,13 +5311,13 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>📋 Revisar Importação</h2>
-            <p style={{ color: t.textMuted, fontSize: 13 }}>{fileName} — {mapped.length} itens detectados</p>
+            <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>{_iv.reviewTitle}</h2>
+            <p style={{ color: t.textMuted, fontSize: 13 }}>{_iv.reviewDesc(fileName, mapped.length)}</p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Btn t={t} variant="ghost" type="button" onClick={() => { setStep("upload"); setMapped([]); setFileName(""); }} style={{ fontSize: 13, padding: "9px 16px" }}>← Voltar</Btn>
+            <Btn t={t} variant="ghost" type="button" onClick={() => { setStep("upload"); setMapped([]); setFileName(""); }} style={{ fontSize: 13, padding: "9px 16px" }}>{_iv.backBtn}</Btn>
             <Btn t={t} type="button" onClick={handleImport} disabled={selCount === 0 || loading} style={{ fontSize: 13, padding: "9px 16px" }}>
-              {loading ? "Salvando..." : `💾 Importar ${selCount}`}
+              {loading ? _iv.saving : _iv.confirmBtn(selCount)}
             </Btn>
           </div>
         </div>
@@ -5003,10 +5325,10 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 }}>
           {[
-            { label: "Novos", value: mapped.length - dupCount, color: t.success, bg: t.successSoft },
-            { label: "Duplicatas", value: dupCount, color: t.warning, bg: t.warningSoft },
-            { label: "Gastos ✓", value: expSel, color: t.danger, bg: t.dangerSoft },
-            { label: "Receitas ✓", value: incSel, color: t.accent, bg: t.accentSoft },
+            { label: _iv.newFilter, value: mapped.length - dupCount, color: t.success, bg: t.successSoft },
+            { label: _iv.dupFilter, value: dupCount, color: t.warning, bg: t.warningSoft },
+            { label: _iv.expensesLabel, value: expSel, color: t.danger, bg: t.dangerSoft },
+            { label: _iv.incomesLabel, value: incSel, color: t.accent, bg: t.accentSoft },
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, borderRadius: 12, padding: "10px 14px" }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, letterSpacing: "0.05em" }}>{s.label.toUpperCase()}</div>
@@ -5020,12 +5342,12 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
           <div style={{ background: t.warningSoft, border: `1px solid ${t.warning}44`, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: 20 }}>⚠️</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.warning }}>{dupCount} possível{dupCount > 1 ? "is" : ""} duplicata{dupCount > 1 ? "s" : ""} detectada{dupCount > 1 ? "s" : ""}</div>
-              <div style={{ fontSize: 12, color: t.textMuted }}>Itens com mesma data, descrição e valor já existentes no app foram desmarcados. Você pode selecioná-los se necessário.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.warning }}>{_iv.dupCount(dupCount)}</div>
+              <div style={{ fontSize: 12, color: t.textMuted }}>{_iv.dupDescFull}</div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => setMapped(p => p.map(r => r._duplicate ? { ...r, _selected: true } : r))} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.warning}55`, background: "transparent", color: t.warning, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Marcar todas</button>
-              <button onClick={() => setMapped(p => p.map(r => r._duplicate ? { ...r, _selected: false } : r))} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.warning}55`, background: "transparent", color: t.warning, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Ignorar todas</button>
+              <button onClick={() => setMapped(p => p.map(r => r._duplicate ? { ...r, _selected: true } : r))} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.warning}55`, background: "transparent", color: t.warning, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{_iv.markAll}</button>
+              <button onClick={() => setMapped(p => p.map(r => r._duplicate ? { ...r, _selected: false } : r))} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.warning}55`, background: "transparent", color: t.warning, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{_iv.unmarkAll}</button>
             </div>
           </div>
         )}
@@ -5034,11 +5356,11 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: t.surface, borderRadius: 12, border: `1px solid ${t.border}`, flexWrap: "wrap" }}>
           <input type="checkbox" checked={mapped.length > 0 && mapped.every(r => r._selected)} onChange={e => toggleAll(e.target.checked)}
             style={{ width: 16, height: 16, cursor: "pointer", accentColor: t.accent }} />
-          <span style={{ fontSize: 13, color: t.textSecondary, fontWeight: 600 }}>Todos</span>
+          <span style={{ fontSize: 13, color: t.textSecondary, fontWeight: 600 }}>{_iv.allFilter}</span>
           <div style={{ flex: 1 }} />
           {/* Filter tabs */}
           <div style={{ display: "flex", background: t.glassModal, borderRadius: 10, padding: 3, gap: 3 }}>
-            {[["all","Todos"], ["new","Novos"], ["duplicate","Duplicatas"]].map(([v,l]) => (
+            {[["all", _iv.allFilter], ["new", _iv.newFilter], ["duplicate", _iv.dupFilter]].map(([v,l]) => (
               <button key={v} onClick={() => setDupFilter(v)} style={{ padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: dupFilter === v ? t.accent : "transparent", color: dupFilter === v ? "#fff" : t.textMuted, transition: "all 0.15s" }}>{l}</button>
             ))}
           </div>
@@ -5047,7 +5369,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
 
         {/* Rows */}
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          {visRows.length === 0 && <div style={{ textAlign: "center", padding: 32, color: t.textMuted, fontSize: 14 }}>Nenhum item nesta categoria</div>}
+          {visRows.length === 0 && <div style={{ textAlign: "center", padding: 32, color: t.textMuted, fontSize: 14 }}>{_iv.noItems}</div>}
           {visRows.map(row => {
             const isExp = row.record_type === "expense";
             const cat = isExp ? CATEGORIES.find(c => c.id === row.category) : INCOME_SOURCES.find(s => s.id === row.category);
@@ -5064,8 +5386,8 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.description}</span>
-                    {row._duplicate && <span style={{ fontSize: 10, background: t.warningSoft, color: t.warning, padding: "2px 7px", borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>duplicata</span>}
-                    {lowConf && !row._duplicate && <span style={{ fontSize: 10, background: t.accentSoft, color: t.accent, padding: "2px 7px", borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>⚠ verificar</span>}
+                    {row._duplicate && <span style={{ fontSize: 10, background: t.warningSoft, color: t.warning, padding: "2px 7px", borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>{_iv.dupFilter}</span>}
+                    {lowConf && !row._duplicate && <span style={{ fontSize: 10, background: t.accentSoft, color: t.accent, padding: "2px 7px", borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>{_iv.lowConfidence}</span>}
                   </div>
                   <div style={{ fontSize: 11, color: t.textMuted, marginTop: 1 }}>
                     {row.date} · {cat?.label || row.category}
@@ -5085,11 +5407,11 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
         {/* Sticky footer */}
         <div style={{ position: "sticky", bottom: 16, zIndex: 210, background: `${t.bg}f8`, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 16, padding: "13px 18px", border: `1px solid ${t.accent}44`, boxShadow: `0 4px 24px rgba(0,0,0,0.3)`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div style={{ fontSize: 13, color: t.textSecondary }}>
-            <strong style={{ color: t.text }}>{selCount}</strong> selecionados
-            {dupCount > 0 && <span style={{ color: t.warning }}> · {dupCount} duplicatas</span>}
+            {_iv.selectedCount(selCount)}
+            {dupCount > 0 && <span style={{ color: t.warning }}> · {dupCount} {_iv.dupFilter.toLowerCase()}</span>}
           </div>
           <Btn t={t} type="button" onClick={handleImport} disabled={selCount === 0 || loading}>
-            {loading ? "Salvando..." : "💾 Confirmar importação"}
+            {loading ? _iv.saving : _iv.confirmBtn(selCount)}
           </Btn>
         </div>
       </div>
@@ -5101,20 +5423,20 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 420, gap: 24, textAlign: "center" }}>
       <div style={{ fontSize: 72 }}>🎉</div>
       <div>
-        <h2 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>Importação concluída!</h2>
-        <p style={{ color: t.textMuted, fontSize: 14 }}>Os dados já estão disponíveis em todo o dashboard</p>
+        <h2 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 800, color: t.text, letterSpacing:"-0.02em" }}>{_iv.done}</h2>
+        <p style={{ color: t.textMuted, fontSize: 14 }}>{_iv.doneDesc}</p>
       </div>
       {stats && (
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
-          {stats.expenses > 0 && <div style={{ background: t.dangerSoft, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.danger }}>{stats.expenses}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>GASTOS</div></div>}
-          {stats.incomes > 0 && <div style={{ background: t.successSoft, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.success }}>{stats.incomes}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>RECEITAS</div></div>}
-          {stats.duplicates > 0 && <div style={{ background: t.warningSoft, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.warning }}>{stats.duplicates}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>DUPLICATAS</div></div>}
-          {stats.skipped > 0 && <div style={{ background: t.surface, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.textMuted }}>{stats.skipped}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>IGNORADOS</div></div>}
+          {stats.expenses > 0 && <div style={{ background: t.dangerSoft, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.danger }}>{stats.expenses}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>{_iv.expensesLabel.replace(" ✓","").toUpperCase()}</div></div>}
+          {stats.incomes > 0 && <div style={{ background: t.successSoft, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.success }}>{stats.incomes}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>{_iv.incomesLabel.replace(" ✓","").toUpperCase()}</div></div>}
+          {stats.duplicates > 0 && <div style={{ background: t.warningSoft, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.warning }}>{stats.duplicates}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>{_iv.dupFilter.toUpperCase()}</div></div>}
+          {stats.skipped > 0 && <div style={{ background: t.surface, borderRadius: 14, padding: "14px 22px" }}><div style={{ fontSize: 28, fontWeight: 800, color: t.textMuted }}>{stats.skipped}</div><div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700 }}>{_iv.skippedLabel.toUpperCase()}</div></div>}
         </div>
       )}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-        <Btn t={t} variant="ghost" type="button" onClick={() => { setStep("upload"); setMapped([]); setStats(null); setFileName(""); }}>📥 Importar mais</Btn>
-        <Btn t={t} type="button" onClick={() => window.dispatchEvent(new CustomEvent("goto-tab", { detail: "transactions" }))}>📋 Ver lançamentos</Btn>
+        <Btn t={t} variant="ghost" type="button" onClick={() => { setStep("upload"); setMapped([]); setStats(null); setFileName(""); }}>{_iv.importMore}</Btn>
+        <Btn t={t} type="button" onClick={() => window.dispatchEvent(new CustomEvent("goto-tab", { detail: "transactions" }))}>{_iv.viewTransactions}</Btn>
       </div>
     </div>
   );
@@ -5179,7 +5501,7 @@ function ProfileModal({ t, lang = "pt", user, profile, onSaved, addToast }) {
   };
 
   const save = async () => {
-    if (!firstName.trim()) { addToast("Informe seu nome", "error"); return; }
+    if (!firstName.trim()) { addToast(APP_I18N[lang].toasts.fillFirstName, "error"); return; }
     setLoading(true);
     try {
       await supabaseRpc("upsert_profile", {
@@ -5187,7 +5509,7 @@ function ProfileModal({ t, lang = "pt", user, profile, onSaved, addToast }) {
         p_last_name:  lastName.trim(),
         p_phone:      fullPhone,
       });
-      addToast("Perfil atualizado!", "success");
+      addToast(APP_I18N[lang].toasts.profileSaved, "success");
       onSaved({ first_name: firstName.trim(), last_name: lastName.trim(), phone: fullPhone });
     } catch(e) { addToast(e.message, "error"); }
     finally { setLoading(false); }
@@ -5231,7 +5553,7 @@ function ProfileModal({ t, lang = "pt", user, profile, onSaved, addToast }) {
             onFocus={e=>e.target.style.borderColor=t.accent} onBlur={e=>e.target.style.borderColor=t.border} />
         </div>
         <div style={{ fontSize:11, color:t.textMuted, marginTop:5 }}>
-          {currentDdi.flag} {currentDdi.name} · Formato: {currentDdi.mask}
+          {currentDdi.flag} {currentDdi.name} · {APP_I18N[lang].toasts.phoneFormat}: {currentDdi.mask}
         </div>
       </div>
 
@@ -5251,7 +5573,7 @@ function FamilyModal({ t, lang = "pt", family, currentUserId, familyMembers, set
     try {
       await supabaseRpc("update_member_role", { p_target_user_id: userId, p_new_role: newRole });
       setFamilyMembers(p => p.map(m => m.user_id === userId ? { ...m, role: newRole } : m));
-      addToast("Permissão atualizada!", "success");
+      addToast(APP_I18N[lang].toasts.roleUpdated, "success");
     } catch(e) { addToast(e.message, "error"); }
     finally { setUpdatingRole(null); }
   };
@@ -5298,7 +5620,7 @@ function FamilyModal({ t, lang = "pt", family, currentUserId, familyMembers, set
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {familyMembers.map(m => {
               const isMe = m.user_id === currentUserId;
-              const displayName = [m.first_name, m.last_name].filter(Boolean).join(" ") || m.email || "Membro";
+              const displayName = [m.first_name, m.last_name].filter(Boolean).join(" ") || m.email || APP_I18N[lang].family.roleMember;
               return (
                 <div key={m.user_id} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,background:t.surface,border:`1px solid ${t.border}` }}>
                   <div style={{ width:38,height:38,borderRadius:"50%",background:m.role==="admin"?t.accentSoft:t.successSoft,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0 }}>
@@ -5338,6 +5660,7 @@ function FamilyModal({ t, lang = "pt", family, currentUserId, familyMembers, set
 
 // ─── CARDS MANAGER ───────────────────────────────────────────────────────────
 function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods = [], setBillingPeriods = ()=>{} }) {
+  const _cm = APP_I18N[lang].cardsManager;
   const [cards, setCards] = useState([]);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name:"", holder:"", closing_day:28, due_day:6, color:"#7c6af7" });
@@ -5364,18 +5687,18 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
   const resetForm = ()=>{ setForm({name:"",holder:"",closing_day:28,due_day:6,color:"#7c6af7"}); setEditId(null); setShowCardForm(false); };
 
   const save = async()=>{
-    if(!form.name.trim()||!form.holder.trim()){ addToast("Preencha nome e titular.","error"); return; }
+    if(!form.name.trim()||!form.holder.trim()){ addToast(_cm.fillNameHolder,"error"); return; }
     setLoading(true);
     const payload={ name:form.name.trim(), holder:form.holder.trim(), closing_day:parseInt(form.closing_day)||28, due_day:parseInt(form.due_day)||6, color:form.color, family_id:family?.family_id, active:true };
     try{
       if(editId){
         await supabaseFetch(`/cards?id=eq.${editId}`,{method:"PATCH",body:JSON.stringify(payload)});
         setCards(p=>p.map(c=>c.id===editId?{...c,...payload}:c));
-        addToast("Cartão atualizado!","success");
+        addToast(_cm.updated,"success");
       } else {
         const cr=await supabaseFetch("/cards",{method:"POST",body:JSON.stringify(payload)});
         if(cr?.[0]) setCards(p=>[...p,cr[0]]);
-        addToast("Cartão criado!","success");
+        addToast(_cm.created,"success");
       }
       resetForm();
     }catch(err){addToast(err.message,"error");}
@@ -5385,15 +5708,15 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
 
 
   const del = (id)=>{
-    if(cards.length<=1){addToast("Não é possível excluir o único cartão.","error");return;}
+    if(cards.length<=1){addToast(_cm.cantDeleteLast,"error");return;}
     setCardConfirmOpts({
-      title: "Excluir cartão",
-      message: "Excluir este cartão? Esta ação não pode ser desfeita.",
+      title: _cm.deleteTitle,
+      message: _cm.deleteMsg,
       onConfirm: async () => {
         try{
           await supabaseFetch(`/cards?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
           setCards(p=>p.filter(c=>c.id!==id));
-          addToast("Cartão excluído.","info");
+          addToast(_cm.deleted,"info");
         }catch(err){addToast(err.message,"error");}
       },
     });
@@ -5406,7 +5729,7 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
 
   const saveBp = async () => {
     if (!bpForm.card_id || !bpForm.period_start || !bpForm.period_end || !bpForm.due_date) {
-      addToast("Preencha cartão, datas do período e vencimento.","error"); return;
+      addToast(_cm.periodFillAll,"error"); return;
     }
     setBpLoading(true);
     const payload = {
@@ -5423,11 +5746,11 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
       if (bpEditId) {
         await supabaseFetch(`/billing_periods?id=eq.${bpEditId}`,{method:"PATCH",body:JSON.stringify(payload)});
         setBillingPeriods(p => p.map(bp => bp.id===bpEditId ? {...bp,...payload} : bp));
-        addToast("Período atualizado!","success");
+        addToast(_cm.periodUpdated,"success");
       } else {
         const cr = await supabaseFetch("/billing_periods",{method:"POST",body:JSON.stringify(payload)});
         if (cr?.[0]) setBillingPeriods(p => [...p, cr[0]]);
-        addToast("Período adicionado!","success");
+        addToast(_cm.periodAdded,"success");
       }
       resetBpForm();
     } catch(err) { addToast(err.message,"error"); }
@@ -5436,13 +5759,13 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
 
   const delBp = (id) => {
     setCardConfirmOpts({
-      title: "Excluir período",
-      message: "Excluir este período de fatura?",
+      title: _cm.periodDeleteTitle,
+      message: _cm.periodDeleteMsg,
       onConfirm: async () => {
         try {
           await supabaseFetch(`/billing_periods?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
           setBillingPeriods(p => p.filter(bp => bp.id !== id));
-          addToast("Período excluído.","info");
+          addToast(_cm.periodDeleted,"info");
         } catch(err) { addToast(err.message,"error"); }
       },
     });
@@ -5464,7 +5787,7 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
           <div style={{width:12,height:12,borderRadius:"50%",background:c.color,flexShrink:0}}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:700,color:t.text}}>{c.name}</div>
-            <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{c.holder} · Fecha dia {c.closing_day} · Vence dia {c.due_day}</div>
+            <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{c.holder} · {_cm.closingDayFmt(c.closing_day)} · {_cm.dueDayFmt(c.due_day)}</div>
           </div>
           <div style={{display:"flex",gap:4,flexShrink:0}}>
             <button onClick={()=>startEdit(c)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"4px 6px",borderRadius:6,display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={14} /></button>
@@ -5479,7 +5802,7 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
         >
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <Icon name={editId?"edit":"plus"} size={15} color={t.accent} />
-            <span style={{fontSize:13,fontWeight:700,color:t.text}}>{editId?"Editar cartão":"Novo cartão"}</span>
+            <span style={{fontSize:13,fontWeight:700,color:t.text}}>{editId?_cm.editCard:_cm.newCard}</span>
           </div>
           {!editId && (
             <span style={{color:t.textMuted,fontSize:12,transform:showCardForm?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.25s",lineHeight:1}}>▼</span>
@@ -5487,14 +5810,14 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
         </button>
         {showCardForm && (
           <div style={{padding:"0 16px 16px"}}>
-            <Input label="Nome do cartão" t={t} value={form.name} onChange={e=>sf("name",e.target.value)} placeholder="Ex: Santander Casal" />
-            <Input label="Titular" t={t} value={form.holder} onChange={e=>sf("holder",e.target.value)} placeholder="Ex: Casal, Fernando" />
+            <Input label={_cm.cardName} t={t} value={form.name} onChange={e=>sf("name",e.target.value)} placeholder={_cm.cardNamePlaceholder} />
+            <Input label={_cm.holder} t={t} value={form.holder} onChange={e=>sf("holder",e.target.value)} placeholder={_cm.holder} />
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <Input label="Dia fechamento" t={t} type="number" min={1} max={31} value={form.closing_day} onChange={e=>sf("closing_day",e.target.value)} />
-              <Input label="Dia vencimento" t={t} type="number" min={1} max={31} value={form.due_day} onChange={e=>sf("due_day",e.target.value)} />
+              <Input label={_cm.closingDay} t={t} type="number" min={1} max={31} value={form.closing_day} onChange={e=>sf("closing_day",e.target.value)} />
+              <Input label={_cm.dueDay} t={t} type="number" min={1} max={31} value={form.due_day} onChange={e=>sf("due_day",e.target.value)} />
             </div>
             <div style={{marginBottom:16}}>
-              <label style={{display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary}}>Cor</label>
+              <label style={{display:"block",marginBottom:8,fontSize:13,fontWeight:600,color:t.textSecondary}}>{_cm.color}</label>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {CARD_COLORS.map(col=>(
                   <button key={col} onClick={()=>sf("color",col)}
@@ -5503,8 +5826,8 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:editId?"1fr 1fr":"1fr",gap:10}}>
-              {editId&&<Btn t={t} variant="ghost" onClick={resetForm}>Cancelar</Btn>}
-              <Btn t={t} onClick={save} disabled={loading}>{loading?"Salvando...":(editId?"Salvar alterações":"Criar cartão")}</Btn>
+              {editId&&<Btn t={t} variant="ghost" onClick={resetForm}>{_cm.cancel}</Btn>}
+              <Btn t={t} onClick={save} disabled={loading}>{loading?_cm.saving:(editId?_cm.save:_cm.create)}</Btn>
             </div>
           </div>
         )}
@@ -5514,11 +5837,11 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
       {!isDemo && cards.length > 0 && (
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:8,borderTop:`1px solid ${t.border}`}}>
-            <span style={{fontSize:13,fontWeight:700,color:t.text}}>📅 Períodos de Fatura</span>
-            {!showBpForm && <button onClick={()=>setShowBpForm(true)} style={{fontSize:12,fontWeight:600,color:t.accent,background:"transparent",border:`1px solid ${t.accent}44`,borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>+ Adicionar</button>}
+            <span style={{fontSize:13,fontWeight:700,color:t.text}}>{_cm.billingPeriods}</span>
+            {!showBpForm && <button onClick={()=>setShowBpForm(true)} style={{fontSize:12,fontWeight:600,color:t.accent,background:"transparent",border:`1px solid ${t.accent}44`,borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>{_cm.addPeriod}</button>}
           </div>
           {billingPeriods.length === 0 && !showBpForm && (
-            <div style={{fontSize:12,color:t.textMuted,padding:"10px 0"}}>Nenhum período cadastrado. Adicione para que o gráfico de faturas reflita exatamente o extrato do banco.</div>
+            <div style={{fontSize:12,color:t.textMuted,padding:"10px 0"}}>{_cm.noPeriods}</div>
           )}
           {billingPeriods.map(bp => {
             const card = cards.find(c => c.id === bp.card_id);
@@ -5527,7 +5850,7 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
                 {card && <span style={{width:8,height:8,borderRadius:"50%",background:card.color,flexShrink:0}}/>}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12,fontWeight:700,color:t.text}}>{MONTH_FULL[(bp.fatura_month||1)-1]} {bp.fatura_year}</div>
-                  <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{fmtDate(bp.period_start)} → {fmtDate(bp.period_end)} · Vence {fmtDate(bp.due_date)}{bp.total_pdf?` · R$ ${Number(bp.total_pdf).toLocaleString("pt-BR",{minimumFractionDigits:2})}`:""}</div>
+                  <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>{fmtDate(bp.period_start)} → {fmtDate(bp.period_end)} · {_cm.dueDateFmt(fmtDate(bp.due_date))}{bp.total_pdf?` · R$ ${Number(bp.total_pdf).toLocaleString("pt-BR",{minimumFractionDigits:2})}`:""}</div>
                 </div>
                 <div style={{display:"flex",gap:4,flexShrink:0}}>
                   <button onClick={()=>startEditBp(bp)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"3px 5px",borderRadius:6,display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=t.accent} onMouseLeave={e=>e.currentTarget.style.color=t.textMuted}><Icon name="edit" size={13} /></button>
@@ -5538,37 +5861,37 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
           })}
           {showBpForm && (
             <div style={{padding:16,borderRadius:14,background:t.surface,border:`1px solid ${t.border}`}}>
-              <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>{bpEditId?"Editar período":"Novo período de fatura"}</div>
+              <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>{bpEditId?_cm.editPeriod:_cm.newPeriod}</div>
               <div style={{marginBottom:14}}>
-                <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>Cartão</label>
+                <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>{_cm.periodCard}</label>
                 <select value={bpForm.card_id} onChange={e=>sbp("card_id",e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:bpForm.card_id?t.text:t.textMuted,fontSize:13,outline:"none"}}>
-                  <option value="">Selecione o cartão</option>
+                  <option value="">{_cm.periodCardPlaceholder}</option>
                   {cards.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:4}}>
                 <div>
-                  <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>Mês da fatura</label>
+                  <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>{_cm.periodMonth}</label>
                   <select value={bpForm.fatura_month} onChange={e=>sbp("fatura_month",parseInt(e.target.value))} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none"}}>
                     {MONTH_FULL.map((mn,i)=><option key={i+1} value={i+1}>{mn}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>Ano da fatura</label>
+                  <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>{_cm.periodYear}</label>
                   <select value={bpForm.fatura_year} onChange={e=>sbp("fatura_year",parseInt(e.target.value))} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none"}}>
                     {bpYears.map(y=><option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <DateInput label="Início do período" t={t} value={bpForm.period_start} onChange={e=>sbp("period_start",e.target.value)} />
-                <DateInput label="Fim do período" t={t} value={bpForm.period_end} onChange={e=>sbp("period_end",e.target.value)} />
+                <DateInput label={_cm.periodStart} t={t} value={bpForm.period_start} onChange={e=>sbp("period_start",e.target.value)} />
+                <DateInput label={_cm.periodEnd} t={t} value={bpForm.period_end} onChange={e=>sbp("period_end",e.target.value)} />
               </div>
-              <DateInput label="Data de vencimento" t={t} value={bpForm.due_date} onChange={e=>sbp("due_date",e.target.value)} />
-              <Input label="Total do extrato PDF (opcional)" t={t} type="number" value={bpForm.total_pdf} onChange={e=>sbp("total_pdf",e.target.value)} placeholder="Ex: 1250.00" />
+              <DateInput label={_cm.periodDue} t={t} value={bpForm.due_date} onChange={e=>sbp("due_date",e.target.value)} />
+              <Input label={_cm.periodTotal} t={t} type="number" value={bpForm.total_pdf} onChange={e=>sbp("total_pdf",e.target.value)} placeholder="1250.00" />
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <Btn t={t} variant="ghost" onClick={resetBpForm}>Cancelar</Btn>
-                <Btn t={t} onClick={saveBp} disabled={bpLoading}>{bpLoading?"Salvando...":(bpEditId?"Salvar alterações":"Adicionar período")}</Btn>
+                <Btn t={t} variant="ghost" onClick={resetBpForm}>{_cm.cancel}</Btn>
+                <Btn t={t} onClick={saveBp} disabled={bpLoading}>{bpLoading?_cm.periodSaving:(bpEditId?_cm.periodSave:_cm.periodAdd)}</Btn>
               </div>
             </div>
           )}
@@ -5581,6 +5904,7 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
         message={cardConfirmOpts?.message}
         onConfirm={() => { cardConfirmOpts?.onConfirm(); setCardConfirmOpts(null); }}
         onCancel={() => setCardConfirmOpts(null)}
+        lang={lang}
         t={t}
       />
     </div>
@@ -5589,6 +5913,7 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
 
 // ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
 function BillingCard({ cards, billingPeriods = [], appBillingData = [], t, lang = "pt" }) {
+  const _bc = APP_I18N[lang].billingCard;
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
   // Determine current fatura using first available card's closing_day/periods
@@ -5612,10 +5937,10 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t, lang 
   let dueLabel;
   if (activePeriod?.due_date) {
     const [dy, dm, dd] = activePeriod.due_date.split("-");
-    dueLabel = `Vence ${dd}/${dm}/${dy}`;
+    dueLabel = _bc.dueOn(dd, dm, dy);
   } else {
     const dueDay = firstCard?.due_day ?? 6;
-    dueLabel = `Vence dia ${dueDay}/${String(faturaMo).padStart(2,"0")}/${faturaYr}`;
+    dueLabel = _bc.dueDay(dueDay, faturaMo, faturaYr);
   }
 
   return (
@@ -5623,7 +5948,7 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t, lang 
       onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
       onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
       <div style={{fontSize:26,marginBottom:10}}>💳</div>
-      <div style={{fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:4,textTransform:"uppercase"}}>Fatura em Aberto</div>
+      <div style={{fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:4,textTransform:"uppercase"}}>{_bc.openBilling}</div>
       <div style={{fontSize:11,color:t.textMuted,marginBottom:6}}>{dueLabel}</div>
       <div style={{fontSize:22,fontWeight:800,color:t.accent,letterSpacing:"-0.02em"}}>{fmt(total)}</div>
     </div>
@@ -5816,7 +6141,7 @@ export default function App() {
       supabaseFetch(`/billing_periods?family_id=eq.${family.family_id}&order=due_date.asc`)
         .then(bps => setBillingPeriods(bps||[]))
         .catch(() => {});
-    } catch { addToast("Erro ao carregar dados","error"); }
+    } catch { addToast(AL.toasts.errorLoading,"error"); }
     finally { setDataLoading(false); }
   }, [user, family, isDemo, addToast]);
 
@@ -5869,8 +6194,8 @@ export default function App() {
     try {
       const code = await regenerateInviteCode(family.family_id);
       setFamily(f => ({ ...f, invite_code: code }));
-      addToast("Novo código gerado!", "success");
-    } catch { addToast("Erro ao gerar código","error"); }
+      addToast(AL.toasts.codeRegenerated, "success");
+    } catch { addToast(AL.toasts.codeError,"error"); }
   };
 
   const saveExpense=async(data)=>{
@@ -5960,8 +6285,8 @@ export default function App() {
     setModal(null); addToast(AL.toasts.incomeSaved,"success");
   };
 
-  const deleteExpense=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/expenses?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast("Erro ao remover: "+err.message,"error"); return; }} setExpenses(p=>p.filter(e=>e.id!==id)); addToast(AL.toasts.expenseRemoved,"info"); };
-  const deleteIncome=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/incomes?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast("Erro ao remover: "+err.message,"error"); return; }} setIncomes(p=>p.filter(i=>i.id!==id)); addToast(AL.toasts.incomeRemoved,"info"); };
+  const deleteExpense=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/expenses?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast(AL.toasts.errorRemoving(err.message),"error"); return; }} setExpenses(p=>p.filter(e=>e.id!==id)); addToast(AL.toasts.expenseRemoved,"info"); };
+  const deleteIncome=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/incomes?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast(AL.toasts.errorRemoving(err.message),"error"); return; }} setIncomes(p=>p.filter(i=>i.id!==id)); addToast(AL.toasts.incomeRemoved,"info"); };
 
   const editExpense=async(payload)=>{
     const { _type, ...data } = payload;
@@ -5983,7 +6308,7 @@ export default function App() {
         } else {
           setExpenses(p => p.map(e => e.id === data.id ? { ...e, ...data } : e));
         }
-      } catch(err) { addToast("Erro ao editar: " + err.message, "error"); return; }
+      } catch(err) { addToast(AL.toasts.errorEditing(err.message), "error"); return; }
     } else {
       setExpenses(p => p.map(e => e.id === data.id ? { ...e, ...data } : e));
     }
@@ -6007,7 +6332,7 @@ export default function App() {
         } else {
           setIncomes(p => p.map(i => i.id === data.id ? { ...i, ...data } : i));
         }
-      } catch(err) { addToast("Erro ao editar: " + err.message, "error"); return; }
+      } catch(err) { addToast(AL.toasts.errorEditing(err.message), "error"); return; }
     } else {
       setIncomes(p => p.map(i => i.id === data.id ? { ...i, ...data } : i));
     }
@@ -6022,10 +6347,10 @@ export default function App() {
           const chunk=ids.slice(i,i+20);
           await supabaseFetch("/expenses?id=in.("+chunk.join(",")+")",{method:"DELETE"});
         }
-      } catch(err){ addToast("Erro ao remover gastos: "+err.message,"error"); return; }
+      } catch(err){ addToast(AL.toasts.errorRemoving(err.message),"error"); return; }
     }
     setExpenses(p=>p.filter(e=>!ids.includes(e.id)));
-    addToast("Gastos removidos","info");
+    addToast(AL.toasts.expenseRemoved,"info");
   };
 
   const deleteAllIncomes=async(ids)=>{
@@ -6036,10 +6361,10 @@ export default function App() {
           const chunk=ids.slice(i,i+20);
           await supabaseFetch("/incomes?id=in.("+chunk.join(",")+")",{method:"DELETE"});
         }
-      } catch(err){ addToast("Erro ao remover receitas: "+err.message,"error"); return; }
+      } catch(err){ addToast(AL.toasts.errorRemoving(err.message),"error"); return; }
     }
     setIncomes(p=>p.filter(i=>!ids.includes(i.id)));
-    addToast("Receitas removidas","info");
+    addToast(AL.toasts.incomeRemoved,"info");
   };
 
   const tabs=[
@@ -6221,7 +6546,7 @@ export default function App() {
                     <Icon name={darkMode?"sun":"moon"} size={15} color={t.textMuted} />{darkMode ? AL.app.lightMode : AL.app.darkMode}
                   </button>
                   <button onClick={()=>{toggleLang();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <span style={{ fontSize:14 }}>{lang==="en"?"🇧🇷":"🇺🇸"}</span>{AL.langToggle}
+                    <Icon name="globe" size={15} color={t.textMuted} />{AL.langToggle}
                   </button>
                   <div style={{ height:1,background:t.border,margin:"6px 0" }} />
                   <button onClick={()=>{handleLogout();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.danger,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -6234,7 +6559,7 @@ export default function App() {
           {isDemo&&(
             <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:6,marginTop:8 }}>
               <div style={{ fontSize:10,background:t.warningSoft,color:t.warning,padding:"3px 6px",borderRadius:6,fontWeight:700,textAlign:"center",width:44 }}>DEMO</div>
-              <button onClick={handleLogout} title="Sair do Demo"
+              <button onClick={handleLogout} title={AL.app.exitDemo}
                 style={{ width:38,height:38,borderRadius:12,border:`1px solid ${t.dangerSoft}`,background:"transparent",cursor:"pointer",color:t.danger,display:"flex",alignItems:"center",justifyContent:"center" }}>
                 <Icon name="logout" size={18} color={t.danger} />
               </button>
@@ -6267,7 +6592,7 @@ export default function App() {
                   <h2 style={{ margin:"0 0 4px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>
                     {AL.app.hello}{profile?.first_name ? `, ${profile.first_name}` : ""}{AL.app.greeting} 👋
                   </h2>
-                  <p style={{ color:t.textMuted,fontSize:13 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
+                  <p style={{ color:t.textMuted,fontSize:13 }}>{AL.app.overviewOf(new Date(today.getFullYear(),today.getMonth()).toLocaleDateString(lang==="en"?"en-US":"pt-BR",{month:"long"}), today.getFullYear())}</p>
                 </div>
                 {dataLoading ? <SummaryCardsSkeleton t={t} /> : <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["income","expenses","balance"]} />}
                 <div className="dashboard-row2">
@@ -6277,15 +6602,15 @@ export default function App() {
                 <BudgetAlertCard expenses={expenses} t={t} lang={lang} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} lang={lang} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
-                  <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>📊 Últimos 6 meses</h3>
+                  <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>{AL.app.last6months}</h3>
                   <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={Array.from({length:6},(_,i)=>{ const baseYr=today.getFullYear(),baseMo=today.getMonth(); const totalMo=baseMo-5+i; const yr=baseYr+Math.floor(totalMo/12), mn=((totalMo%12)+12)%12; const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], Receitas:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), Gastos:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
+                    <BarChart data={Array.from({length:6},(_,i)=>{ const baseYr=today.getFullYear(),baseMo=today.getMonth(); const totalMo=baseMo-5+i; const yr=baseYr+Math.floor(totalMo/12), mn=((totalMo%12)+12)%12; const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], [AL.charts.incomes]:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), [AL.charts.expenses]:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
                       <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
                       <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
                       <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ background:t.tooltipBg,border:`1px solid ${t.glassBorder}`,borderRadius:12,boxShadow:t.shadowSm }} labelStyle={{ color:t.text,fontWeight:700 }} itemStyle={{ color:t.text }} cursor={{ fill:t.chartCursorFill }} />
-                      <Bar dataKey="Receitas" fill={t.success} radius={[6,6,0,0]} />
-                      <Bar dataKey="Gastos" fill={t.danger} radius={[6,6,0,0]} />
+                      <Bar dataKey={AL.charts.incomes} fill={t.success} radius={[6,6,0,0]} />
+                      <Bar dataKey={AL.charts.expenses} fill={t.danger} radius={[6,6,0,0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -6296,8 +6621,8 @@ export default function App() {
             {tab==="recurring"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
-                  <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🔁 Gastos Recorrentes</h2>
-                  <p style={{ color:t.textMuted,fontSize:14 }}>Aluguel, contas fixas, assinaturas e lembretes mensais</p>
+                  <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🔁 {AL.recurring.title}</h2>
+                  <p style={{ color:t.textMuted,fontSize:14 }}>{AL.recurring.subtitle}</p>
                 </div>
                 <RecurringView expenses={expenses} setExpenses={setExpenses} t={t} lang={lang} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} />
               </div>
@@ -6305,8 +6630,8 @@ export default function App() {
             {tab==="budget"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
-                  <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🎯 Orçamento Mensal</h2>
-                  <p style={{ color:t.textMuted,fontSize:14 }}>Defina limites de gastos por categoria e acompanhe em tempo real</p>
+                  <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🎯 {AL.budget.title}</h2>
+                  <p style={{ color:t.textMuted,fontSize:14 }}>{AL.budget.subtitle}</p>
                 </div>
                 <BudgetView expenses={expenses} t={t} lang={lang} family={family} user={user} isDemo={isDemo} addToast={addToast} />
               </div>
@@ -6392,7 +6717,7 @@ export default function App() {
               {family&&!isDemo&&<button onClick={()=>{setShowCardsManager(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="card" size={18} color={t.textMuted} />{AL.app.cards}</button>}
               <div style={{ height:1,background:t.border,margin:"8px 0" }} />
               <button onClick={()=>setDarkMode(v=>!v)} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name={darkMode?"sun":"moon"} size={18} color={t.textMuted} />{darkMode ? AL.app.lightMode : AL.app.darkMode}</button>
-              <button onClick={()=>{toggleLang();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><span style={{ fontSize:16 }}>{lang==="en"?"🇧🇷":"🇺🇸"}</span>{AL.langToggle}</button>
+              <button onClick={()=>{toggleLang();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="globe" size={18} color={t.textMuted} />{AL.langToggle}</button>
               <div style={{ height:1,background:t.border,margin:"8px 0" }} />
               {!isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />{AL.app.logout}</button>}
               {isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />{AL.app.exitDemo}</button>}
