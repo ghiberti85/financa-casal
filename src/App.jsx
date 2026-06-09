@@ -596,7 +596,8 @@ function Input({ label, t, ...props }) {
 }
 
 // ─── CALENDAR PICKER MODAL ───────────────────────────────────────────────────
-function CalendarPickerModal({ value, onChange, onClose, t }) {
+function CalendarPickerModal({ value, onChange, onClose, t, lang = "pt" }) {
+  const MONTH_FULL = APP_I18N[lang].months.full;
   const parseISO = (iso) => {
     if (iso && iso.length >= 10) {
       const [y, m, d] = iso.split("-").map(Number);
@@ -700,7 +701,7 @@ function CalendarPickerModal({ value, onChange, onClose, t }) {
             style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"6px 18px",fontSize:12,color:t.accent,cursor:"pointer",fontWeight:600 }}
             onMouseEnter={e=>e.currentTarget.style.background=t.accentSoft}
             onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-            Hoje
+            {APP_I18N[lang].calendar.today}
           </button>
         </div>
       </div>
@@ -709,7 +710,7 @@ function CalendarPickerModal({ value, onChange, onClose, t }) {
 }
 
 // ─── DATE INPUT ───────────────────────────────────────────────────────────────
-function DateInput({ label, t, value, onChange, placeholder }) {
+function DateInput({ label, t, value, onChange, placeholder, lang = "pt" }) {
   const [open, setOpen] = useState(false);
 
   const toDisplay = (iso) => {
@@ -1085,6 +1086,18 @@ const APP_I18N = {
       errorRemoving:(m) => `Error removing: ${m}`, errorEditing:(m) => `Error editing: ${m}`,
       errorGeneric:(m) => `Error: ${m}`,
     },
+    months: {
+      short: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+      full: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+    },
+    categoryLabels: {
+      alimentacao:"Food", supermercado:"Grocery", moradia:"Housing",
+      transporte:"Transport", saude:"Health", farmacia:"Pharmacy",
+      filho:"Children", educacao:"Education", beleza:"Beauty",
+      vestuario:"Clothing", lazer:"Entertainment", assinaturas:"Subscriptions",
+      presentes:"Gifts", tecnologia:"Technology",
+      gyovana:"Gyovana", metlife:"MetLife", outros:"Other",
+    },
   },
   pt: {
     nav: {
@@ -1384,6 +1397,18 @@ const APP_I18N = {
       errorLoading:"Erro ao carregar dados", errorSaving:(m) => `Erro ao salvar: ${m}`,
       errorRemoving:(m) => `Erro ao remover: ${m}`, errorEditing:(m) => `Erro ao editar: ${m}`,
       errorGeneric:(m) => `Erro: ${m}`,
+    },
+    months: {
+      short: ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+      full: ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],
+    },
+    categoryLabels: {
+      alimentacao:"Alimentação", supermercado:"Supermercado", moradia:"Moradia",
+      transporte:"Transporte", saude:"Saúde", farmacia:"Farmácia",
+      filho:"Filho", educacao:"Educação", beleza:"Beleza",
+      vestuario:"Vestuário", lazer:"Lazer", assinaturas:"Assinaturas",
+      presentes:"Presentes", tecnologia:"Tecnologia",
+      gyovana:"Gyovana", metlife:"MetLife", outros:"Outros",
     },
   },
 };
