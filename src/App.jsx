@@ -784,6 +784,309 @@ function LoginLogo({ t }) {
 }
 
 // ─── LOGIN I18N ───────────────────────────────────────────────────────────────
+// ─── APP I18N ─────────────────────────────────────────────────────────────────
+const APP_I18N = {
+  en: {
+    nav: {
+      dashboard:"Home", calendar:"Calendar", charts:"Charts",
+      budget:"Budget", recurring:"Recurring", transactions:"Transactions", import:"Import",
+    },
+    langToggle: "🇧🇷 PT",
+    app: {
+      hello:"Hello", greeting:"!", darkMode:"Dark mode", lightMode:"Light mode",
+      logout:"Sign out", loggedOut:"Signed out",
+      profile:"My Profile", family:"Family", cards:"Cards",
+      demoMode:"DEMO", exitDemo:"Exit demo",
+      overview:"Overview", thisMonth:"This month",
+      addExpense:"+ Expense", addIncome:"+ Income",
+      fabExpense:"Expense", fabIncome:"Income",
+      more:"More",
+    },
+    common: {
+      save:"Save", saving:"Saving...", cancel:"Cancel", confirm:"Confirm", delete:"Delete",
+      edit:"Edit", add:"Add", close:"Close", back:"Back", next:"Next",
+      yes:"Yes", no:"No", loading:"Loading...", search:"Search",
+      noData:"No data", optional:"optional",
+      description:"Description", amount:"Amount", date:"Date", category:"Category",
+      month:"Month", year:"Year", type:"Type",
+    },
+    summary: {
+      income:"Income", expenses:"Expenses", balance:"Balance", installments:"Future installments",
+    },
+    budget: {
+      title:"Budget", noData:"No budget set up.", add:"Add category",
+      spent:"spent", of:"of", overBudget:"over budget",
+      alertTitle:"Budget Alert 🚨",
+      alertDesc:(cat, pct) => `${cat} at ${pct}% of limit`,
+      goToBudget:"Go to Budget",
+      newCategory:"New budget category",
+      editCategory:"Edit category",
+      categoryLabel:"Category", limitLabel:"Monthly limit (R$)",
+      saveBtn:"Save", deleteBtn:"Remove",
+      totalSpent:"Total spent", totalLimit:"Total limit",
+    },
+    recurring: {
+      title:"Recurring Expenses", noData:"No recurring rules.",
+      active:"Active", inactive:"Inactive",
+      newRule:"New rule", editRule:"Edit rule",
+      description:"Description", category:"Category", type:"Type",
+      frequency:"Frequency", amount:"Amount",
+      dayOfMonth:"Day of month", endDate:"End date (optional)",
+      amountType:"Amount type", fixed:"Fixed", variable:"Variable",
+      save:"Save", cancel:"Cancel", delete:"Delete",
+      activate:"Activate", deactivate:"Deactivate",
+      alertTitle:"Recurring Reminders 🔔",
+      alertView:"See recurring",
+      confirmNow:"Log now", skipMonth:"Skip this month",
+      freq: { monthly:"Monthly", weekly:"Weekly", biweekly:"Every 2 weeks", yearly:"Yearly" },
+    },
+    calendar: {
+      title:"Calendar",
+      noEvents:"No records for this day.",
+      today:"Today",
+    },
+    charts: {
+      title:"Charts",
+      byCategory:"By category", monthly:"Monthly", billing:"Billing",
+      expenses:"Expenses", incomes:"Incomes",
+      noData:"No data for this period.",
+      month:"Month", value:"Value",
+    },
+    transactions: {
+      title:"Transactions",
+      all:"All", expenses:"Expenses", incomes:"Incomes",
+      noData:"No transactions found.",
+      deleteAll:"Delete all", confirmDeleteAll:"Delete all transactions? This cannot be undone.",
+      filterBy:"Filter by", filterAll:"All",
+      removed:"Removed", removedAll:"All removed",
+    },
+    expenseForm: {
+      title:"New Expense",
+      description:"Description", descPlaceholder:"E.g.: Supermarket",
+      amount:"Amount (R$)", amountPlaceholder:"0,00",
+      date:"Date", category:"Category", selectCategory:"Select category",
+      type:"Type", parcelas:"Installments",
+      card:"Card", selectCard:"Select card",
+      paidBy:"Paid by",
+      splitPayment:"Split payment",
+      splitType:"Split type", splitAmount:"Split amount",
+      recurring:"Mark as recurring",
+      save:"Save expense", saving:"Saving...",
+      paymentTypes: { debito:"Debit", credito:"Credit", pix:"Pix", dinheiro:"Cash", outro:"Other" },
+    },
+    incomeForm: {
+      title:"New Income",
+      description:"Description", descPlaceholder:"E.g.: Salary",
+      amount:"Amount (R$)", amountPlaceholder:"0,00",
+      date:"Date", source:"Source", selectSource:"Select source",
+      receivedBy:"Received by",
+      save:"Save income", saving:"Saving...",
+      sources: { salario:"Salary", freelance:"Freelance", investimento:"Investment", aluguel:"Rental", outros:"Other" },
+    },
+    editModal: {
+      titleExpense:"Edit Expense", titleIncome:"Edit Income",
+      save:"Save changes", saving:"Saving...",
+    },
+    importView: {
+      title:"Import",
+      dropzone:"Drop your file here or click to select",
+      supportedFormats:"Supported: CSV, XLSX, XLS, PDF (bank statements)",
+      review:"Review Import",
+      expensesLabel:"Expenses ✓", incomesLabel:"Incomes ✓", lowConfidence:"⚠ review",
+      confirm:"💾 Confirm import", importMore:"📥 Import more",
+      viewTransactions:"📋 View transactions",
+    },
+    profile: {
+      title:"My Profile", firstName:"First name", lastName:"Last name", phone:"Phone",
+      email:"Email", save:"💾 Save profile", saving:"Saving...",
+    },
+    family: {
+      title:"Family", inviteCode:"INVITE CODE",
+      shareInstructions:"Share this code with your partner to join the same dashboard.",
+      copy:"📋 Copy", newCode:"🔄 New code",
+      tip:"Your partner creates an account, chooses \"Join a family\" and enters this code.",
+      members:"Family members", you:"(you)", roleAdmin:"👑 Admin", roleMember:"Member",
+      copied:"Code copied!", regenerated:"New code generated!",
+      memberOnly:"You are a member of this family. Only admins can invite new members.",
+    },
+    cardsManager: {
+      title:"My Cards",
+      newCard:"New card", editCard:"Edit card",
+      cardName:"Card name", cardNamePlaceholder:"E.g.: Santander Family",
+      holder:"Cardholder", closingDay:"Closing day", dueDay:"Due day", color:"Color",
+      save:"Save changes", create:"Create card", saving:"Saving...",
+      cantDeleteLast:"Cannot delete the only card.",
+      deleteTitle:"Delete card", deleteMsg:"Delete this card? This cannot be undone.",
+      billingPeriods:"Billing Periods", addPeriod:"+ Add",
+      noPeriods:"No periods added.",
+      periodCard:"Card", periodMonth:"Billing month", periodStart:"Period start",
+      periodEnd:"Period end", periodDue:"Due date", periodTotal:"PDF total (optional)",
+      periodSave:"Save", periodAdd:"Add period", periodSaving:"Saving...",
+    },
+    toasts: {
+      expenseSaved:"Expense saved! ✓", expenseUpdated:"Expense updated! ✓",
+      expenseRemoved:"Expense removed",
+      incomeSaved:"Income saved! ✓", incomeUpdated:"Income updated! ✓",
+      incomeRemoved:"Income removed",
+      splitSaved:"Split payment saved! ✂️",
+      recurringCreated:"Expense saved and recurring rule created! ✅",
+      fillAmount:"Enter a valid amount", fillDescription:"Enter a description",
+      selectCategory:"Select a category",
+      profileSaved:"Profile saved!",
+    },
+  },
+  pt: {
+    nav: {
+      dashboard:"Início", calendar:"Calendário", charts:"Gráficos",
+      budget:"Orçamento", recurring:"Recorrentes", transactions:"Lançamentos", import:"Importar",
+    },
+    langToggle: "🇺🇸 EN",
+    app: {
+      hello:"Olá", greeting:"!", darkMode:"Modo escuro", lightMode:"Modo claro",
+      logout:"Sair", loggedOut:"Saiu com sucesso",
+      profile:"Meu Perfil", family:"Família", cards:"Cartões",
+      demoMode:"DEMO", exitDemo:"Sair do demo",
+      overview:"Visão geral", thisMonth:"Este mês",
+      addExpense:"+ Gasto", addIncome:"+ Receita",
+      fabExpense:"Gasto", fabIncome:"Receita",
+      more:"Mais",
+    },
+    common: {
+      save:"Salvar", saving:"Salvando...", cancel:"Cancelar", confirm:"Confirmar", delete:"Excluir",
+      edit:"Editar", add:"Adicionar", close:"Fechar", back:"Voltar", next:"Próximo",
+      yes:"Sim", no:"Não", loading:"Carregando...", search:"Buscar",
+      noData:"Sem dados", optional:"opcional",
+      description:"Descrição", amount:"Valor", date:"Data", category:"Categoria",
+      month:"Mês", year:"Ano", type:"Tipo",
+    },
+    summary: {
+      income:"Receitas", expenses:"Gastos", balance:"Saldo", installments:"Parcelas futuras",
+    },
+    budget: {
+      title:"Orçamento", noData:"Nenhum orçamento configurado.", add:"Adicionar categoria",
+      spent:"gasto", of:"de", overBudget:"acima do limite",
+      alertTitle:"Alerta de Orçamento 🚨",
+      alertDesc:(cat, pct) => `${cat} em ${pct}% do limite`,
+      goToBudget:"Ver Orçamento",
+      newCategory:"Nova categoria de orçamento",
+      editCategory:"Editar categoria",
+      categoryLabel:"Categoria", limitLabel:"Limite mensal (R$)",
+      saveBtn:"Salvar", deleteBtn:"Remover",
+      totalSpent:"Total gasto", totalLimit:"Limite total",
+    },
+    recurring: {
+      title:"Recorrentes", noData:"Nenhuma regra recorrente.",
+      active:"Ativo", inactive:"Inativo",
+      newRule:"Nova regra", editRule:"Editar regra",
+      description:"Descrição", category:"Categoria", type:"Tipo",
+      frequency:"Frequência", amount:"Valor",
+      dayOfMonth:"Dia do mês", endDate:"Data de encerramento (opcional)",
+      amountType:"Tipo de valor", fixed:"Fixo", variable:"Variável",
+      save:"Salvar", cancel:"Cancelar", delete:"Excluir",
+      activate:"Ativar", deactivate:"Desativar",
+      alertTitle:"Lembretes de Recorrentes 🔔",
+      alertView:"Ver recorrentes",
+      confirmNow:"Lançar agora", skipMonth:"Ignorar este mês",
+      freq: { monthly:"Mensal", weekly:"Semanal", biweekly:"A cada 2 semanas", yearly:"Anual" },
+    },
+    calendar: {
+      title:"Calendário",
+      noEvents:"Nenhum registro neste dia.",
+      today:"Hoje",
+    },
+    charts: {
+      title:"Gráficos",
+      byCategory:"Por categoria", monthly:"Mensal", billing:"Fatura",
+      expenses:"Gastos", incomes:"Receitas",
+      noData:"Sem dados para o período.",
+      month:"Mês", value:"Valor",
+    },
+    transactions: {
+      title:"Lançamentos",
+      all:"Todos", expenses:"Gastos", incomes:"Receitas",
+      noData:"Nenhuma transação encontrada.",
+      deleteAll:"Excluir todos", confirmDeleteAll:"Excluir todos os lançamentos? Esta ação não pode ser desfeita.",
+      filterBy:"Filtrar por", filterAll:"Todos",
+      removed:"Removido", removedAll:"Todos removidos",
+    },
+    expenseForm: {
+      title:"Novo Gasto",
+      description:"Descrição", descPlaceholder:"Ex: Supermercado",
+      amount:"Valor (R$)", amountPlaceholder:"0,00",
+      date:"Data", category:"Categoria", selectCategory:"Selecione a categoria",
+      type:"Tipo", parcelas:"Parcelas",
+      card:"Cartão", selectCard:"Selecione o cartão",
+      paidBy:"Pago por",
+      splitPayment:"Pagamento dividido",
+      splitType:"Tipo do segundo pagamento", splitAmount:"Valor do segundo pagamento",
+      recurring:"Marcar como recorrente",
+      save:"Salvar gasto", saving:"Salvando...",
+      paymentTypes: { debito:"Débito", credito:"Crédito", pix:"Pix", dinheiro:"Dinheiro", outro:"Outro" },
+    },
+    incomeForm: {
+      title:"Nova Receita",
+      description:"Descrição", descPlaceholder:"Ex: Salário",
+      amount:"Valor (R$)", amountPlaceholder:"0,00",
+      date:"Data", source:"Fonte", selectSource:"Selecione a fonte",
+      receivedBy:"Recebido por",
+      save:"Salvar receita", saving:"Salvando...",
+      sources: { salario:"Salário", freelance:"Freelance", investimento:"Investimento", aluguel:"Aluguel", outros:"Outros" },
+    },
+    editModal: {
+      titleExpense:"Editar Gasto", titleIncome:"Editar Receita",
+      save:"Salvar alterações", saving:"Salvando...",
+    },
+    importView: {
+      title:"Importar",
+      dropzone:"Solte o arquivo aqui ou clique para selecionar",
+      supportedFormats:"Suportado: CSV, XLSX, XLS, PDF (extratos bancários)",
+      review:"Revisar Importação",
+      expensesLabel:"Gastos ✓", incomesLabel:"Receitas ✓", lowConfidence:"⚠ verificar",
+      confirm:"💾 Confirmar importação", importMore:"📥 Importar mais",
+      viewTransactions:"📋 Ver lançamentos",
+    },
+    profile: {
+      title:"Meu Perfil", firstName:"Nome", lastName:"Sobrenome", phone:"Telefone",
+      email:"E-mail", save:"💾 Salvar perfil", saving:"Salvando...",
+    },
+    family: {
+      title:"Família", inviteCode:"CÓDIGO DE CONVITE",
+      shareInstructions:"Compartilhe este código com seu cônjuge para que entre no mesmo dashboard.",
+      copy:"📋 Copiar", newCode:"🔄 Novo código",
+      tip:"Seu cônjuge cria uma conta, escolhe \"Entrar em uma família\" e digita este código.",
+      members:"Membros da família", you:"(você)", roleAdmin:"👑 Admin", roleMember:"Membro",
+      copied:"Código copiado!", regenerated:"Novo código gerado!",
+      memberOnly:"Você é membro desta família. Apenas administradores podem convidar novos membros.",
+    },
+    cardsManager: {
+      title:"Meus Cartões",
+      newCard:"Novo cartão", editCard:"Editar cartão",
+      cardName:"Nome do cartão", cardNamePlaceholder:"Ex: Santander Casal",
+      holder:"Titular", closingDay:"Dia de fechamento", dueDay:"Dia de vencimento", color:"Cor",
+      save:"Salvar alterações", create:"Criar cartão", saving:"Salvando...",
+      cantDeleteLast:"Não é possível excluir o único cartão.",
+      deleteTitle:"Excluir cartão", deleteMsg:"Excluir este cartão? Esta ação não pode ser desfeita.",
+      billingPeriods:"Períodos de Fatura", addPeriod:"+ Adicionar",
+      noPeriods:"Nenhum período cadastrado.",
+      periodCard:"Cartão", periodMonth:"Mês da fatura", periodStart:"Início do período",
+      periodEnd:"Fim do período", periodDue:"Data de vencimento", periodTotal:"Total do extrato PDF (opcional)",
+      periodSave:"Salvar alterações", periodAdd:"Adicionar período", periodSaving:"Salvando...",
+    },
+    toasts: {
+      expenseSaved:"Gasto salvo! ✓", expenseUpdated:"Gasto atualizado! ✓",
+      expenseRemoved:"Gasto removido",
+      incomeSaved:"Receita salva! ✓", incomeUpdated:"Receita atualizada! ✓",
+      incomeRemoved:"Receita removida",
+      splitSaved:"Pagamento dividido registrado! ✂️",
+      recurringCreated:"Gasto registrado e regra recorrente criada! ✅",
+      fillAmount:"Informe um valor válido", fillDescription:"Informe a descrição",
+      selectCategory:"Selecione uma categoria",
+      profileSaved:"Perfil atualizado!",
+    },
+  },
+};
+
+// ─── LOGIN I18N ───────────────────────────────────────────────────────────────
 const LOGIN_I18N = {
   en: {
     subtitle:              "Manage together, grow together",
@@ -1089,7 +1392,7 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
 }
 
 // ─── CALENDAR ────────────────────────────────────────────────────────────────
-function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onEditExpense, onEditIncome, familyMembers, onDaySelect, family, isDemo }) {
+function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDeleteIncome, onEditExpense, onEditIncome, familyMembers, onDaySelect, family, isDemo }) {
   // Store year/month as plain integers — completely avoids ALL timezone bugs
   const [viewYr, setViewYr] = useState(() => {
     const now = new Date();
@@ -1440,7 +1743,7 @@ function CalendarView({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, o
 }
 
 // ─── CHARTS ──────────────────────────────────────────────────────────────────
-function ChartsView({ expenses, incomes, t, onEditExpense, onDeleteExpense, familyMembers, cards = [], recurringRules = [], billingPeriods = [] }) {
+function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDeleteExpense, familyMembers, cards = [], recurringRules = [], billingPeriods = [] }) {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const period = "month";
@@ -2017,7 +2320,7 @@ function MemberSelect({ label, t, value, onChange, familyMembers }) {
 }
 
 // ─── EXPENSE FORM ─────────────────────────────────────────────────────────────
-function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [], currentUserLabel = "Você" }) {
+function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDate, cards = [], currentUserLabel = "Você" }) {
   const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:currentUserLabel, card_id:"" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
@@ -2085,22 +2388,22 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
   return (
     <div>
       {/* Field order: Descrição, Quem pagou, Tipo, then value fields */}
-      <Input label="Descrição / Estabelecimento" t={t} value={form.description} onChange={e=>set("description",e.target.value)} placeholder="Ex: iFood, Uber, Supermercado..." />
-      <MemberSelect label="Quem pagou?" t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)} familyMembers={familyMembers} />
-      <Select label="Tipo de pagamento" t={t} value={form.type} onChange={e=>set("type",e.target.value)}>
-        <option value="pix">💸 PIX</option>
-        <option value="debito">🏦 Débito</option>
-        <option value="credito">💳 Crédito</option>
-        <option value="dinheiro">💵 Dinheiro</option>
+      <Input label={APP_I18N[lang].expenseForm.description} t={t} value={form.description} onChange={e=>set("description",e.target.value)} placeholder={APP_I18N[lang].expenseForm.descPlaceholder} />
+      <MemberSelect label={APP_I18N[lang].expenseForm.paidBy} t={t} value={form.user_label} onChange={e=>set("user_label",e.target.value)} familyMembers={familyMembers} />
+      <Select label={APP_I18N[lang].expenseForm.type} t={t} value={form.type} onChange={e=>set("type",e.target.value)}>
+        <option value="pix">💸 {APP_I18N[lang].expenseForm.paymentTypes.pix}</option>
+        <option value="debito">🏦 {APP_I18N[lang].expenseForm.paymentTypes.debito}</option>
+        <option value="credito">💳 {APP_I18N[lang].expenseForm.paymentTypes.credito}</option>
+        <option value="dinheiro">💵 {APP_I18N[lang].expenseForm.paymentTypes.dinheiro}</option>
       </Select>
       {isCredit && cards.length > 0 && (
-        <Select label="Cartão" t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
-          <option value="">Sem cartão específico</option>
+        <Select label={APP_I18N[lang].expenseForm.card} t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
+          <option value="">{APP_I18N[lang].expenseForm.selectCard}</option>
           {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
         </Select>
       )}
-      <Select label="Categoria" t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
-        <option value="">Selecione...</option>
+      <Select label={APP_I18N[lang].expenseForm.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
+        <option value="">{APP_I18N[lang].expenseForm.selectCategory}</option>
         {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
       </Select>
       {isCredit ? (
@@ -2207,10 +2510,10 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
       </div>
 
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
-        <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
+        <Btn t={t} variant="ghost" type="button" onClick={onClose}>{APP_I18N[lang].common.cancel}</Btn>
         <Btn t={t} type="button" onClick={handle} disabled={saving}
           style={{ opacity: saving ? 0.7 : 1 }}>
-          {saving ? "Salvando..." : "💾 Salvar"}
+          {saving ? APP_I18N[lang].expenseForm.saving : `💾 ${APP_I18N[lang].expenseForm.save}`}
         </Btn>
       </div>
     </div>
@@ -2218,7 +2521,7 @@ function ExpenseForm({ t, onSave, onClose, familyMembers, initialDate, cards = [
 }
 
 // ─── INCOME FORM ──────────────────────────────────────────────────────────────
-function IncomeForm({ t, onSave, onClose, familyMembers, initialDate, currentUserLabel = "Você" }) {
+function IncomeForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDate, currentUserLabel = "Você" }) {
   const [form, setForm] = useState({ description:"Salário", amount:"", date:initialDate || today.toISOString().slice(0,10), source:"salario", category:"salario", user_label:currentUserLabel });
   const [saving, setSaving] = useState(false);
 
@@ -2230,20 +2533,20 @@ function IncomeForm({ t, onSave, onClose, familyMembers, initialDate, currentUse
 
   return (
     <div>
-      <Input label="Descrição" t={t} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Ex: Salário, Freelance..." />
-      <MemberSelect label="Quem recebeu?" t={t} value={form.user_label} onChange={e=>setForm({...form,user_label:e.target.value})} familyMembers={familyMembers} />
-      <Select label="Categoria" t={t} value={form.category} onChange={e=>setForm({...form,category:e.target.value,source:e.target.value})}>
+      <Input label={APP_I18N[lang].incomeForm.description} t={t} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={APP_I18N[lang].incomeForm.descPlaceholder} />
+      <MemberSelect label={APP_I18N[lang].incomeForm.receivedBy} t={t} value={form.user_label} onChange={e=>setForm({...form,user_label:e.target.value})} familyMembers={familyMembers} />
+      <Select label={APP_I18N[lang].incomeForm.source} t={t} value={form.category} onChange={e=>setForm({...form,category:e.target.value,source:e.target.value})}>
         {INCOME_SOURCES.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
       </Select>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,minWidth:0,overflow:"hidden" }}>
-        <Input label="Valor (R$)" t={t} type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="0,00" />
-        <DateInput label="Data" t={t} value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
+        <Input label={APP_I18N[lang].incomeForm.amount} t={t} type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder={APP_I18N[lang].incomeForm.amountPlaceholder} />
+        <DateInput label={APP_I18N[lang].incomeForm.date} t={t} value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8 }}>
-        <Btn t={t} variant="ghost" type="button" onClick={onClose}>Cancelar</Btn>
+        <Btn t={t} variant="ghost" type="button" onClick={onClose}>{APP_I18N[lang].common.cancel}</Btn>
         <Btn t={t} variant="success" type="button" onClick={handle} disabled={saving}
           style={{ opacity: saving ? 0.7 : 1 }}>
-          {saving ? "Salvando..." : "💾 Salvar"}
+          {saving ? APP_I18N[lang].incomeForm.saving : `💾 ${APP_I18N[lang].incomeForm.save}`}
         </Btn>
       </div>
     </div>
@@ -2252,7 +2555,7 @@ function IncomeForm({ t, onSave, onClose, familyMembers, initialDate, currentUse
 
 
 // ─── EDIT MODAL ───────────────────────────────────────────────────────────────
-function EditModal({ t, item, onSave, onClose, familyMembers, cards = [] }) {
+function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards = [] }) {
   const isExp = item._type === "expense";
   const initParc = item.parcelas || 1;
   const isCredit = isExp && (item.type || "pix") === "credito";
@@ -2501,7 +2804,7 @@ function useLongPress(onTrigger, ms = 500) {
 }
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
-function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você", billingPeriods = [] }) {
+function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDeleteIncome, onDeleteAllExpenses, onDeleteAllIncomes, onEditExpense, onEditIncome, familyMembers, cards = [], currentUserLabel = "Você", billingPeriods = [] }) {
   // ── Period / window state ──
   // anchorMonth/anchorYear = the reference month shown in the period header
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
@@ -2867,7 +3170,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
 
           {/* ══ ROW 4: Todos/Gastos/Receitas segmented ══ */}
           <div style={{ display:"flex", padding:3, borderRadius:999, background:"rgba(255,255,255,0.04)", border:`1px solid ${t.border}`, marginBottom:10 }}>
-            {[["all","Todos"],["expense","Gastos"],["income","Receitas"]].map(([v,l])=>(
+            {[["all",APP_I18N[lang].transactions.all],["expense",APP_I18N[lang].transactions.expenses],["income",APP_I18N[lang].transactions.incomes]].map(([v,l])=>(
               <button key={v} onClick={()=>{ setFilter(v); if(v!=="expense"){ setPaymentFilter("all"); setCategoryFilter("all"); } }}
                 style={{ flex:1, height:30, borderRadius:999, border:"none",
                   background: filter===v?t.accent:"transparent",
@@ -3203,7 +3506,7 @@ function TransactionsList({ expenses, incomes, t, onDeleteExpense, onDeleteIncom
 
 
 // ─── BUDGET ALERT CARD (shown in Dashboard) ───────────────────────────────────
-function BudgetAlertCard({ expenses, t, family, isDemo, onGoToBudget }) {
+function BudgetAlertCard({ expenses, t, lang = "pt", family, isDemo, onGoToBudget }) {
   const [budgets, setBudgets] = useState([]);
   const prefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
 
@@ -3229,10 +3532,10 @@ function BudgetAlertCard({ expenses, t, family, isDemo, onGoToBudget }) {
   return (
     <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:16,padding:"14px 18px" }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
-        <span style={{ fontSize:13,fontWeight:700,color:t.warning }}>⚡ Alertas de Orçamento</span>
+        <span style={{ fontSize:13,fontWeight:700,color:t.warning }}>⚡ {APP_I18N[lang].budget.alertTitle}</span>
         <button onClick={onGoToBudget}
           style={{ background:"transparent",border:"none",cursor:"pointer",color:t.accent,fontSize:12,fontWeight:700 }}>
-          Ver todos →
+          {APP_I18N[lang].budget.goToBudget} →
         </button>
       </div>
       <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
@@ -3259,7 +3562,7 @@ function BudgetAlertCard({ expenses, t, family, isDemo, onGoToBudget }) {
 
 
 // ─── RECURRING EXPENSES ───────────────────────────────────────────────────────
-function RecurringView({ t, family, user, isDemo, addToast, expenses, setExpenses, familyMembers }) {
+function RecurringView({ t, lang = "pt", family, user, isDemo, addToast, expenses, setExpenses, familyMembers }) {
   const [rules, setRules]         = useState([]);
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -3811,7 +4114,7 @@ function RecurringForm({ t, rule, family, user, familyMembers, addToast, onClose
 }
 
 // ─── RECURRING ALERT CARD (Dashboard) ────────────────────────────────────────
-function RecurringAlertCard({ t, family, isDemo, onGoToRecurring }) {
+function RecurringAlertCard({ t, lang = "pt", family, isDemo, onGoToRecurring }) {
   const [pending, setPending] = useState([]);
 
   useEffect(() => {
@@ -3841,8 +4144,8 @@ function RecurringAlertCard({ t, family, isDemo, onGoToRecurring }) {
   return (
     <div style={{ background:t.warningSoft,border:`1px solid ${t.warning}44`,borderRadius:16,padding:"14px 18px",cursor:"pointer" }} onClick={onGoToRecurring}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
-        <span style={{ fontSize:13,fontWeight:700,color:t.warning }}>🔔 {pending.length} conta{pending.length>1?"s":""} aguardando valor</span>
-        <span style={{ fontSize:12,color:t.accent,fontWeight:700 }}>Registrar →</span>
+        <span style={{ fontSize:13,fontWeight:700,color:t.warning }}>{APP_I18N[lang].recurring.alertTitle} ({pending.length})</span>
+        <span style={{ fontSize:12,color:t.accent,fontWeight:700 }}>{APP_I18N[lang].recurring.alertView} →</span>
       </div>
       <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
         {pending.slice(0,4).map(rule => {
@@ -3860,7 +4163,7 @@ function RecurringAlertCard({ t, family, isDemo, onGoToRecurring }) {
 }
 
 // ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
-function BudgetView({ expenses, t, family, user, isDemo, addToast }) {
+function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }) {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCat, setEditingCat] = useState(null); // category id being edited
@@ -4141,7 +4444,7 @@ function ChartsViewSkeleton({ t }) {
 }
 
 // ─── SUMMARY CARDS ────────────────────────────────────────────────────────────
-function SummaryCards({ expenses, incomes, t, only = null }) {
+function SummaryCards({ expenses, incomes, t, lang = "pt", only = null }) {
   const prefix=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
   // Use monthlyAmount: for credit installments, amount is already the monthly value
   const monthExp=expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
@@ -4171,16 +4474,17 @@ function SummaryCards({ expenses, incomes, t, only = null }) {
     });
     return { creditPending: total, lastInstallmentDate: lastDate };
   })();
+  const AS = APP_I18N[lang].summary;
   const lastInstallmentLabel = lastInstallmentDate
-    ? `Última parcela em ${String(lastInstallmentDate.getDate()).padStart(2,'0')}/${String(lastInstallmentDate.getMonth()+1).padStart(2,'0')}/${lastInstallmentDate.getFullYear()}`
+    ? `${lang==="en"?"Last installment on":"Última parcela em"} ${String(lastInstallmentDate.getDate()).padStart(2,'0')}/${String(lastInstallmentDate.getMonth()+1).padStart(2,'0')}/${lastInstallmentDate.getFullYear()}`
     : null;
   const cards=[
-    { label:"Receitas do Mês",value:fmt(monthInc),color:t.success,bg:t.successSoft,border:`${t.success}33`,icon:"💰" },
-    { label:"Gastos do Mês",value:fmt(monthExp),color:t.danger,bg:t.dangerSoft,border:`${t.danger}33`,icon:"💸" },
-    { label:"Saldo",value:fmt(balance),color:balance>=0?t.success:t.danger,bg:balance>=0?t.successSoft:t.dangerSoft,border:`${balance>=0?t.success:t.danger}33`,icon:balance>=0?"📈":"📉" },
-    { label:"Parcelas Futuras",value:fmt(creditPending),color:t.warning,bg:t.warningSoft,border:`${t.warning}33`,icon:"💳",subtitle:lastInstallmentLabel },
+    { id:"income",       label:AS.income,       value:fmt(monthInc),    color:t.success,  bg:t.successSoft,  border:`${t.success}33`,  icon:"💰" },
+    { id:"expenses",     label:AS.expenses,     value:fmt(monthExp),    color:t.danger,   bg:t.dangerSoft,   border:`${t.danger}33`,   icon:"💸" },
+    { id:"balance",      label:AS.balance,      value:fmt(balance),     color:balance>=0?t.success:t.danger, bg:balance>=0?t.successSoft:t.dangerSoft, border:`${balance>=0?t.success:t.danger}33`, icon:balance>=0?"📈":"📉" },
+    { id:"installments", label:AS.installments, value:fmt(creditPending),color:t.warning,  bg:t.warningSoft,  border:`${t.warning}33`,  icon:"💳", subtitle:lastInstallmentLabel },
   ];
-  const visibleCards = only ? cards.filter(c => only.includes(c.label)) : cards;
+  const visibleCards = only ? cards.filter(c => only.includes(c.id) || only.includes(c.label)) : cards;
   const gridClass = only
     ? (only.length === 3 ? "summary-grid-3" : only.length === 1 ? "summary-grid-1" : "summary-grid")
     : "summary-grid";
@@ -4203,7 +4507,7 @@ function SummaryCards({ expenses, incomes, t, only = null }) {
 
 
 // ─── IMPORT VIEW ─────────────────────────────────────────────────────────────
-function ImportView({ t, darkMode, family, user, isDemo, onImported, addToast, existingExpenses, existingIncomes }) {
+function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported, addToast, existingExpenses, existingIncomes }) {
   const [step, setStep] = useState("upload");
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -4850,7 +5154,7 @@ function applyPhoneMask(value, mask) {
   return result;
 }
 
-function ProfileModal({ t, user, profile, onSaved, addToast }) {
+function ProfileModal({ t, lang = "pt", user, profile, onSaved, addToast }) {
   const [firstName, setFirstName] = useState(profile?.first_name || "");
   const [lastName,  setLastName]  = useState(profile?.last_name  || "");
   const [loading, setLoading] = useState(false);
@@ -4898,24 +5202,24 @@ function ProfileModal({ t, user, profile, onSaved, addToast }) {
     <div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
         <div>
-          <label style={lbl}>Nome *</label>
-          <input value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="João" style={inp}
+          <label style={lbl}>{APP_I18N[lang].profile.firstName} *</label>
+          <input value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder={lang==="en"?"John":"João"} style={inp}
             onFocus={e=>e.target.style.borderColor=t.accent} onBlur={e=>e.target.style.borderColor=t.border} />
         </div>
         <div>
-          <label style={lbl}>Sobrenome</label>
-          <input value={lastName} onChange={e=>setLastName(e.target.value)} placeholder="Silva" style={inp}
+          <label style={lbl}>{APP_I18N[lang].profile.lastName}</label>
+          <input value={lastName} onChange={e=>setLastName(e.target.value)} placeholder={lang==="en"?"Smith":"Silva"} style={inp}
             onFocus={e=>e.target.style.borderColor=t.accent} onBlur={e=>e.target.style.borderColor=t.border} />
         </div>
       </div>
 
       <div style={{ marginBottom:16 }}>
-        <label style={lbl}>E-mail</label>
+        <label style={lbl}>{APP_I18N[lang].profile.email}</label>
         <input value={user?.email||""} readOnly style={{ ...inp, opacity:0.55, cursor:"default" }} />
       </div>
 
       <div style={{ marginBottom:16 }}>
-        <label style={lbl}>Telefone</label>
+        <label style={lbl}>{APP_I18N[lang].profile.phone}</label>
         <div style={{ display:"flex", gap:8 }}>
           {/* DDI selector */}
           <select value={ddi} onChange={e=>{ setDdi(e.target.value); setLocal(""); }} style={{ padding:"11px 10px", borderRadius:12, fontSize:13, fontFamily:"'DM Sans', sans-serif", background:t.inputBg, border:`1px solid ${t.border}`, color:t.text, outline:"none", cursor:"pointer", flexShrink:0, minWidth:90 }}>
@@ -4933,14 +5237,14 @@ function ProfileModal({ t, user, profile, onSaved, addToast }) {
       </div>
 
       <Btn t={t} type="button" onClick={save} style={{ width:"100%", marginTop:4 }} disabled={loading}>
-        {loading ? "Salvando..." : "💾 Salvar"}
+        {loading ? APP_I18N[lang].profile.saving : APP_I18N[lang].profile.save}
       </Btn>
     </div>
   );
 }
 
 // ─── FAMILY MODAL ─────────────────────────────────────────────────────────────
-function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers, onRegenCode, addToast, isAdmin }) {
+function FamilyModal({ t, lang = "pt", family, currentUserId, familyMembers, setFamilyMembers, onRegenCode, addToast, isAdmin }) {
   const [updatingRole, setUpdatingRole] = useState(null);
 
   const handleRoleChange = async (userId, newRole) => {
@@ -4960,29 +5264,29 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
       {isAdmin ? (
         <div>
           <p style={{ color:t.textSecondary,fontSize:13,marginBottom:16,lineHeight:1.6 }}>
-            Compartilhe este código com seu cônjuge para que entre no mesmo dashboard.
+            {APP_I18N[lang].family.shareInstructions}
           </p>
           <div style={{ background:t.accentSoft,border:`2px dashed ${t.accent}55`,borderRadius:16,padding:"20px 16px",textAlign:"center",marginBottom:12 }}>
-            <div style={{ fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.12em",marginBottom:8 }}>CÓDIGO DE CONVITE</div>
+            <div style={{ fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.12em",marginBottom:8 }}>{APP_I18N[lang].family.inviteCode}</div>
             <div style={{ fontSize:34,fontWeight:800,color:t.accent,letterSpacing:"0.3em" }}>
               {family?.invite_code || "------"}
             </div>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16 }}>
-            <Btn t={t} type="button" onClick={()=>{ navigator.clipboard?.writeText(family?.invite_code||"").catch(()=>{}); addToast("Código copiado!","success"); }} style={{ fontSize:13 }}>
-              📋 Copiar
+            <Btn t={t} type="button" onClick={()=>{ navigator.clipboard?.writeText(family?.invite_code||"").catch(()=>{}); addToast(APP_I18N[lang].family.copied,"success"); }} style={{ fontSize:13 }}>
+              {APP_I18N[lang].family.copy}
             </Btn>
             <Btn t={t} variant="ghost" type="button" onClick={onRegenCode} style={{ fontSize:13 }}>
-              🔄 Novo código
+              {APP_I18N[lang].family.newCode}
             </Btn>
           </div>
           <div style={{ padding:"10px 14px",borderRadius:12,background:t.warningSoft,border:`1px solid ${t.warning}33`,fontSize:12,color:t.warning }}>
-            💡 Seu cônjuge cria uma conta, escolhe "Entrar em uma família" e digita este código.
+            💡 {APP_I18N[lang].family.tip}
           </div>
         </div>
       ) : (
         <div style={{ padding:"12px 16px",borderRadius:12,background:t.successSoft,border:`1px solid ${t.success}33`,fontSize:13,color:t.success }}>
-          ✅ Você é membro desta família. Apenas administradores podem convidar novos membros.
+          ✅ {APP_I18N[lang].family.memberOnly}
         </div>
       )}
 
@@ -4990,7 +5294,7 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
       {familyMembers.length > 0 && (
         <div>
           <div style={{ fontSize:13,fontWeight:700,color:t.text,marginBottom:12 }}>
-            👥 Membros da família ({familyMembers.length})
+            👥 {APP_I18N[lang].family.members} ({familyMembers.length})
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {familyMembers.map(m => {
@@ -5003,7 +5307,7 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
                   </div>
                   <div style={{ flex:1,minWidth:0 }}>
                     <div style={{ fontSize:13,fontWeight:700,color:t.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-                      {displayName}{isMe ? " (você)" : ""}
+                      {displayName}{isMe ? ` ${APP_I18N[lang].family.you}` : ""}
                     </div>
                     <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>
                       {m.email}{m.phone ? ` · ${m.phone}` : ""}
@@ -5014,12 +5318,12 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
                       <select value={m.role} disabled={updatingRole===m.user_id}
                         onChange={e=>handleRoleChange(m.user_id, e.target.value)}
                         style={{ padding:"5px 10px",borderRadius:8,border:`1px solid ${t.border}`,background:t.inputBg,color:m.role==="admin"?t.accent:t.textSecondary,fontSize:12,fontWeight:700,cursor:"pointer",outline:"none" }}>
-                        <option value="member">Membro</option>
-                        <option value="admin">Administrador</option>
+                        <option value="member">{APP_I18N[lang].family.roleMember}</option>
+                        <option value="admin">{APP_I18N[lang].family.roleAdmin}</option>
                       </select>
                     ) : (
                       <span style={{ padding:"4px 10px",borderRadius:8,background:m.role==="admin"?t.accentSoft:t.surface,color:m.role==="admin"?t.accent:t.textMuted,fontSize:11,fontWeight:700,border:`1px solid ${m.role==="admin"?t.accent+"33":t.border}` }}>
-                        {m.role==="admin"?"👑 Admin":"Membro"}
+                        {m.role==="admin"?APP_I18N[lang].family.roleAdmin:APP_I18N[lang].family.roleMember}
                       </span>
                     )}
                   </div>
@@ -5034,7 +5338,7 @@ function FamilyModal({ t, family, currentUserId, familyMembers, setFamilyMembers
 }
 
 // ─── CARDS MANAGER ───────────────────────────────────────────────────────────
-function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBillingPeriods = ()=>{} }) {
+function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods = [], setBillingPeriods = ()=>{} }) {
   const [cards, setCards] = useState([]);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name:"", holder:"", closing_day:28, due_day:6, color:"#7c6af7" });
@@ -5285,7 +5589,7 @@ function CardsManager({ t, family, isDemo, addToast, billingPeriods = [], setBil
 }
 
 // ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
-function BillingCard({ cards, billingPeriods = [], appBillingData = [], t }) {
+function BillingCard({ cards, billingPeriods = [], appBillingData = [], t, lang = "pt" }) {
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
   // Determine current fatura using first available card's closing_day/periods
@@ -5353,6 +5657,15 @@ export default function App() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showFabSheet, setShowFabSheet] = useState(false);
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
+  const [lang, setLang] = useState(() => localStorage.getItem("app_lang") || "en");
+
+  const toggleLang = () => setLang(l => {
+    const next = l === "en" ? "pt" : "en";
+    localStorage.setItem("app_lang", next);
+    return next;
+  });
+
+  const AL = APP_I18N[lang];
 
   const t = themes[darkMode ? "dark" : "light"];
   const isDemo = SUPABASE_URL.includes("YOUR_PROJECT") || user?.id === "demo";
@@ -5549,7 +5862,7 @@ export default function App() {
       // Production: clear the HttpOnly refresh token cookie server-side
       fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     }
-    addToast("Saiu com sucesso", "info");
+    addToast(AL.app.loggedOut, "info");
   };
 
   const handleRegenCode = async () => {
@@ -5598,7 +5911,7 @@ export default function App() {
           };
           const s2=await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(splitPayload),headers:{"Prefer":"return=representation,resolution=ignore-duplicates"}});
           setExpenses(p=>[s2[0],...p]);
-          addToast("Pagamento dividido registrado! ✂️","success");
+          addToast(AL.toasts.splitSaved,"success");
         } else if(_recurring && family?.family_id){
           const recPayload = {
             family_id: family.family_id,
@@ -5614,18 +5927,18 @@ export default function App() {
             active: true,
           };
           await supabaseFetch("/recurring_expenses",{method:"POST",body:JSON.stringify(recPayload),headers:{"Prefer":"return=minimal"}});
-          addToast("Gasto registrado e regra recorrente criada! ✅","success");
+          addToast(AL.toasts.recurringCreated,"success");
         } else {
-          addToast("Gasto registrado!","success");
+          addToast(AL.toasts.expenseSaved,"success");
         }
       }catch(err){addToast(err.message,"error");return;}
     } else {
       setExpenses(p=>[{...payload,id:Date.now()},...p]);
       if(_split){
         setExpenses(p=>[{...payload,id:Date.now()+1,type:_split.type,amount:_split.amount,parcelas:1,card_id:null},...p]);
-        addToast("Pagamento dividido registrado! ✂️","success");
+        addToast(AL.toasts.splitSaved,"success");
       } else {
-        addToast("Gasto registrado!","success");
+        addToast(AL.toasts.expenseSaved,"success");
       }
     }
     setModal(null);
@@ -5645,11 +5958,11 @@ export default function App() {
     };
     if(!isDemo){try{const s=await supabaseFetch("/incomes",{method:"POST",body:JSON.stringify(payload)});setIncomes(p=>[s[0],...p]);}catch(err){addToast(err.message,"error");return;}}
     else setIncomes(p=>[payload,...p]);
-    setModal(null); addToast("Receita registrada!","success");
+    setModal(null); addToast(AL.toasts.incomeSaved,"success");
   };
 
-  const deleteExpense=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/expenses?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast("Erro ao remover: "+err.message,"error"); return; }} setExpenses(p=>p.filter(e=>e.id!==id)); addToast("Gasto removido","info"); };
-  const deleteIncome=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/incomes?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast("Erro ao remover: "+err.message,"error"); return; }} setIncomes(p=>p.filter(i=>i.id!==id)); addToast("Receita removida","info"); };
+  const deleteExpense=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/expenses?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast("Erro ao remover: "+err.message,"error"); return; }} setExpenses(p=>p.filter(e=>e.id!==id)); addToast(AL.toasts.expenseRemoved,"info"); };
+  const deleteIncome=async(id)=>{ if(!isDemo){ try{ await supabaseFetch(`/incomes?id=eq.${id}`,{method:"DELETE"}); }catch(err){ addToast("Erro ao remover: "+err.message,"error"); return; }} setIncomes(p=>p.filter(i=>i.id!==id)); addToast(AL.toasts.incomeRemoved,"info"); };
 
   const editExpense=async(payload)=>{
     const { _type, ...data } = payload;
@@ -5675,7 +5988,7 @@ export default function App() {
     } else {
       setExpenses(p => p.map(e => e.id === data.id ? { ...e, ...data } : e));
     }
-    addToast("Gasto atualizado! ✓", "success");
+    addToast(AL.toasts.expenseUpdated, "success");
   };
 
   const editIncome=async(payload)=>{
@@ -5699,7 +6012,7 @@ export default function App() {
     } else {
       setIncomes(p => p.map(i => i.id === data.id ? { ...i, ...data } : i));
     }
-    addToast("Receita atualizada! ✓", "success");
+    addToast(AL.toasts.incomeUpdated, "success");
   };
 
   const deleteAllExpenses=async(ids)=>{
@@ -5731,13 +6044,13 @@ export default function App() {
   };
 
   const tabs=[
-    {id:"dashboard",  label:"Início",      shortLabel:"Início",     icon:"home"},
-    {id:"calendar",   label:"Calendário",  shortLabel:"Calendário", icon:"calendar"},
-    {id:"charts",     label:"Gráficos",    shortLabel:"Gráficos",   icon:"chart"},
-    {id:"budget",     label:"Orçamento",   shortLabel:"Orçamento",  icon:"target"},
-    {id:"recurring",  label:"Recorrentes", shortLabel:"Recorr.",    icon:"repeat"},
-    {id:"transactions",label:"Lançamentos",shortLabel:"Lançam.",    icon:"list"},
-    {id:"import",     label:"Importar",    shortLabel:"Importar",   icon:"upload"},
+    {id:"dashboard",   label:AL.nav.dashboard,    shortLabel:AL.nav.dashboard,   icon:"home"},
+    {id:"calendar",    label:AL.nav.calendar,     shortLabel:AL.nav.calendar,    icon:"calendar"},
+    {id:"charts",      label:AL.nav.charts,       shortLabel:AL.nav.charts,      icon:"chart"},
+    {id:"budget",      label:AL.nav.budget,       shortLabel:AL.nav.budget,      icon:"target"},
+    {id:"recurring",   label:AL.nav.recurring,    shortLabel:AL.nav.recurring,   icon:"repeat"},
+    {id:"transactions",label:AL.nav.transactions, shortLabel:AL.nav.transactions,icon:"list"},
+    {id:"import",      label:AL.nav.import,       shortLabel:AL.nav.import,      icon:"upload"},
   ];
   // primary tabs shown in the mobile bottom bar (4 slots + center FAB)
   const PRIMARY_MOBILE_TABS = ["dashboard","calendar","charts","__menu"];
@@ -5896,9 +6209,9 @@ export default function App() {
                     <div style={{ fontSize:11,color:t.textMuted,marginTop:1 }}>{user?.email}</div>
                   </div>
                   {[
-                    {icon:"user",  label:"Meu Perfil", action:()=>{setShowProfile(true);setShowUserMenu(false);}},
-                    {icon:"users", label:"Família",    action:()=>{setShowInvite(true);setShowUserMenu(false);}},
-                    {icon:"card",  label:"Cartões",    action:()=>{setShowCardsManager(true);setShowUserMenu(false);}},
+                    {icon:"user",  label:AL.app.profile, action:()=>{setShowProfile(true);setShowUserMenu(false);}},
+                    {icon:"users", label:AL.app.family,  action:()=>{setShowInvite(true);setShowUserMenu(false);}},
+                    {icon:"card",  label:AL.app.cards,   action:()=>{setShowCardsManager(true);setShowUserMenu(false);}},
                   ].map(item=>(
                     <button key={item.label} onClick={item.action} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                       <Icon name={item.icon} size={15} color={t.textMuted} />{item.label}
@@ -5906,11 +6219,14 @@ export default function App() {
                   ))}
                   <div style={{ height:1,background:t.border,margin:"6px 0" }} />
                   <button onClick={()=>{setDarkMode(!darkMode);setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <Icon name={darkMode?"sun":"moon"} size={15} color={t.textMuted} />{darkMode?"Modo claro":"Modo escuro"}
+                    <Icon name={darkMode?"sun":"moon"} size={15} color={t.textMuted} />{darkMode ? AL.app.lightMode : AL.app.darkMode}
+                  </button>
+                  <button onClick={()=>{toggleLang();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.text,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span style={{ fontSize:14 }}>{lang==="en"?"🇧🇷":"🇺🇸"}</span>{AL.langToggle}
                   </button>
                   <div style={{ height:1,background:t.border,margin:"6px 0" }} />
                   <button onClick={()=>{handleLogout();setShowUserMenu(false);}} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",background:"transparent",color:t.danger,display:"flex",alignItems:"center",gap:10 }} onMouseEnter={e=>e.currentTarget.style.background=t.dangerSoft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <Icon name="logout" size={15} color={t.danger} />Sair
+                    <Icon name="logout" size={15} color={t.danger} />{AL.app.logout}
                   </button>
                 </div>
               )}
@@ -5950,17 +6266,17 @@ export default function App() {
               <div style={{ display:"flex",flexDirection:"column",gap:24 }}>
                 <div>
                   <h2 style={{ margin:"0 0 4px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>
-                    Olá{profile?.first_name ? `, ${profile.first_name}` : ""}! 👋
+                    {AL.app.hello}{profile?.first_name ? `, ${profile.first_name}` : ""}{AL.app.greeting} 👋
                   </h2>
                   <p style={{ color:t.textMuted,fontSize:13 }}>Visão geral de {MONTH_FULL[today.getMonth()]} {today.getFullYear()}</p>
                 </div>
-                {dataLoading ? <SummaryCardsSkeleton t={t} /> : <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Receitas do Mês","Gastos do Mês","Saldo"]} />}
+                {dataLoading ? <SummaryCardsSkeleton t={t} /> : <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["income","expenses","balance"]} />}
                 <div className="dashboard-row2">
-                  <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} />
-                  <SummaryCards expenses={expenses} incomes={incomes} t={t} only={["Parcelas Futuras"]} />
+                  <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} lang={lang} />
+                  <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["installments"]} />
                 </div>
-                <BudgetAlertCard expenses={expenses} t={t} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
-                <RecurringAlertCard t={t} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
+                <BudgetAlertCard expenses={expenses} t={t} lang={lang} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
+                <RecurringAlertCard t={t} lang={lang} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                   <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>📊 Últimos 6 meses</h3>
                   <ResponsiveContainer width="100%" height={200}>
@@ -5976,15 +6292,15 @@ export default function App() {
                 </div>
               </div>
             )}
-            {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
-            {tab==="charts"&&(dataLoading ? <ChartsViewSkeleton t={t} /> : <ChartsView expenses={expenses} incomes={incomes} t={t} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} billingPeriods={billingPeriods} />)}
+            {tab==="calendar"&&<CalendarView expenses={expenses} incomes={incomes} t={t} lang={lang} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} onDaySelect={d=>setCalendarDate(d)} family={family} isDemo={isDemo} />}
+            {tab==="charts"&&(dataLoading ? <ChartsViewSkeleton t={t} /> : <ChartsView expenses={expenses} incomes={incomes} t={t} lang={lang} onEditExpense={editExpense} onDeleteExpense={deleteExpense} familyMembers={familyMembers} cards={cards} recurringRules={recurringRules} billingPeriods={billingPeriods} />)}
             {tab==="recurring"&&(
               <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
                 <div style={{ marginBottom:20 }}>
                   <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🔁 Gastos Recorrentes</h2>
                   <p style={{ color:t.textMuted,fontSize:14 }}>Aluguel, contas fixas, assinaturas e lembretes mensais</p>
                 </div>
-                <RecurringView expenses={expenses} setExpenses={setExpenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} />
+                <RecurringView expenses={expenses} setExpenses={setExpenses} t={t} lang={lang} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} />
               </div>
             )}
             {tab==="budget"&&(
@@ -5993,18 +6309,18 @@ export default function App() {
                   <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>🎯 Orçamento Mensal</h2>
                   <p style={{ color:t.textMuted,fontSize:14 }}>Defina limites de gastos por categoria e acompanhe em tempo real</p>
                 </div>
-                <BudgetView expenses={expenses} t={t} family={family} user={user} isDemo={isDemo} addToast={addToast} />
+                <BudgetView expenses={expenses} t={t} lang={lang} family={family} user={user} isDemo={isDemo} addToast={addToast} />
               </div>
             )}
-            {tab==="transactions"&&(dataLoading ? <TransactionsListSkeleton t={t} /> : <TransactionsList expenses={expenses} incomes={incomes} t={t} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />)}
-            {tab==="import"&&<ImportView t={t} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
+            {tab==="transactions"&&(dataLoading ? <TransactionsListSkeleton t={t} /> : <TransactionsList expenses={expenses} incomes={incomes} t={t} lang={lang} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />)}
+            {tab==="import"&&<ImportView t={t} lang={lang} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
           </main>
 
           {/* Desktop FABs */}
           {tab !== "import" && (
             <div className="desktop-fab" style={{ position:"fixed",bottom:28,right:28,zIndex:150,display:"flex",flexDirection:"column",gap:12,alignItems:"flex-end" }}>
-              <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Receita</Btn>
-              <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>+ Gasto</Btn>
+              <Btn t={t} variant="success" onClick={()=>setModal("income")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>{AL.app.addIncome}</Btn>
+              <Btn t={t} onClick={()=>setModal("expense")} style={{ borderRadius:16,width:148,height:48,fontSize:14 }}>{AL.app.addExpense}</Btn>
             </div>
           )}
 
@@ -6061,10 +6377,10 @@ export default function App() {
                 <div style={{ width:36,height:4,borderRadius:2,background:t.border }} />
               </div>
               {[
-                {id:"recurring",    icon:"repeat", label:"Recorrentes"},
-                {id:"transactions", icon:"list",   label:"Lançamentos"},
-                {id:"budget",       icon:"target", label:"Orçamento"},
-                {id:"import",       icon:"upload", label:"Importar"},
+                {id:"recurring",    icon:"repeat", label:AL.nav.recurring},
+                {id:"transactions", icon:"list",   label:AL.nav.transactions},
+                {id:"budget",       icon:"target", label:AL.nav.budget},
+                {id:"import",       icon:"upload", label:AL.nav.import},
               ].map(item=>(
                 <button key={item.id} onClick={()=>{setTab(item.id);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:12,border:"none",cursor:"pointer",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",marginBottom:4 }}>
                   <Icon name={item.icon} size={20} color={tab===item.id?t.accent:t.textMuted} />
@@ -6072,14 +6388,15 @@ export default function App() {
                 </button>
               ))}
               <div style={{ height:1,background:t.border,margin:"8px 0" }} />
-              {!isDemo&&<button onClick={()=>{setShowProfile(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="user" size={18} color={t.textMuted} />Meu Perfil</button>}
-              {family&&!isDemo&&<button onClick={()=>{setShowInvite(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="users" size={18} color={t.textMuted} />Família</button>}
-              {family&&!isDemo&&<button onClick={()=>{setShowCardsManager(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="card" size={18} color={t.textMuted} />Cartões</button>}
+              {!isDemo&&<button onClick={()=>{setShowProfile(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="user" size={18} color={t.textMuted} />{AL.app.profile}</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowInvite(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="users" size={18} color={t.textMuted} />{AL.app.family}</button>}
+              {family&&!isDemo&&<button onClick={()=>{setShowCardsManager(true);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name="card" size={18} color={t.textMuted} />{AL.app.cards}</button>}
               <div style={{ height:1,background:t.border,margin:"8px 0" }} />
-              <button onClick={()=>setDarkMode(v=>!v)} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name={darkMode?"sun":"moon"} size={18} color={t.textMuted} />{darkMode?"Modo claro":"Modo escuro"}</button>
+              <button onClick={()=>setDarkMode(v=>!v)} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><Icon name={darkMode?"sun":"moon"} size={18} color={t.textMuted} />{darkMode ? AL.app.lightMode : AL.app.darkMode}</button>
+              <button onClick={()=>{toggleLang();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.text,fontSize:14,fontWeight:500,textAlign:"left" }}><span style={{ fontSize:16 }}>{lang==="en"?"🇧🇷":"🇺🇸"}</span>{AL.langToggle}</button>
               <div style={{ height:1,background:t.border,margin:"8px 0" }} />
-              {!isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />Sair</button>}
-              {isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />Sair do Demo</button>}
+              {!isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />{AL.app.logout}</button>}
+              {isDemo&&<button onClick={()=>{handleLogout();setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:12,border:"none",cursor:"pointer",background:"transparent",color:t.danger,fontSize:14,fontWeight:600,textAlign:"left" }}><Icon name="logout" size={18} color={t.danger} />{AL.app.exitDemo}</button>}
             </div>
           </>
         )}
@@ -6089,32 +6406,32 @@ export default function App() {
           <>
             <div className="mobile-fab-sheet" onClick={()=>setShowFabSheet(false)} style={{ position:"fixed",inset:0,zIndex:201,background:"rgba(0,0,0,0.45)" }} />
             <div className="mobile-fab-sheet" style={{ position:"fixed",bottom:"calc(70px + env(safe-area-inset-bottom))",left:20,right:20,zIndex:202,borderRadius:20,background:t.glassModal,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:`1px solid ${t.glassBorder}`,padding:16,display:"flex",flexDirection:"column",gap:12,animation:"sheetIn 0.2s ease",boxShadow:t.shadow }}>
-              <Btn t={t} variant="success" onClick={()=>{setModal("income");setShowFabSheet(false);}} style={{ width:"100%",height:52,fontSize:15,borderRadius:14,justifyContent:"center" }}>💰 + Receita</Btn>
-              <Btn t={t} onClick={()=>{setModal("expense");setShowFabSheet(false);}} style={{ width:"100%",height:52,fontSize:15,borderRadius:14,justifyContent:"center" }}>💸 + Gasto</Btn>
+              <Btn t={t} variant="success" onClick={()=>{setModal("income");setShowFabSheet(false);}} style={{ width:"100%",height:52,fontSize:15,borderRadius:14,justifyContent:"center" }}>💰 {AL.app.addIncome}</Btn>
+              <Btn t={t} onClick={()=>{setModal("expense");setShowFabSheet(false);}} style={{ width:"100%",height:52,fontSize:15,borderRadius:14,justifyContent:"center" }}>💸 {AL.app.addExpense}</Btn>
             </div>
           </>
         )}
       </div>
 
       {/* Expense / Income modals */}
-      <Modal open={modal==="expense"} onClose={()=>setModal(null)} title="💸 Registrar Gasto" t={t} darkMode={darkMode}>
-        <ExpenseForm t={t} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} cards={cards} currentUserLabel={currentUserLabel} />
+      <Modal open={modal==="expense"} onClose={()=>setModal(null)} title={`💸 ${AL.expenseForm.title}`} t={t} darkMode={darkMode}>
+        <ExpenseForm t={t} lang={lang} onSave={saveExpense} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} cards={cards} currentUserLabel={currentUserLabel} />
       </Modal>
-      <Modal open={modal==="income"} onClose={()=>setModal(null)} title="💰 Registrar Receita" t={t} darkMode={darkMode}>
-        <IncomeForm t={t} onSave={saveIncome} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} currentUserLabel={currentUserLabel} />
+      <Modal open={modal==="income"} onClose={()=>setModal(null)} title={`💰 ${AL.incomeForm.title}`} t={t} darkMode={darkMode}>
+        <IncomeForm t={t} lang={lang} onSave={saveIncome} onClose={()=>setModal(null)} familyMembers={familyMembers} initialDate={tab==="calendar"&&calendarDate?calendarDate:undefined} currentUserLabel={currentUserLabel} />
       </Modal>
 
       {/* Invite code modal */}
-      <Modal open={showInvite} onClose={()=>setShowInvite(false)} title="👥 Família" t={t} darkMode={darkMode}>
-        {showInvite && <FamilyModal t={t} family={family} currentUserId={user?.id} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} onRegenCode={handleRegenCode} addToast={addToast} isAdmin={family?.role==="admin"} />}
+      <Modal open={showInvite} onClose={()=>setShowInvite(false)} title={`👥 ${AL.family.title}`} t={t} darkMode={darkMode}>
+        {showInvite && <FamilyModal t={t} lang={lang} family={family} currentUserId={user?.id} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} onRegenCode={handleRegenCode} addToast={addToast} isAdmin={family?.role==="admin"} />}
       </Modal>
 
-      <Modal open={showProfile} onClose={()=>setShowProfile(false)} title="👤 Meu Perfil" t={t} darkMode={darkMode}>
-        <ProfileModal t={t} user={user} profile={profile} addToast={addToast} onSaved={(p)=>{ setProfile(p); setShowProfile(false); }} />
+      <Modal open={showProfile} onClose={()=>setShowProfile(false)} title={`👤 ${AL.profile.title}`} t={t} darkMode={darkMode}>
+        <ProfileModal t={t} lang={lang} user={user} profile={profile} addToast={addToast} onSaved={(p)=>{ setProfile(p); setShowProfile(false); }} />
       </Modal>
 
-      <Modal open={showCardsManager} onClose={()=>setShowCardsManager(false)} title="💳 Meus Cartões" t={t} darkMode={darkMode}>
-        {showCardsManager && <CardsManager t={t} family={family} isDemo={isDemo} addToast={addToast} billingPeriods={billingPeriods} setBillingPeriods={setBillingPeriods} />}
+      <Modal open={showCardsManager} onClose={()=>setShowCardsManager(false)} title={`💳 ${AL.cardsManager.title}`} t={t} darkMode={darkMode}>
+        {showCardsManager && <CardsManager t={t} lang={lang} family={family} isDemo={isDemo} addToast={addToast} billingPeriods={billingPeriods} setBillingPeriods={setBillingPeriods} />}
       </Modal>
 
       <Toast toasts={toasts} remove={removeToast} />
