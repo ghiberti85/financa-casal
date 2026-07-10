@@ -451,8 +451,8 @@ function Modal({ open, onClose, title, children, t, darkMode, size = 'form', foo
       position:"fixed", inset:0, zIndex:500,
       background:"rgba(0,0,0,0.65)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
       display:"flex",
-      alignItems: sheetOnMobile ? undefined : "center",
-      justifyContent: sheetOnMobile ? undefined : "center",
+      alignItems: "center",
+      justifyContent: "center",
       padding: sheetOnMobile ? 0 : 20,
     }}>
       <div
