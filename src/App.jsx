@@ -4878,7 +4878,7 @@ function SummaryCards({ expenses, incomes, t, lang = "pt", only = null }) {
 
 
 // ─── IMPORT VIEW ─────────────────────────────────────────────────────────────
-function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported, addToast, existingExpenses, existingIncomes }) {
+function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported, addToast, existingExpenses, existingIncomes, currentUserLabel = "Você" }) {
   const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const getIncLabel = (id) => APP_I18N[lang].incomeForm?.sources?.[id] || INCOME_SOURCES.find(s=>s.id===id)?.label || id;
   const _iv = APP_I18N[lang].importView;
@@ -5225,12 +5225,12 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
     const expenses = selected.filter(r => r.record_type === "expense").map(r => ({
       description: r.description, amount: parseFloat(r.amount) || 0, date: sanitizeDate(r.date),
       category: r.category, type: r.type || "pix", parcelas: parseInt(r.parcelas) || 1,
-      user_label: r.user_label || "Você", family_id: family?.family_id,
+      user_label: r.user_label || currentUserLabel, family_id: family?.family_id, user_id: user?.id,
     }));
     const incomes = selected.filter(r => r.record_type === "income").map(r => ({
       description: r.description, amount: parseFloat(r.amount) || 0, date: sanitizeDate(r.date),
-      source: r.category, category: r.category, user_label: r.user_label || "Você",
-      family_id: family?.family_id,
+      source: r.category, category: r.category, user_label: r.user_label || currentUserLabel,
+      family_id: family?.family_id, user_id: user?.id,
     }));
     if (!isDemo) {
       try {
@@ -6693,7 +6693,7 @@ export default function App() {
               </div>
             )}
             {tab==="transactions"&&(dataLoading ? <TransactionsListSkeleton t={t} /> : <TransactionsList expenses={expenses} incomes={incomes} t={t} lang={lang} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />)}
-            {tab==="import"&&<ImportView t={t} lang={lang} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
+            {tab==="import"&&<ImportView t={t} lang={lang} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} currentUserLabel={currentUserLabel} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
           </main>
 
           {/* Desktop FABs */}
