@@ -2758,8 +2758,8 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
             </div>
             <DateInput label={APP_I18N[lang].expenseForm.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
-          <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
-            {lang==="pt" ? <>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</> : <>⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.</>}
+          <div style={{ fontSize:11,color:t.textMuted,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
+            {lang==="pt" ? <>Informe a <strong>data da compra</strong> — o app calcula sozinho em qual fatura cada parcela cai.</> : <>Enter the <strong>purchase date</strong> — the app figures out which bill each installment lands on.</>}
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
             <Input label={APP_I18N[lang].expenseForm.installmentAmt} t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
@@ -5001,7 +5001,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
             category: cat,
             type: 'pix',
             parcelas: 1,
-            user_label: 'Você',
+            user_label: currentUserLabel,
             _confidence: 0.92,
             _notes: "Dia " + d + "/" + String(month).padStart(2,'0') + "/" + year
           });
@@ -5051,7 +5051,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
           category: 'outros',
           type: 'credito',
           parcelas: parcTotal,
-          user_label: 'Você',
+          user_label: currentUserLabel,
           _confidence: 0.95,
           _notes: "Parcela " + parcStr + " - Cartão " + (row[0]?.trim() || '') + " - " + mLabel + "/" + yr
         });
