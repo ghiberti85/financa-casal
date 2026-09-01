@@ -143,6 +143,20 @@ recurring_expenses  (id, family_id, user_id, description, amount, category,
 recurring_reminders (id, family_id, recurring_id, month, year,
                      amount, status, expense_id, created_at)
                    status: 'pending' | 'confirmed' | 'skipped'
+
+billing_periods     (id, card_id, fatura_month, fatura_year,
+                     period_start, period_end, due_date, total_pdf,
+                     created_at)
+                   Períodos de fatura cadastrados manualmente pelo usuário
+                   ao fechar cada fatura no extrato do banco.
+                   fatura_month/year: mês/ano de VENCIMENTO da fatura
+                     (não o mês em que as compras aconteceram)
+                   period_start/period_end: intervalo de datas de COMPRA
+                     que cai nessa fatura (fechamento do cartão — varia
+                     mês a mês, não segue um dia fixo mesmo com
+                     cards.closing_day configurado)
+                   total_pdf: valor real lido no extrato/PDF do banco,
+                     usado como referência para conferir o total calculado
 ```
 
 ### Convenção crítica — crédito parcelado
@@ -688,3 +702,29 @@ npm install -D @testing-library/react @testing-library/jest-dom @testing-library
 npm install -D @playwright/test
 npx playwright install chromium
 ```
+
+---
+
+## Histórico de Correções
+
+### 2026-09 — Atribuição de usuário na importação e cálculo da fatura de crédito
+
+**Sintomas relatados:**
+1. Lançamentos importados apareciam com `user_label: "Você"` genérico em vez do nome real de quem importou — misturava dados dos dois membros no filtro de Lançamentos.
+2. Gráfico "Fatura do Cartão" mostrava valor bem abaixo do real da fatura (ex: R$3.900 mostrado vs R$6.200 real em uma das faturas).
+
+**Causas encontradas e correções:**
+
+1. **`user_label: 'Você'` hardcoded em dois parsers de importação** (`parseAnnualExpenses` e `parseGastosAnual` em `ImportView`) — sobrescrevia o fallback `currentUserLabel` mesmo depois de uma correção anterior (PR #31) ter resolvido o mesmo bug em outro ponto do código. Corrigido para usar `currentUserLabel` nos dois parsers. **Lição:** ao corrigir um bug de valor hardcoded, buscar por TODAS as ocorrências no arquivo, não só a primeira encontrada.
+
+2. **Campo de data no formulário de crédito pedia "data em que a 1ª parcela cai na fatura"** em vez da data da compra — convenção que o próprio casal já tinha abandonado no uso diário (voltaram a cadastrar pela data real da compra) porque causava confusão. Reverteu-se o formulário para pedir a **data da compra**; `billingChartData` já calcula o mês de vencimento sozinho via `closing_day`/`billing_periods`.
+
+3. **~30 gastos de crédito sem `card_id` vinculado** (campo opcional no formulário) — sem cartão, o app não consegue casar o gasto com o período de fatura real cadastrado em `billing_periods` e cai num fallback genérico de fechamento dia 28, que é impreciso porque **o fechamento real do cartão varia mês a mês** (só o vencimento, dia 6, é fixo). Corrigido: cartão agora é **obrigatório** quando existe cartão cadastrado (auto-seleciona se houver só 1 cartão ativo), em `ExpenseForm` e `EditModal`. Backfill aplicado nos gastos históricos vinculando ao único cartão existente.
+
+4. **Confusão de nomenclatura "mês da fatura"**: o app rotula a fatura pelo **mês de vencimento** (`fatura_month`, dia 6), não pelo mês em que a maioria das compras aconteceu. Uma fatura que cobre compras de 31/jul a 31/ago e vence em 06/09 é rotulada "Setembro" no app, mas o casal naturalmente pensa nela como "a fatura de agosto" (mês das compras). Não é um bug — é assim que `billing_periods.fatura_month` foi desenhado — mas gerou confusão na hora de comparar com o extrato real. **Sempre confirmar qual mês (compra vs. vencimento) antes de comparar valores.**
+
+5. **Lançamento duplicado encontrado por comparação manual**: "CABO MACBOOK PRO" e "CABO MACBOOK PRO AMAZON", mesma data, mesmo valor (R$98,89) — a mesma compra cadastrada duas vezes com descrições ligeiramente diferentes. O índice `UNIQUE` anti-duplicata (`idx_expenses_no_duplicates`) não pegou porque a `description` era diferente entre os dois registros. Removido manualmente. **Limitação conhecida:** o índice de unicidade não protege contra duplicatas com descrição diferente — revisão manual continua necessária para esse caso.
+
+**Pendências em aberto:**
+- `billing_periods` não cobre set–nov/2025 (antes do casal começar a usar o app de fato) nem set/2026 em diante (fatura ainda não fechou) — meses fora dessa janela caem no fallback genérico e podem estar imprecisos.
+- Faturas de **janeiro, agosto e setembro/2026** ainda têm diferença relevante entre o valor calculado pelo app e o `total_pdf` (valor real do extrato) — aguardando os extratos desses meses para conferência item a item.

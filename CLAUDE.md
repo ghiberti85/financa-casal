@@ -506,3 +506,9 @@ Plano em 3 fases — ver detalhamento completo em `CONTEXT.md` (seção "Plano d
 15. **Remoção de feature** — ao remover qualquer funcionalidade: remover o código, remover o teste, remover a entrada na tabela de componentes do CONTEXT.md, remover da seção de Features do README.md. Nunca deixar referências mortas nos docs.
 
 16. **console.log em produção** — nunca deixar `console.log()` em código que vai a produção. O Vite não remove logs automaticamente — eles ficam expostos nas DevTools do usuário.
+
+17. **`card_id` obrigatório em gastos no crédito** — sem cartão vinculado, o app não consegue casar o gasto com o período de fatura real cadastrado em `billing_periods` e cai num fallback genérico (fechamento dia 28) que é impreciso, já que o fechamento real do cartão varia mês a mês (só o vencimento é fixo). `ExpenseForm` e `EditModal` exigem cartão quando existe pelo menos um cadastrado, e auto-selecionam quando só há um ativo. Nunca tornar esse campo opcional novamente sem repensar o fallback de `getBillingMonth`.
+
+18. **`billing_periods.fatura_month` é o mês de VENCIMENTO, não o mês da compra** — uma fatura que cobre compras de 31/jul a 31/ago e vence em 06/09 é rotulada "Setembro". É fácil confundir com "a fatura de agosto" (mês em que a maioria das compras aconteceu) na hora de conferir com o extrato real. Sempre confirmar qual convenção está sendo usada antes de comparar valores.
+
+19. **Índice anti-duplicata não pega descrição diferente** — `idx_expenses_no_duplicates` inclui `description` na chave única; duas entradas da mesma compra com descrições ligeiramente diferentes (ex: "CABO MACBOOK PRO" vs "CABO MACBOOK PRO AMAZON") passam batido. Revisão manual/visual continua necessária para achar esse tipo de duplicata.
