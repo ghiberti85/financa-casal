@@ -121,7 +121,7 @@ Key design goals:
 ### 💳 Credit Cards
 - Manage multiple cards with name, cardholder, closing day and due day
 - Custom color per card for easy identification
-- Optionally associate a card when logging a credit expense
+- Card is required when logging a credit expense if at least one card exists (auto-selected when there's only one) — accurate billing-month calculation depends on it
 - Billing card on the Dashboard with the current statement total grouped by card
 
 ### 📥 Spreadsheet Import

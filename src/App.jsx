@@ -2663,7 +2663,7 @@ function MemberSelect({ label, t, value, onChange, familyMembers }) {
 function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDate, cards = [], currentUserLabel = "Você" }) {
   const MONTHS = APP_I18N[lang].months.short;
   const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
-  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:currentUserLabel, card_id:"" });
+  const [form, setForm] = useState({ description:"", amount:"", installAmount:"", date:initialDate || today.toISOString().slice(0,10), category:"", type:"pix", parcelas:1, user_label:currentUserLabel, card_id:cards.length===1 ? cards[0].id : "" });
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringForm, setRecurringForm] = useState({ frequency:"monthly", day_of_month:today.getDate(), amount_type:"fixed", end_date:"" });
   const [isSplit, setIsSplit] = useState(false);
@@ -2673,6 +2673,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
 
   const set = (k, v) => {
     let next = { ...form, [k]: v };
+    if (k === "type" && v === "credito" && !form.card_id && cards.length === 1) next.card_id = cards[0].id;
     if (k === "description" && !form.category) next.category = autoCategory(v);
     if (k === "installAmount") {
       const inst = parseFloat(v) || 0;
@@ -2707,6 +2708,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
       ? (parseFloat(form.installAmount) || parseFloat(form.amount) / parcelas)
       : parseFloat(form.amount);
     if (!effectiveAmount) return;
+    if (isCredit && cards.length > 0 && !form.card_id) return;
     if (isSplit && !(parseFloat(splitForm.amount) > 0)) return;
     setSaving(true);
     onSave({
@@ -2739,10 +2741,13 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
         <option value="dinheiro">💵 {APP_I18N[lang].expenseForm.paymentTypes.dinheiro}</option>
       </Select>
       {isCredit && cards.length > 0 && (
-        <Select label={APP_I18N[lang].expenseForm.card} t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
-          <option value="">{APP_I18N[lang].expenseForm.selectCard}</option>
-          {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
-        </Select>
+        <>
+          <Select label={APP_I18N[lang].expenseForm.card} t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
+            <option value="">{APP_I18N[lang].expenseForm.selectCard}</option>
+            {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
+          </Select>
+          {!form.card_id && <div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>{APP_I18N[lang].toasts.fillAmount}</div>}
+        </>
       )}
       <Select label={APP_I18N[lang].expenseForm.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
         <option value="">{APP_I18N[lang].expenseForm.selectCategory}</option>
@@ -2758,8 +2763,8 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
             </div>
             <DateInput label={APP_I18N[lang].expenseForm.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
           </div>
-          <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
-            {lang==="pt" ? <>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</> : <>⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.</>}
+          <div style={{ fontSize:11,color:t.textMuted,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
+            {lang==="pt" ? <>Informe a <strong>data da compra</strong> — o app calcula sozinho em qual fatura cada parcela cai.</> : <>Enter the <strong>purchase date</strong> — the app figures out which bill each installment lands on.</>}
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
             <Input label={APP_I18N[lang].expenseForm.installmentAmt} t={t} type="number" step="0.01" value={form.installAmount} onChange={e=>set("installAmount",e.target.value)} placeholder="0,00" />
@@ -2919,7 +2924,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
     parcelas:      initParc,
     user_label:    item.user_label || "Você",
     source:        item.source || item.category || "salario",
-    card_id:       item.card_id || "",
+    card_id:       item.card_id || (isCredit && cards.length===1 ? cards[0].id : ""),
   });
   const [loading, setLoading] = useState(false);
 
@@ -2928,6 +2933,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
       const next = { ...p, [k]: v };
       const n = parseInt(next.parcelas) || 1;
       const isCredit = next.type === "credito";
+      if (k === "type" && v === "credito" && !p.card_id && cards.length === 1) next.card_id = cards[0].id;
       if (k === "installAmount" && isCredit && n > 1) {
         // installAmount → recalc total display
         next.amount = (parseFloat(v) * n).toFixed(2);
@@ -2962,6 +2968,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
       ? (parseFloat(form.installAmount) || 0)
       : parseFloat(form.amount) || 0;
     if (!effectiveAmount) { setLoading(false); return; }
+    if (isExp && form.type === "credito" && cards.length > 0 && !form.card_id) { setLoading(false); return; }
     const payload = {
       ...item,
       description: form.description.trim(),
@@ -2999,10 +3006,13 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
           <option value="dinheiro">💵 {APP_I18N[lang].editModal.paymentTypes.dinheiro}</option>
         </Select>
         {form.type === "credito" && cards.length > 0 && (
-          <Select label={APP_I18N[lang].editModal.card} t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
-            <option value="">{APP_I18N[lang].editModal.noCard}</option>
-            {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
-          </Select>
+          <>
+            <Select label={APP_I18N[lang].editModal.card} t={t} value={form.card_id} onChange={e=>set("card_id",e.target.value)}>
+              <option value="">{APP_I18N[lang].editModal.noCard}</option>
+              {cards.map(c=><option key={c.id} value={c.id}>{c.name}{c.holder ? ` — ${c.holder}` : ""}</option>)}
+            </Select>
+            {!form.card_id && <div style={{ fontSize:11,color:t.danger,marginTop:-12,marginBottom:8 }}>{APP_I18N[lang].toasts.fillAmount}</div>}
+          </>
         )}
         <Select label={APP_I18N[lang].editModal.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
           {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
@@ -5001,7 +5011,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
             category: cat,
             type: 'pix',
             parcelas: 1,
-            user_label: 'Você',
+            user_label: currentUserLabel,
             _confidence: 0.92,
             _notes: "Dia " + d + "/" + String(month).padStart(2,'0') + "/" + year
           });
@@ -5051,7 +5061,7 @@ function ImportView({ t, lang = "pt", darkMode, family, user, isDemo, onImported
           category: 'outros',
           type: 'credito',
           parcelas: parcTotal,
-          user_label: 'Você',
+          user_label: currentUserLabel,
           _confidence: 0.95,
           _notes: "Parcela " + parcStr + " - Cartão " + (row[0]?.trim() || '') + " - " + mLabel + "/" + yr
         });
