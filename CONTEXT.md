@@ -736,17 +736,40 @@ O usuário enviou os PDFs das faturas de janeiro, agosto e setembro/2026. Cruzam
 2. **~25 compras nunca lançadas no app** — principalmente farmácias, lojas físicas e lanchonetes pagas com o cartão adicional (final 2771) da conta. Cadastradas retroativamente com base no extrato.
 3. **IOF de compras em dólar não era lançado separadamente** — Claude AI e um app de entrevista (Interview Man) têm cobrança em USD + uma linha própria de "IOF DESPESA NO EXTERIOR" no extrato, cobrada à parte do valor principal. O app só tinha o valor principal (sem IOF, e em alguns casos com o valor errado por não converter certo). Corrigido: valores principais ajustados + 2 novos lançamentos de IOF.
 4. **Existem dois cartões físicos na mesma conta Santander** (final 5246, titular, e final 2771, adicional) — o app trata os dois como um `card_id` só, o que é correto desde que sejam a mesma fatura/vencimento (confirmado: são).
-5. **Erro de digitação gerou um "duplicado" que não era**: "BRIQNUEDO GABI" (typo) e "BRINQUEDO GABI" pareciam a mesma compra lançada duas vezes, mas eram duas compras reais diferentes no mesmo dia — apenas corrigido o nome, mantidos os dois registros. **Lição:** nomes muito parecidos não são prova suficiente de duplicata: confirmar com o usuário antes de remover.
+5. **Nomes parecidos quase viraram uma exclusão errada**: "BRIQNUEDO GABI" (typo) e "BRINQUEDO GABI" pareciam a mesma compra lançada duas vezes — mas eram duas compras reais diferentes no mesmo dia (ver round 3 abaixo para o desfecho real: uma delas nem era crédito).
 6. **Lançamentos com data errada "vazam" para o mês seguinte**: "SEM PARAR" e "SUPERMERCADO" datados 31/08 eram na verdade compras que só apareceriam na fatura de outubro (confirmado pelo usuário) — a data cadastrada precisava ser ajustada para cair no período correto.
 
-Resultado final (após todas as correções):
+Resultado após a 2ª rodada de conferência:
 
 | Fatura | App | Extrato real | Diferença |
 |---|---|---|---|
 | Janeiro/2026 | R$ 7.673,52 | R$ 7.677,68 | R$ 4,16 |
 | Agosto/2026 | R$ 5.316,31 | R$ 5.341,23 | R$ 24,92 |
-| Setembro/2026 | R$ 6.054,52 | R$ 6.206,71 | R$ 152,19 (explicado por uma compra confirmada pelo usuário que não aparece no extrato) |
+| Setembro/2026 | R$ 6.054,52 | R$ 6.206,71 | R$ 152,19 |
+
+A diferença de setembro (R$152,19) foi explicada errado nessa rodada — ver round 3 abaixo pra correção.
+
+### 2026-09 (round 3) — Terceira conferência de setembro, a pedido do usuário
+
+O usuário pediu pra investigar a diferença de R$152,19 em setembro com mais calma. Achados:
+
+1. **"BRIQNUEDO GABI" (R$149,99) não era duplicata do "BRINQUEDO GABI" (R$91,56) — eram duas compras reais diferentes, mas uma delas nem era no crédito.** O usuário confirmou: "se não está na fatura é porque não foi crédito, deve ter sido débito". Corrigido: `type` alterado de `credito` para `debito`, removidos `card_id` e `parcelas`. **Lição reforçada da armadilha #20 (CLAUDE.md): a ausência de um item no extrato de crédito pode significar que ele foi pago de outra forma, não necessariamente que está faltando lançar.**
+2. Ao remover esse item do cálculo de crédito, a diferença de setembro **aumentou** de R$152,19 para R$302,18 — a explicação anterior ("um item extra que não está no extrato compensava um buraco maior") estava mascarando um problema real, não resolvendo ele. **Lição:** quando uma correção piora a divergência antes de melhorar, é sinal de que a explicação anterior estava errada — não parar na primeira coisa que "quase bate".
+3. Reconferência item a item (dessa vez linha por linha dos dois cartões, sem atalho) achou mais 3 problemas reais:
+   - **Compra faltando**: "COVABRA LJ 22" R$188,42 (10/08) — uma segunda compra na mesma loja no mesmo dia que a primeira (R$338,77, já lançada), fácil de passar despercebido.
+   - **"LAROC INGRESSO" com numeração de parcela adiantada em 1 ciclo**: o extrato mostra parcela 5/6 na fatura de agosto e 6/6 em setembro, mas a data de compra cadastrada (`28/02`) fazia o app calcular a parcela final (6/6) caindo em agosto em vez de setembro — a data está bem na fronteira entre dois períodos de fechamento. Ajustada a data de compra (`28/02` → `01/03`) só o suficiente para alinhar com o ciclo real, sem mudar o valor nem a contagem de parcelas.
+   - **"Opencode GO" com valor errado e sem o IOF**: o item real no extrato é "ANOMALY" R$28,69 + IOF R$1,00 (compra em dólar) — o app tinha R$27,00 sem IOF. Valor corrigido e IOF lançado à parte, seguindo o mesmo padrão do achado #3 da 2ª rodada.
+4. **"DISNEY PLUS" R$46,82 (parcelas, a partir de 14/06) não aparece em nenhuma das 3 faturas conferidas.** Perguntado ao usuário: é uma assinatura anual real (plano de 12 meses, iniciado em junho) — mas aparentemente cobrada em outro cartão/conta, não no Santander final 5246/2771 que estamos conferindo. Corrigido apenas o número de parcelas (11 → 12, conforme confirmado). **Não removido do banco** — é um gasto real, só não pertence ao extrato desse cartão. Deixa a diferença residual de setembro (R$47,12) explicada e sem mais o que investigar nesse cartão.
+
+Resultado final (após a 3ª rodada):
+
+| Fatura | App | Extrato real | Diferença | Status |
+|---|---|---|---|---|
+| Janeiro/2026 | R$ 7.673,52 | R$ 7.677,68 | R$ 4,16 | Fechado |
+| Agosto/2026 | R$ 5.316,31 | R$ 5.341,23 | R$ 24,92 | Fechado |
+| Setembro/2026 | R$ 6.253,83 | R$ 6.206,71 | R$ 47,12 | Fechado — 100% explicado pelo Disney+ (assinatura real, cartão diferente) |
 
 **Pendências em aberto:**
 - `billing_periods` ainda não cobre set/2026 em diante (fatura ainda não fechou) — cadastrar assim que essa fatura fechar.
-- Janeiro, agosto e setembro/2026 estão conferidos e fechados (diferenças residuais < R$25, exceto um item confirmado pelo usuário em setembro). Novas divergências grandes (>R$100) em meses futuros provavelmente indicam lançamento faltando ou duplicado; usar a mesma metodologia (join de `expenses` parceladas com `billing_periods` via SQL, comparando com o extrato real) para investigar.
+- Considerar cadastrar o cartão/conta onde o Disney Plus é cobrado, se o usuário quiser rastrear essa fatura também no app.
+- As três faturas conferidas (jan/ago/set 2026) estão fechadas com diferenças residuais pequenas e 100% explicadas. Novas divergências grandes (>R$50) em meses futuros provavelmente indicam lançamento faltando, duplicado, ou pago de outra forma (débito/outro cartão) — usar a mesma metodologia (join de `expenses` parceladas com `billing_periods` via SQL, comparando linha a linha com o extrato real, sem atalhos) para investigar. Se uma correção piorar o resultado antes de melhorar, é sinal para continuar investigando, não parar.
