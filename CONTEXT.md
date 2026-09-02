@@ -726,5 +726,27 @@ npx playwright install chromium
 5. **Lançamento duplicado encontrado por comparação manual**: "CABO MACBOOK PRO" e "CABO MACBOOK PRO AMAZON", mesma data, mesmo valor (R$98,89) — a mesma compra cadastrada duas vezes com descrições ligeiramente diferentes. O índice `UNIQUE` anti-duplicata (`idx_expenses_no_duplicates`) não pegou porque a `description` era diferente entre os dois registros. Removido manualmente. **Limitação conhecida:** o índice de unicidade não protege contra duplicatas com descrição diferente — revisão manual continua necessária para esse caso.
 
 **Pendências em aberto:**
-- `billing_periods` não cobre set–nov/2025 (antes do casal começar a usar o app de fato) nem set/2026 em diante (fatura ainda não fechou) — meses fora dessa janela caem no fallback genérico e podem estar imprecisos.
-- Faturas de **janeiro, agosto e setembro/2026** ainda têm diferença relevante entre o valor calculado pelo app e o `total_pdf` (valor real do extrato) — aguardando os extratos desses meses para conferência item a item.
+- `billing_periods` não cobre set/2026 em diante (fatura ainda não fechou) — meses fora dessa janela caem no fallback genérico e podem estar imprecisos.
+
+### 2026-09 (continuação) — Conferência item a item com os extratos reais do Santander
+
+O usuário enviou os PDFs das faturas de janeiro, agosto e setembro/2026. Cruzamento item a item revelou:
+
+1. **`period_start` de janeiro estava 2 dias tarde demais** — cadastrado como `2025-12-02`, mas o extrato real inclui compras a partir de `2025-11-30`. Corrigido em `billing_periods`. Isso também explica por que alguns lançamentos "sumiam" do cálculo sem estarem de fato ausentes do banco — eles existiam, mas caíam fora de qualquer período cadastrado e não apareciam nas minhas consultas de conferência (mesmo bug de fundo do item #1 acima, agora entendido com mais precisão).
+2. **~25 compras nunca lançadas no app** — principalmente farmácias, lojas físicas e lanchonetes pagas com o cartão adicional (final 2771) da conta. Cadastradas retroativamente com base no extrato.
+3. **IOF de compras em dólar não era lançado separadamente** — Claude AI e um app de entrevista (Interview Man) têm cobrança em USD + uma linha própria de "IOF DESPESA NO EXTERIOR" no extrato, cobrada à parte do valor principal. O app só tinha o valor principal (sem IOF, e em alguns casos com o valor errado por não converter certo). Corrigido: valores principais ajustados + 2 novos lançamentos de IOF.
+4. **Existem dois cartões físicos na mesma conta Santander** (final 5246, titular, e final 2771, adicional) — o app trata os dois como um `card_id` só, o que é correto desde que sejam a mesma fatura/vencimento (confirmado: são).
+5. **Erro de digitação gerou um "duplicado" que não era**: "BRIQNUEDO GABI" (typo) e "BRINQUEDO GABI" pareciam a mesma compra lançada duas vezes, mas eram duas compras reais diferentes no mesmo dia — apenas corrigido o nome, mantidos os dois registros. **Lição:** nomes muito parecidos não são prova suficiente de duplicata: confirmar com o usuário antes de remover.
+6. **Lançamentos com data errada "vazam" para o mês seguinte**: "SEM PARAR" e "SUPERMERCADO" datados 31/08 eram na verdade compras que só apareceriam na fatura de outubro (confirmado pelo usuário) — a data cadastrada precisava ser ajustada para cair no período correto.
+
+Resultado final (após todas as correções):
+
+| Fatura | App | Extrato real | Diferença |
+|---|---|---|---|
+| Janeiro/2026 | R$ 7.673,52 | R$ 7.677,68 | R$ 4,16 |
+| Agosto/2026 | R$ 5.316,31 | R$ 5.341,23 | R$ 24,92 |
+| Setembro/2026 | R$ 6.054,52 | R$ 6.206,71 | R$ 152,19 (explicado por uma compra confirmada pelo usuário que não aparece no extrato) |
+
+**Pendências em aberto:**
+- `billing_periods` ainda não cobre set/2026 em diante (fatura ainda não fechou) — cadastrar assim que essa fatura fechar.
+- Janeiro, agosto e setembro/2026 estão conferidos e fechados (diferenças residuais < R$25, exceto um item confirmado pelo usuário em setembro). Novas divergências grandes (>R$100) em meses futuros provavelmente indicam lançamento faltando ou duplicado; usar a mesma metodologia (join de `expenses` parceladas com `billing_periods` via SQL, comparando com o extrato real) para investigar.
