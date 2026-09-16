@@ -218,6 +218,32 @@ iOS Safari ignora silenciosamente SVG em `<link rel="apple-touch-icon">` e gera 
 
 ---
 
+## ADR-010 — Não integrar Open Finance (por enquanto)
+
+**Status:** Aceito
+
+**Contexto:**
+Avaliada a possibilidade de conectar o app ao Open Finance para sincronizar transações automaticamente com o banco, em vez de depender de importação manual de extrato. Pesquisados os dois principais agregadores brasileiros (Pluggy e Belvo) em setembro/2026.
+
+**Decisão:**
+Não integrar Open Finance neste momento. Os agregadores pesquisados não têm free tier viável para uso pessoal de baixo volume:
+- Pluggy: sem free tier permanente, só teste grátis de 14 dias — depois, plano pago mínimo de R$2.500/mês.
+- Belvo: sem free tier público — sandbox (dados fake) é grátis, produção é vendas-led sem preço público.
+
+Para um app pessoal usado por 2 pessoas, esse custo é desproporcional (o app inteiro roda hoje em tiers gratuitos — Vercel Hobby + Supabase free tier).
+
+**Alternativas escolhidas no lugar:**
+- Continuar evoluindo a importação de extrato manual já existente (CSV/XLSX/PDF via Claude).
+- Priorizar "Foto de recibo → registro automático" (roadmap pós-lançamento, item #8) — mesmo padrão de Edge Function + Claude Vision, custo por token de uso em vez de mensalidade fixa.
+
+**Consequências:**
+- ✅ Zero custo recorrente adicional.
+- ✅ Reaproveita a infraestrutura de Edge Function + Claude já validada na importação.
+- ⚠️ Lançamentos continuam exigindo entrada manual (ou foto de recibo) — sem sincronização automática com o banco.
+- 🔁 Revisar esta decisão se o projeto crescer para atender mais famílias (o custo por usuário do Open Finance dilui em escala, o que hoje não se aplica).
+
+---
+
 ## Como adicionar um ADR
 
 1. Copie o template abaixo
