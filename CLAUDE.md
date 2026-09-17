@@ -397,10 +397,10 @@ const MONTH_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
 
 > Para cada feature abaixo, ao implementar: (1) escrever o teste correspondente, (2) documentar o caso de teste em CONTEXT.md se ainda não constar, (3) atualizar os três arquivos de docs.
 
-### 0. Assistente Financeiro com IA — ✅ Implementado (2026-09)
+### 0. Assistente Financeiro com IA — ✅ Implementado e testado com usuário real (2026-09)
 Card `AIAssistantCard` no Dashboard + Edge Function `financial-assistant`. Ver `CONTEXT.md` (seção "Assistente de IA") e `DECISIONS.md` (ADR-011) para arquitetura completa — resumo: a IA só narra, todo cálculo é feito por funções puras já testadas (`src/utils/finance.js`).
-**Pendente:** teste de ponta a ponta com usuário real (modo demo não gera JWT do Supabase, não dá pra testar o fluxo autenticado completo sem login real).
-**Teste obrigatório:** Fase 1 já coberta (funções de cálculo). Fase 2/3 (componente + fluxo completo) ainda pendente.
+Fluxo autenticado de ponta a ponta (login real → pergunta → resposta) confirmado funcionando pelo usuário em produção.
+**Teste obrigatório:** Fase 1 já coberta (funções de cálculo). Fase 2/3 (componente + fluxo completo) validadas manualmente por usuário real — automação ainda pendente.
 
 ### 1. Resumo Mensal Algorítmico — ✅ Implementado (2026-09)
 `buildMonthlySummary(expenses, incomes, prevExpenses)` em `src/utils/finance.js` (testada, Fase 1). `MonthlySummaryCard` no Dashboard mostra: variação vs. mês anterior, categoria que mais cresceu, maior gasto único. **Recorrentes pendentes ainda não incluído** — a função atual não recebe `recurring_expenses`, ficaria bom como extensão futura.
