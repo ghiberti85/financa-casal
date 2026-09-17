@@ -397,6 +397,11 @@ const MONTH_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
 
 > Para cada feature abaixo, ao implementar: (1) escrever o teste correspondente, (2) documentar o caso de teste em CONTEXT.md se ainda não constar, (3) atualizar os três arquivos de docs.
 
+### 0. Assistente Financeiro com IA — ✅ Implementado (2026-09)
+Card `AIAssistantCard` no Dashboard + Edge Function `financial-assistant`. Ver `CONTEXT.md` (seção "Assistente de IA") e `DECISIONS.md` (ADR-011) para arquitetura completa — resumo: a IA só narra, todo cálculo é feito por funções puras já testadas (`src/utils/finance.js`).
+**Pendente:** teste de ponta a ponta com usuário real (modo demo não gera JWT do Supabase, não dá pra testar o fluxo autenticado completo sem login real).
+**Teste obrigatório:** Fase 1 já coberta (funções de cálculo). Fase 2/3 (componente + fluxo completo) ainda pendente.
+
 ### 1. Resumo Mensal Algorítmico — ✅ Implementado (2026-09)
 `buildMonthlySummary(expenses, incomes, prevExpenses)` em `src/utils/finance.js` (testada, Fase 1). `MonthlySummaryCard` no Dashboard mostra: variação vs. mês anterior, categoria que mais cresceu, maior gasto único. **Recorrentes pendentes ainda não incluído** — a função atual não recebe `recurring_expenses`, ficaria bom como extensão futura.
 **Teste obrigatório:** Fase 1 ✅ concluída (`src/utils/finance.test.js`). Fase 2 (componente `MonthlySummaryCard` renderiza os textos certos) ainda pendente.
@@ -515,3 +520,5 @@ Plano em 3 fases — ver detalhamento completo em `CONTEXT.md` (seção "Plano d
 20. **Nomes parecidos não são prova de duplicata** — o oposto da armadilha #19 também acontece: "BRIQNUEDO GABI" (typo) e "BRINQUEDO GABI" pareciam a mesma compra lançada duas vezes, mas eram duas compras reais diferentes no mesmo dia. Sempre confirmar com o usuário antes de remover um lançamento suspeito de duplicata — nunca decidir só pela semelhança do nome.
 
 21. **`billing_periods.period_start` errado "esconde" lançamentos já corretos** — se o período cadastrado começa alguns dias depois do que a fatura real realmente cobre, compras nesses dias ficam fora de qualquer período e caem no fallback genérico (ou simplesmente não aparecem em consultas que fazem `JOIN` com `billing_periods`). Isso pode parecer "lançamento faltando" quando na verdade já está no banco — sempre conferir se o registro já existe antes de inserir um novo ao reconciliar uma fatura.
+
+22. **Edge Function nova: nunca confiar em `family_id` do body sem checar o JWT** — `verify_jwt: true` só garante que o token é válido, não que o usuário pertence à família que ele alega no payload. Toda Edge Function que recebe `family_id` do cliente deve decodificar o JWT (`supabaseAdmin.auth.getUser(token)`) e confirmar a associação via `family_members` antes de fazer qualquer operação — ver `financial-assistant` como referência. Sem isso, um usuário autenticado poderia consumir cota/rate-limit ou ver dados de outra família só trocando o `family_id` enviado.

@@ -859,6 +859,13 @@ const APP_I18N = {
       topGrowing:(cat, amount) => `${cat} grew the most (+${amount})`,
       biggest:(desc, amount) => `Biggest expense: ${desc} (${amount})`,
     },
+    assistant: {
+      title:"AI Assistant",
+      disclaimer:"Educational summaries and suggestions only — not registered financial advice.",
+      placeholder:"Ask about your month, spending or goals...",
+      askBtn:"Ask",
+      demoAnswer:"This is a demo — the AI assistant is disabled here. Log in with a real account to try it.",
+    },
     recurring: {
       title:"Recurring Expenses",
       subtitle:"Rent, subscriptions, fixed bills and monthly reminders",
@@ -1196,6 +1203,13 @@ const APP_I18N = {
       newSpending:(pct) => `Gastos novos esse mês — sem comparação com o mês anterior`,
       topGrowing:(cat, amount) => `${cat} foi a categoria que mais cresceu (+${amount})`,
       biggest:(desc, amount) => `Maior gasto: ${desc} (${amount})`,
+    },
+    assistant: {
+      title:"Assistente de IA",
+      disclaimer:"Resumos e sugestões educacionais — não é consultoria financeira registrada.",
+      placeholder:"Pergunte sobre seu mês, gastos ou metas...",
+      askBtn:"Perguntar",
+      demoAnswer:"Isso é uma demonstração — o assistente de IA está desativado aqui. Entre com uma conta real pra testar.",
     },
     recurring: {
       title:"Recorrentes",
@@ -3973,6 +3987,87 @@ function MonthlySummaryCard({ expenses, t, lang = "pt" }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── AI ASSISTANT CARD ────────────────────────────────────────────────────────
+function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, addToast }) {
+  const _ai = APP_I18N[lang].assistant;
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [goals, setGoals] = useState([]);
+
+  useEffect(() => {
+    if (isDemo || !family?.family_id) return;
+    supabaseFetch(`/goals?family_id=eq.${family.family_id}&active=eq.true&select=*`)
+      .then(rows => setGoals(rows || []))
+      .catch(() => {});
+  }, [family?.family_id, isDemo]);
+
+  const ask = async () => {
+    if (isDemo) {
+      setAnswer(_ai.demoAnswer);
+      return;
+    }
+    setLoading(true);
+    setAnswer("");
+    try {
+      const prefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+      const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth()-1;
+      const prevYear = today.getMonth() === 0 ? today.getFullYear()-1 : today.getFullYear();
+      const prevPrefix = `${prevYear}-${String(prevMonth+1).padStart(2,"0")}`;
+      const summary = buildMonthlySummary(
+        filterByMonth(expenses, prefix),
+        filterByMonth(incomes, prefix),
+        filterByMonth(expenses, prevPrefix)
+      );
+      const goalsPayload = goals.map(g => ({ ...g, ...calcGoalProgress(g, today) }));
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/financial-assistant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${_authToken || SUPABASE_ANON_KEY}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ family_id: family.family_id, summary, goals: goalsPayload, question, lang }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      setAnswer(data.message || "");
+    } catch (e) {
+      addToast(e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:20 }}>
+      <h3 style={{ margin:"0 0 4px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}>
+        🤖 {_ai.title}
+      </h3>
+      <p style={{ margin:"0 0 14px",fontSize:11,color:t.textMuted,lineHeight:1.5 }}>{_ai.disclaimer}</p>
+      <div style={{ display:"flex",gap:8,marginBottom:answer?12:0 }}>
+        <input
+          value={question}
+          onChange={e=>setQuestion(e.target.value)}
+          onKeyDown={e=>{ if (e.key==="Enter" && !loading) ask(); }}
+          placeholder={_ai.placeholder}
+          style={{ flex:1,background:t.inputBg,border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 12px",color:t.text,fontSize:13,outline:"none" }}
+        />
+        <button onClick={ask} disabled={loading}
+          style={{ background:t.accent,border:"none",borderRadius:10,padding:"0 16px",cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.7:1 }}>
+          {loading ? "..." : _ai.askBtn}
+        </button>
+      </div>
+      {answer && (
+        <div style={{ background:t.surfaceHover,borderRadius:12,padding:"12px 14px",fontSize:13,color:t.text,lineHeight:1.6,whiteSpace:"pre-wrap" }}>
+          {answer}
+        </div>
+      )}
     </div>
   );
 }
@@ -6939,6 +7034,7 @@ export default function App() {
                   <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["installments"]} />
                 </div>
                 <MonthlySummaryCard expenses={expenses} t={t} lang={lang} />
+                <AIAssistantCard expenses={expenses} incomes={incomes} t={t} lang={lang} family={family} isDemo={isDemo} addToast={addToast} />
                 <BudgetAlertCard expenses={expenses} t={t} lang={lang} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} lang={lang} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>

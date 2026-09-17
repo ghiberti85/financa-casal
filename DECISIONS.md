@@ -244,6 +244,27 @@ Para um app pessoal usado por 2 pessoas, esse custo é desproporcional (o app in
 
 ---
 
+## ADR-011 — Assistente de IA só narra, nunca calcula
+
+**Status:** Aceito
+
+**Contexto:**
+Ao implementar o assistente financeiro com IA (resumos, situação financeira, metas), havia duas formas de desenhar a Edge Function: (a) mandar os dados crus (lista de `expenses`/`incomes`/`goals`) pra IA e deixar ela somar/calcular tudo, ou (b) calcular tudo no frontend com funções puras testáveis e mandar só o resultado já pronto pra IA narrar.
+
+**Decisão:**
+A Edge Function `financial-assistant` **nunca** recebe dados crus nem faz matemática financeira. O frontend calcula tudo com `buildMonthlySummary`/`calcGoalProgress` (`src/utils/finance.js`, testadas com Vitest) e manda o resumo já pronto. A IA (Claude) só gera a narrativa/sugestão em cima desse resumo.
+
+**Alternativas descartadas:**
+- IA recebe a lista crua de transações e soma sozinha — rejeitado: LLMs podem "alucinar" um total errado, e é impossível testar de forma determinística (o mesmo prompt pode gerar contas diferentes em execuções diferentes). Também custaria muito mais tokens (histórico completo vs. um resumo compacto).
+
+**Consequências:**
+- ✅ Erro de matemática financeira é uma classe de bug que não pode acontecer no assistente — se o número estiver errado, o bug está numa função pura testável, não na IA.
+- ✅ Custo de tokens bem menor — manda um resumo, não centenas de transações.
+- ✅ As mesmas funções (`buildMonthlySummary`, `calcGoalProgress`) já são reusadas pela UI (`MonthlySummaryCard`, `GoalsView`) — uma fonte de verdade só.
+- ⚠️ Se o assistente precisar responder sobre algo que ainda não existe como campo do resumo (ex: "quanto gastei em restaurantes esse ano"), é preciso primeiro estender a função pura de agregação — não dá pra IA "se virar" com os dados crus.
+
+---
+
 ## Como adicionar um ADR
 
 1. Copie o template abaixo

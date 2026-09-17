@@ -58,6 +58,7 @@ Key design goals:
 - Summary cards: Monthly Income, Monthly Expenses, Balance and Future Installments
 - Bar chart: Income × Expenses for the last 6 months
 - **Monthly summary card** — algorithmic (no AI): spending variation vs. last month, fastest-growing category, biggest single expense
+- **AI Assistant card** — ask free-form questions about your month, spending or goals; Claude narrates a summary that's already computed by the app (never does the math itself) via a Supabase Edge Function, rate-limited per family
 - **Budget alert card** — appears automatically when any category exceeds 80% of its limit
 - **Recurring reminders card** — lists fixed bills not yet confirmed for the current month
 - **Billing card** — current month's credit card statement total grouped by card with due date
@@ -252,6 +253,9 @@ budgets             -- id, family_id, category, amount, month (YYYY-MM)
 goals               -- id, family_id, description, target_amount,
                     --   current_amount, deadline, category, active,
                     --   created_at, updated_at
+
+assistant_usage     -- id, family_id, day, count, updated_at
+                    --   rate limit for the AI assistant (20/family/day)
 
 cards               -- id, family_id, name, holder, closing_day, due_day,
                     --   color, active, created_at
