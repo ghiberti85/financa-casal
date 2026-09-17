@@ -114,6 +114,49 @@ async function supabaseAuth(action, email, password) {
   return data;
 }
 
+// Sends the "forgot password" email via Supabase Auth. redirect_to must be
+// allow-listed in Supabase Studio → Authentication → URL Configuration,
+// otherwise GoTrue silently falls back to the project's default Site URL.
+async function supabaseRecoverPassword(email) {
+  const redirectTo = encodeURIComponent(window.location.origin);
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/recover?redirect_to=${redirectTo}`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(data.error_description || data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// Consumes the one-time recovery access_token (from the email link's URL hash)
+// to set a new password. This token is short-lived and scoped only to auth/v1/user.
+async function supabaseUpdatePassword(recoveryAccessToken, password) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${recoveryAccessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(data.error_description || data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// Parses "#access_token=...&type=recovery&refresh_token=..." from the URL hash
+// left there by the Supabase recovery email link. Returns null when absent.
+function parseRecoveryHash() {
+  if (!window.location.hash || window.location.hash.length < 2) return null;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  if (params.get("type") !== "recovery") return null;
+  const access_token = params.get("access_token");
+  if (!access_token) return null;
+  return { access_token };
+}
+
 // ─── FAMILY HELPERS (via Supabase RPC — bypasses RLS safely) ─────────────────
 function genCode() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -859,6 +902,13 @@ const APP_I18N = {
       topGrowing:(cat, amount) => `${cat} grew the most (+${amount})`,
       biggest:(desc, amount) => `Biggest expense: ${desc} (${amount})`,
     },
+    assistant: {
+      title:"AI Assistant",
+      disclaimer:"Educational summaries and suggestions only — not registered financial advice.",
+      placeholder:"Ask about your month, spending or goals...",
+      askBtn:"Ask",
+      demoAnswer:"This is a demo — the AI assistant is disabled here. Log in with a real account to try it.",
+    },
     recurring: {
       title:"Recurring Expenses",
       subtitle:"Rent, subscriptions, fixed bills and monthly reminders",
@@ -1197,6 +1247,13 @@ const APP_I18N = {
       topGrowing:(cat, amount) => `${cat} foi a categoria que mais cresceu (+${amount})`,
       biggest:(desc, amount) => `Maior gasto: ${desc} (${amount})`,
     },
+    assistant: {
+      title:"Assistente de IA",
+      disclaimer:"Resumos e sugestões educacionais — não é consultoria financeira registrada.",
+      placeholder:"Pergunte sobre seu mês, gastos ou metas...",
+      askBtn:"Perguntar",
+      demoAnswer:"Isso é uma demonstração — o assistente de IA está desativado aqui. Entre com uma conta real pra testar.",
+    },
     recurring: {
       title:"Recorrentes",
       subtitle:"Aluguel, contas fixas, assinaturas e lembretes mensais",
@@ -1513,6 +1570,23 @@ const LOGIN_I18N = {
     toastFamilyCreated:    "Family created! Share the code with your partner 💑",
     toastJoinedFamily:     "You joined the family! 🎉",
     langToggle:            "🇧🇷 PT",
+    forgotPasswordLink:    "Forgot your password?",
+    forgotTitle:           "Reset password",
+    forgotSubtitle:        "Enter your email and we'll send you a reset link",
+    sendRecoveryBtn:       "📧 Send reset link",
+    sending:               "Sending...",
+    backToLogin:           "← Back to sign in",
+    toastRecoverySent:     "If that email exists, a reset link was sent.",
+    resetTitle:            "Set new password",
+    resetSubtitle:         "Choose a new password for your account",
+    newPasswordLabel:      "New password",
+    confirmPasswordLabel:  "Confirm new password",
+    resetPasswordBtn:      "✅ Update password",
+    updating:              "Updating...",
+    toastPasswordTooShort: "Password must be at least 6 characters",
+    toastPasswordMismatch: "Passwords don't match",
+    toastPasswordUpdated:  "Password updated! Please sign in.",
+    toastRecoveryLinkInvalid: "This reset link is invalid or has expired. Request a new one.",
   },
   pt: {
     subtitle:              "Gerencie juntos, cresçam juntos",
@@ -1559,6 +1633,23 @@ const LOGIN_I18N = {
     toastFamilyCreated:    "Família criada! Compartilhe o código com seu cônjuge 💑",
     toastJoinedFamily:     "Entrou na família! 🎉",
     langToggle:            "🇺🇸 EN",
+    forgotPasswordLink:    "Esqueceu sua senha?",
+    forgotTitle:           "Recuperar senha",
+    forgotSubtitle:        "Informe seu e-mail e enviaremos um link de recuperação",
+    sendRecoveryBtn:       "📧 Enviar link de recuperação",
+    sending:               "Enviando...",
+    backToLogin:           "← Voltar para o login",
+    toastRecoverySent:     "Se esse e-mail existir, um link de recuperação foi enviado.",
+    resetTitle:            "Definir nova senha",
+    resetSubtitle:         "Escolha uma nova senha para sua conta",
+    newPasswordLabel:      "Nova senha",
+    confirmPasswordLabel:  "Confirmar nova senha",
+    resetPasswordBtn:      "✅ Atualizar senha",
+    updating:              "Atualizando...",
+    toastPasswordTooShort: "A senha deve ter pelo menos 6 caracteres",
+    toastPasswordMismatch: "As senhas não coincidem",
+    toastPasswordUpdated:  "Senha atualizada! Faça login novamente.",
+    toastRecoveryLinkInvalid: "Este link de recuperação é inválido ou expirou. Solicite um novo.",
   },
 };
 
@@ -1585,6 +1676,20 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
   const [loginCooldown, setLoginCooldown] = useState(0);
   const failedAttemptsRef = useRef(0);
   const cooldownTimerRef = useRef(null);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [recoveryToken, setRecoveryToken] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Detect a Supabase recovery link (#access_token=...&type=recovery) on load
+  useEffect(() => {
+    const rec = parseRecoveryHash();
+    if (!rec) return;
+    // Strip the token from the URL/history immediately — it's sensitive.
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    setRecoveryToken(rec.access_token);
+    setStep("reset");
+  }, []);
 
   const startCooldown = (seconds) => {
     setLoginCooldown(seconds);
@@ -1637,6 +1742,34 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
       }
       addToast(err.message, "error");
     }
+    finally { setLoading(false); }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) { addToast(L.toastFillFields, "error"); return; }
+    setLoading(true);
+    try {
+      await supabaseRecoverPassword(forgotEmail.trim());
+      addToast(L.toastRecoverySent, "success");
+      setStep("auth");
+      setForgotEmail("");
+    } catch (err) { addToast(err.message, "error"); }
+    finally { setLoading(false); }
+  };
+
+  const handleResetPassword = async () => {
+    if (!recoveryToken) { addToast(L.toastRecoveryLinkInvalid, "error"); setStep("auth"); return; }
+    if (!newPassword || newPassword.length < 6) { addToast(L.toastPasswordTooShort, "error"); return; }
+    if (newPassword !== confirmPassword) { addToast(L.toastPasswordMismatch, "error"); return; }
+    setLoading(true);
+    try {
+      await supabaseUpdatePassword(recoveryToken, newPassword);
+      addToast(L.toastPasswordUpdated, "success");
+      setRecoveryToken(null);
+      setNewPassword(""); setConfirmPassword("");
+      setMode("login");
+      setStep("auth");
+    } catch (err) { addToast(err.message, "error"); }
     finally { setLoading(false); }
   };
 
@@ -1704,13 +1837,17 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:28,marginTop:-16 }}>{L.subtitle}</p>
     <Input label={L.emailLabel} t={t} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder={L.emailPlaceholder} onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
     <Input label={L.passwordLabel} t={t} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={L.passwordPlaceholder} onKeyDown={e=>e.key==="Enter"&&handleAuth()} />
+    {mode==="login" && (
+      <p style={{ textAlign:"right",marginTop:-10,marginBottom:14 }}>
+        <span onClick={()=>setStep("forgot")} style={{ color:t.textMuted,cursor:"pointer",fontSize:13 }}>{L.forgotPasswordLink}</span>
+      </p>
+    )}
     <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading || loginCooldown > 0}>
       {loginCooldown > 0 ? `⏳ ${L.waitLabel} ${loginCooldown}s` : loading ? L.loadingAuth : mode==="login" ? L.signIn : L.createAccount}
     </Btn>
-    <p style={{ textAlign:"center",marginTop:18,fontSize:14,color:t.textMuted }}>
-      {mode==="login" ? `${L.noAccount} ` : `${L.hasAccount} `}
-      <span onClick={()=>setMode(mode==="login"?"signup":"login")} style={{ color:t.accent,cursor:"pointer",fontWeight:600 }}>{mode==="login" ? L.signUpLink : L.signInLink}</span>
-    </p>
+    {/* Signup UI hidden intentionally — personal app for 2 known users, no public sign-up.
+        The signup code path (mode==="signup", handleAuth, profile/family_setup steps) stays
+        intact below in case it's needed again; only this entry point is removed. */}
     <div style={{ display:"flex",alignItems:"center",gap:12,margin:"20px 0 4px" }}>
       <div style={{ flex:1,height:1,background:t.border }} />
       <span style={{ fontSize:12,color:t.textMuted }}>{L.or}</span>
@@ -1766,6 +1903,32 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
       <Input label={L.inviteCodeLabel} t={t} value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder={L.inviteCodePlaceholder} maxLength={6} style={{ letterSpacing:"0.2em",fontWeight:700 }} />
       <Btn t={t} variant="success" type="button" onClick={handleJoinFamily} style={{ width:"100%" }} disabled={loading}>{loading ? L.joining : L.joinFamilyBtn}</Btn>
     </div>
+  </>);
+
+  // ── Step forgot (request recovery email) ──
+  if (step === "forgot") return wrap(<>
+    <LoginLogo t={t} />
+    <p style={{ textAlign:"center",color:t.text,fontSize:16,fontWeight:700,marginBottom:6,marginTop:-16 }}>{L.forgotTitle}</p>
+    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:24 }}>{L.forgotSubtitle}</p>
+    <Input label={L.emailLabel} t={t} type="email" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder={L.emailPlaceholder} onKeyDown={e=>e.key==="Enter"&&handleForgotPassword()} />
+    <Btn t={t} type="button" onClick={handleForgotPassword} style={{ width:"100%",marginTop:4 }} disabled={loading}>
+      {loading ? L.sending : L.sendRecoveryBtn}
+    </Btn>
+    <p style={{ textAlign:"center",marginTop:18,fontSize:14 }}>
+      <span onClick={()=>setStep("auth")} style={{ color:t.accent,cursor:"pointer",fontWeight:600 }}>{L.backToLogin}</span>
+    </p>
+  </>);
+
+  // ── Step reset (consume recovery link, set new password) ──
+  if (step === "reset") return wrap(<>
+    <LoginLogo t={t} />
+    <p style={{ textAlign:"center",color:t.text,fontSize:16,fontWeight:700,marginBottom:6,marginTop:-16 }}>{L.resetTitle}</p>
+    <p style={{ textAlign:"center",color:t.textMuted,fontSize:14,marginBottom:24 }}>{L.resetSubtitle}</p>
+    <Input label={L.newPasswordLabel} t={t} type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder={L.passwordPlaceholder} onKeyDown={e=>e.key==="Enter"&&handleResetPassword()} />
+    <Input label={L.confirmPasswordLabel} t={t} type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder={L.passwordPlaceholder} onKeyDown={e=>e.key==="Enter"&&handleResetPassword()} />
+    <Btn t={t} type="button" onClick={handleResetPassword} style={{ width:"100%",marginTop:4 }} disabled={loading}>
+      {loading ? L.updating : L.resetPasswordBtn}
+    </Btn>
   </>);
 
   return null;
@@ -3973,6 +4136,87 @@ function MonthlySummaryCard({ expenses, t, lang = "pt" }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── AI ASSISTANT CARD ────────────────────────────────────────────────────────
+function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, addToast }) {
+  const _ai = APP_I18N[lang].assistant;
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [goals, setGoals] = useState([]);
+
+  useEffect(() => {
+    if (isDemo || !family?.family_id) return;
+    supabaseFetch(`/goals?family_id=eq.${family.family_id}&active=eq.true&select=*`)
+      .then(rows => setGoals(rows || []))
+      .catch(() => {});
+  }, [family?.family_id, isDemo]);
+
+  const ask = async () => {
+    if (isDemo) {
+      setAnswer(_ai.demoAnswer);
+      return;
+    }
+    setLoading(true);
+    setAnswer("");
+    try {
+      const prefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+      const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth()-1;
+      const prevYear = today.getMonth() === 0 ? today.getFullYear()-1 : today.getFullYear();
+      const prevPrefix = `${prevYear}-${String(prevMonth+1).padStart(2,"0")}`;
+      const summary = buildMonthlySummary(
+        filterByMonth(expenses, prefix),
+        filterByMonth(incomes, prefix),
+        filterByMonth(expenses, prevPrefix)
+      );
+      const goalsPayload = goals.map(g => ({ ...g, ...calcGoalProgress(g, today) }));
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/financial-assistant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${_authToken || SUPABASE_ANON_KEY}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ family_id: family.family_id, summary, goals: goalsPayload, question, lang }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      setAnswer(data.message || "");
+    } catch (e) {
+      addToast(e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:20 }}>
+      <h3 style={{ margin:"0 0 4px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}>
+        🤖 {_ai.title}
+      </h3>
+      <p style={{ margin:"0 0 14px",fontSize:11,color:t.textMuted,lineHeight:1.5 }}>{_ai.disclaimer}</p>
+      <div style={{ display:"flex",gap:8,marginBottom:answer?12:0 }}>
+        <input
+          value={question}
+          onChange={e=>setQuestion(e.target.value)}
+          onKeyDown={e=>{ if (e.key==="Enter" && !loading) ask(); }}
+          placeholder={_ai.placeholder}
+          style={{ flex:1,background:t.inputBg,border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 12px",color:t.text,fontSize:13,outline:"none" }}
+        />
+        <button onClick={ask} disabled={loading}
+          style={{ background:t.accent,border:"none",borderRadius:10,padding:"0 16px",cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.7:1 }}>
+          {loading ? "..." : _ai.askBtn}
+        </button>
+      </div>
+      {answer && (
+        <div style={{ background:t.surfaceHover,borderRadius:12,padding:"12px 14px",fontSize:13,color:t.text,lineHeight:1.6,whiteSpace:"pre-wrap" }}>
+          {answer}
+        </div>
+      )}
     </div>
   );
 }
@@ -6939,6 +7183,7 @@ export default function App() {
                   <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["installments"]} />
                 </div>
                 <MonthlySummaryCard expenses={expenses} t={t} lang={lang} />
+                <AIAssistantCard expenses={expenses} incomes={incomes} t={t} lang={lang} family={family} isDemo={isDemo} addToast={addToast} />
                 <BudgetAlertCard expenses={expenses} t={t} lang={lang} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} lang={lang} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>

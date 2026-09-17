@@ -38,10 +38,11 @@ Key design goals:
 ## Features
 
 ### 🔐 Authentication & Profiles
-- Sign up and log in with email and password
+- Log in with email and password. **Public sign-up is intentionally hidden from the UI** — this is a private app for 2 known users; the sign-up code path still exists (`LoginPage`, `mode==="signup"`) but has no entry point in the login screen
 - **Secure session:** refresh token in an `HttpOnly; Secure` cookie (inaccessible to JS), access token kept in memory only
 - Skeleton loading during session restore
 - Profile with first name, last name and phone with international dial code (14 countries)
+- **Password recovery** — "Forgot your password?" link sends a Supabase reset email; the link's one-time token sets a new password directly (no manual database access needed)
 - **Demo mode** — no sign-up required: `demo@financacasal.app` / `demo1234`
 
 ### 👨‍👩‍👦 Family System
@@ -58,6 +59,7 @@ Key design goals:
 - Summary cards: Monthly Income, Monthly Expenses, Balance and Future Installments
 - Bar chart: Income × Expenses for the last 6 months
 - **Monthly summary card** — algorithmic (no AI): spending variation vs. last month, fastest-growing category, biggest single expense
+- **AI Assistant card** — ask free-form questions about your month, spending or goals; Claude narrates a summary that's already computed by the app (never does the math itself) via a Supabase Edge Function, rate-limited per family
 - **Budget alert card** — appears automatically when any category exceeds 80% of its limit
 - **Recurring reminders card** — lists fixed bills not yet confirmed for the current month
 - **Billing card** — current month's credit card statement total grouped by card with due date
@@ -253,6 +255,9 @@ goals               -- id, family_id, description, target_amount,
                     --   current_amount, deadline, category, active,
                     --   created_at, updated_at
 
+assistant_usage     -- id, family_id, day, count, updated_at
+                    --   rate limit for the AI assistant (20/family/day)
+
 cards               -- id, family_id, name, holder, closing_day, due_day,
                     --   color, active, created_at
 
@@ -441,7 +446,7 @@ financa-casal/
 | Component | Description |
 |---|---|
 | `App` | Root — authentication, global state and tab routing |
-| `LoginPage` | Sign-up/login with profile and family setup flow (3 steps) |
+| `LoginPage` | Login + password recovery flow (steps: auth, forgot, reset). Sign-up code path still exists internally but has no UI entry point — see armadilha in CLAUDE.md |
 | `SummaryCards` | Cards: Monthly Income, Expenses, Balance, Future Installments |
 | `CalendarView` | Monthly calendar with visual indicators and day detail panel |
 | `ChartsView` | Income×Expenses bar, category donut (interactive) and installment timeline |

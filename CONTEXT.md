@@ -20,7 +20,7 @@ Cada membro registra gastos e receitas, visualiza calendário, gráficos e impor
 | Backend | Supabase REST API (sem SDK — fetch direto com headers manuais) |
 | Auth | Supabase Auth via JWT — access token em memória, refresh token em cookie HttpOnly via `/api/auth/*` |
 | Planilhas | exceljs (bundle local, sem vulnerabilidades) para CSV/XLSX; PDF via Edge Function |
-| IA | Claude Sonnet via Supabase Edge Function (Deno) para importação |
+| IA | Claude Sonnet via Supabase Edge Function (Deno) para importação e assistente financeiro |
 | Deploy | Vercel (auto-deploy no push para main) + API Routes serverless |
 
 ---
@@ -100,6 +100,24 @@ async function supabaseAuth(action, email, password)
 | `POST /api/auth/signup` | Cadastra, define cookie HttpOnly, retorna access token |
 | `POST /api/auth/refresh` | Lê cookie HttpOnly, renova sessão, rotaciona token |
 | `POST /api/auth/logout` | Apaga o cookie de sessão |
+
+**Recuperação de senha ("Esqueci minha senha") — ✅ Implementado (2026-09):**
+
+Chamadas diretas ao GoTrue (Supabase Auth) a partir do frontend — não passam por `api/auth/*`, pois não criam sessão/cookie, apenas usam a chave anônima pública:
+
+```javascript
+async function supabaseRecoverPassword(email)      // POST /auth/v1/recover?redirect_to=<origin>
+async function supabaseUpdatePassword(token, pass)  // PUT  /auth/v1/user  (Bearer = token de recovery)
+function parseRecoveryHash()                        // lê #access_token=...&type=recovery do hash
+```
+
+Fluxo:
+1. Usuário clica "Esqueceu sua senha?" no `LoginPage` (step `auth` → `forgot`) → informa e-mail → `supabaseRecoverPassword(email)`.
+2. Supabase envia e-mail com link contendo `#access_token=...&type=recovery&refresh_token=...` no hash, redirecionando para `redirect_to` (a origem atual, `window.location.origin`) — **desde que essa URL esteja na allowlist de Redirect URLs do projeto no Supabase Studio**; caso contrário o GoTrue ignora o `redirect_to` e usa o Site URL padrão do projeto.
+3. Ao abrir o link, `LoginPage` detecta o hash via `parseRecoveryHash()` em um `useEffect` de mount, limpa a URL imediatamente com `window.history.replaceState` (o token não deve ficar exposto na barra de endereço/histórico) e vai para o step `reset`.
+4. Usuário define nova senha (mín. 6 caracteres, com confirmação) → `supabaseUpdatePassword(recoveryToken, newPassword)` → volta para o login.
+
+**Limitação conhecida:** o token de recovery é curto (~1h) e escopado só para `PUT /auth/v1/user` — não gera cookie de sessão. Depois de trocar a senha, o usuário precisa fazer login normalmente (fluxo não faz auto-login).
 
 ---
 
@@ -252,7 +270,7 @@ function useDebounce(value, delay = 300)
 | Componente | Descrição |
 |---|---|
 | `App` | Root — auth, estado global, roteamento por tabs |
-| `LoginPage` | Login/cadastro + fluxo de perfil e família (3 etapas) |
+| `LoginPage` | Login + recuperação de senha (steps: auth, forgot, reset). Cadastro (mode `signup`, steps `profile`/`family_setup`) continua implementado mas sem entrada na UI — ver armadilha #24 |
 | `LoginCard` | Wrapper visual do card de login (subcomponente) |
 | `LoginLogo` | Logo + título da tela de login (subcomponente) |
 | `Icon` | Ícone SVG inline via `ICON_PATHS` (Lucide-inspired) |
@@ -273,6 +291,7 @@ function useDebounce(value, delay = 300)
 | `EditModal` | Edição de gasto ou receita existente |
 | `BudgetView` | Orçamento por categoria com barra de progresso |
 | `MonthlySummaryCard` | Resumo mensal algorítmico no dashboard (`buildMonthlySummary`): variação vs. mês anterior, categoria que mais cresceu, maior gasto único |
+| `AIAssistantCard` | Card de pergunta livre no dashboard — chama a Edge Function `financial-assistant`, que só narra dados já calculados no frontend (nunca faz conta sozinha) |
 | `BudgetAlertCard` | Alerta no dashboard quando orçamento > 80% |
 | `GoalsView` | CRUD de metas financeiras com barra de progresso (tabela `goals`) |
 | `RecurringView` | Lembretes mensais e confirmação de pagamentos |
@@ -369,6 +388,29 @@ import       → ImportView
 - Filtros: Todos / Novos / Duplicatas
 - Seleção individual ou em massa
 - `ON CONFLICT DO NOTHING` garante idempotência
+
+---
+
+## Assistente de IA (`AIAssistantCard`)
+
+Card no Dashboard onde o usuário pergunta livremente sobre o mês, gastos ou metas.
+
+**Arquitetura — cálculo determinístico vs. narrativa (decisão deliberada, ver o plano original desta feature):**
+- Todo número (totais, variação, categoria que mais cresceu, progresso de metas) é calculado no **frontend** via `buildMonthlySummary`/`calcGoalProgress` (`src/utils/finance.js`) e mandado **já pronto** pro backend.
+- A Edge Function `financial-assistant` (Deno) só recebe esse resumo + a pergunta e gera a **narrativa** — nunca soma, nunca recalcula, nunca inventa número. Isso elimina a classe de erro mais perigosa (IA "alucinando" um saldo errado) e reduz MUITO o custo de tokens (manda um resumo compacto, não a lista crua de transações).
+- Modelo: `claude-sonnet-5`, com `cache_control: ephemeral` no system prompt (fixo entre chamadas — barato de reusar).
+
+**Segurança:**
+- `verify_jwt: true` na Edge Function — exige JWT válido do Supabase.
+- A função decodifica o JWT (`supabaseAdmin.auth.getUser`) e confirma que o usuário pertence à `family_id` que o frontend mandou, via `family_members` — nunca confia cegamente no `family_id` do body.
+- **Rate limit de 20 perguntas/família/dia**, aplicado na tabela `assistant_usage` (incrementada pela própria Edge Function com service role, **antes** de chamar a Anthropic) — evita custo de API descontrolado.
+- Chave da Anthropic só no Supabase Vault (`ANTHROPIC_API_KEY`, mesmo secret da `analyze-import`), nunca no frontend.
+- Disclaimer fixo na UI: é uma ferramenta educacional, não consultoria financeira registrada — o próprio system prompt da IA reforça isso e recusa dar conselho de investimento.
+- Modo demo (`isDemo`): nunca chama a Edge Function de verdade, mostra uma mensagem estática.
+
+**Tabela `assistant_usage`:** `(id, family_id, day, count, updated_at)`, `UNIQUE(family_id, day)`. RLS: família só lê o próprio uso; só a Edge Function (service role) escreve.
+
+**Limitação conhecida:** não foi possível testar o fluxo autenticado de ponta a ponta nesta sessão (modo demo não gera JWT real do Supabase) — testado até onde dava (deploy ativo, build, render da UI). Primeira pergunta real de um usuário logado serve como teste de aceitação.
 
 ---
 
@@ -494,7 +536,7 @@ Ao remover qualquer feature:
 
 - [ ] Auditar e documentar RLS policies no Supabase para todas as tabelas (`expenses`, `incomes`, `families`, `family_members`, `profiles`, `budgets`, `cards`, `recurring_expenses`, `recurring_reminders`)
 - [ ] Ativar email confirmation no Supabase + tela "Verifique seu e-mail" no `LoginPage`
-- [ ] "Esqueci minha senha" no `LoginPage` (link → e-mail de reset → tela de nova senha)
+- [x] "Esqueci minha senha" no `LoginPage` (link → e-mail de reset → tela de nova senha) — ✅ Implementado (2026-09). Ver seção "Recuperação de Senha" abaixo. **Pendente de verificação manual:** conferir em Supabase Studio → Authentication → URL Configuration se a Redirect URL de produção (`https://financa-casal.vercel.app`) está na allowlist — sem isso, o e-mail de recuperação redireciona para o Site URL padrão (visto em produção apontando para `localhost:3000`) em vez da origem correta.
 - [ ] Rate limiting no `api/auth/signup.js` (igual ao `login.js`: 10 tentativas / 15 min por IP)
 - [ ] Página de Política de Privacidade (informar data residency: AWS us-east-1 via Supabase)
 - [ ] Página de Termos de Uso + Política de Reembolso
