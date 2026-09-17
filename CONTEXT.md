@@ -129,6 +129,14 @@ profiles            (id, first_name, last_name, phone, updated_at)
 
 budgets             (id, family_id, category, amount, month — YYYY-MM)
 
+goals               (id, family_id, description, target_amount,
+                     current_amount, deadline, category, active,
+                     created_at, updated_at)
+                   target_amount/current_amount: numeric, sempre > 0 / >= 0
+                   deadline: date, opcional
+                   active: soft-delete-friendly, mas hoje o CRUD deleta
+                     de verdade (DELETE) — ver GoalsView
+
 cards               (id, family_id, name, holder, closing_day, due_day,
                      color, active, created_at)
                    closing_day: dia de fechamento da fatura
@@ -265,6 +273,7 @@ function useDebounce(value, delay = 300)
 | `EditModal` | Edição de gasto ou receita existente |
 | `BudgetView` | Orçamento por categoria com barra de progresso |
 | `BudgetAlertCard` | Alerta no dashboard quando orçamento > 80% |
+| `GoalsView` | CRUD de metas financeiras com barra de progresso (tabela `goals`) |
 | `RecurringView` | Lembretes mensais e confirmação de pagamentos |
 | `RecurringForm` | Cadastro/edição de regra recorrente |
 | `RecurringAlertCard` | Alerta de gastos recorrentes pendentes no dashboard |

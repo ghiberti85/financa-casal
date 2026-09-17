@@ -790,7 +790,7 @@ const APP_I18N = {
   en: {
     nav: {
       dashboard:"Home", calendar:"Calendar", charts:"Charts",
-      budget:"Budget", recurring:"Recurring", transactions:"Transactions", import:"Import",
+      budget:"Budget", goals:"Goals", recurring:"Recurring", transactions:"Transactions", import:"Import",
     },
     langToggle: "PT — Português",
     app: {
@@ -832,6 +832,24 @@ const APP_I18N = {
       alertTitle:"Budget Alert",
       goToBudget:"View Budget",
       saveBtn:"Save", deleteBtn:"Remove",
+    },
+    goals: {
+      title:"Financial Goals", subtitle:"Save up for what matters and track your progress",
+      noData:"No goals yet.",
+      noDataHint:"Click <strong>+ New goal</strong> to set your first savings target.",
+      newGoal:"+ New goal", editGoal:"Edit goal",
+      description:"Description", target:"Target amount", current:"Current amount",
+      deadline:"Deadline (optional)", category:"Category (optional)",
+      selectCategory:"Select a category",
+      progress:(pct) => `${pct}% complete`,
+      reached:"🎉 Goal reached!",
+      overdue:"⚠️ Past deadline",
+      saveBtn:"Save", deleteBtn:"Remove", cancelBtn:"Cancel",
+      deleteTitle:"Remove goal", deleteMsg:"This action cannot be undone.",
+      fillRequired:"Fill in description and target amount.",
+      created:"Goal created!", updated:"Goal updated!", deleted:"Goal removed.",
+      remainingToGoal:(v) => `${v} left to reach the goal`,
+      addProgress:"Add amount",
     },
     recurring: {
       title:"Recurring Expenses",
@@ -1103,7 +1121,7 @@ const APP_I18N = {
   pt: {
     nav: {
       dashboard:"Início", calendar:"Calendário", charts:"Gráficos",
-      budget:"Orçamento", recurring:"Recorrentes", transactions:"Lançamentos", import:"Importar",
+      budget:"Orçamento", goals:"Metas", recurring:"Recorrentes", transactions:"Lançamentos", import:"Importar",
     },
     langToggle: "EN — English",
     app: {
@@ -1145,6 +1163,24 @@ const APP_I18N = {
       alertTitle:"Alerta de Orçamento",
       goToBudget:"Ver Orçamento",
       saveBtn:"Salvar", deleteBtn:"Remover",
+    },
+    goals: {
+      title:"Metas Financeiras", subtitle:"Junte dinheiro pro que importa e acompanhe seu progresso",
+      noData:"Nenhuma meta cadastrada ainda.",
+      noDataHint:"Clique em <strong>+ Nova meta</strong> pra definir seu primeiro objetivo.",
+      newGoal:"+ Nova meta", editGoal:"Editar meta",
+      description:"Descrição", target:"Valor alvo", current:"Valor atual",
+      deadline:"Prazo (opcional)", category:"Categoria (opcional)",
+      selectCategory:"Selecione a categoria",
+      progress:(pct) => `${pct}% concluído`,
+      reached:"🎉 Meta atingida!",
+      overdue:"⚠️ Prazo vencido",
+      saveBtn:"Salvar", deleteBtn:"Remover", cancelBtn:"Cancelar",
+      deleteTitle:"Remover meta", deleteMsg:"Esta ação não pode ser desfeita.",
+      fillRequired:"Preencha a descrição e o valor alvo.",
+      created:"Meta criada!", updated:"Meta atualizada!", deleted:"Meta removida.",
+      remainingToGoal:(v) => `Faltam ${v} pra bater a meta`,
+      addProgress:"Adicionar valor",
     },
     recurring: {
       title:"Recorrentes",
@@ -4778,6 +4814,176 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
   );
 }
 
+// ─── GOALS VIEW ─────────────────────────────────────────────────────────────
+function GoalsView({ t, lang = "pt", family, isDemo, addToast }) {
+  const _gl = APP_I18N[lang].goals;
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
+  const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const emptyForm = { description:"", target_amount:"", current_amount:"", deadline:"", category:"" };
+  const [form, setForm] = useState(emptyForm);
+  const [editId, setEditId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmOpts, setConfirmOpts] = useState(null);
+  const sf = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  useEffect(() => {
+    if (isDemo || !family?.family_id) { setLoading(false); return; }
+    setLoading(true);
+    supabaseFetch(`/goals?family_id=eq.${family.family_id}&active=eq.true&order=created_at.desc&select=*`)
+      .then(rows => { setGoals(rows || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [family?.family_id, isDemo]);
+
+  const resetForm = () => { setForm(emptyForm); setEditId(null); setShowForm(false); };
+
+  const startEdit = (g) => {
+    setEditId(g.id);
+    setForm({
+      description: g.description,
+      target_amount: String(g.target_amount),
+      current_amount: String(g.current_amount),
+      deadline: g.deadline || "",
+      category: g.category || "",
+    });
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    const target = parseFloat(form.target_amount);
+    if (!form.description.trim() || !(target > 0)) { addToast(_gl.fillRequired, "error"); return; }
+    setSaving(true);
+    const payload = {
+      description: form.description.trim(),
+      target_amount: target,
+      current_amount: parseFloat(form.current_amount) || 0,
+      deadline: form.deadline || null,
+      category: form.category || null,
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      if (editId) {
+        await supabaseFetch(`/goals?id=eq.${editId}`, { method: "PATCH", body: JSON.stringify(payload) });
+        setGoals(p => p.map(g => g.id === editId ? { ...g, ...payload } : g));
+        addToast(_gl.updated, "success");
+      } else {
+        const rows = await supabaseFetch("/goals", {
+          method: "POST",
+          body: JSON.stringify({ ...payload, family_id: family.family_id }),
+          headers: { "Prefer": "return=representation" },
+        });
+        if (rows?.[0]) setGoals(p => [rows[0], ...p]);
+        addToast(_gl.created, "success");
+      }
+      resetForm();
+    } catch (e) { addToast(e.message, "error"); }
+    finally { setSaving(false); }
+  };
+
+  const del = (id) => {
+    setConfirmOpts({
+      title: _gl.deleteTitle,
+      message: _gl.deleteMsg,
+      onConfirm: async () => {
+        try {
+          await supabaseFetch(`/goals?id=eq.${id}`, { method: "DELETE", headers: { "Prefer": "return=minimal" } });
+          setGoals(p => p.filter(g => g.id !== id));
+          addToast(_gl.deleted, "info");
+        } catch (e) { addToast(e.message, "error"); }
+      },
+    });
+  };
+
+  if (loading) return <div style={{ textAlign:"center",padding:"40px 0",color:t.textMuted,fontSize:13 }}>...</div>;
+
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
+      <div style={{ display:"flex",justifyContent:"flex-end" }}>
+        <button onClick={() => { resetForm(); setShowForm(true); }}
+          style={{ background:t.accent,border:"none",borderRadius:10,padding:"9px 16px",cursor:"pointer",color:"#fff",fontSize:13,fontWeight:700 }}>
+          {_gl.newGoal}
+        </button>
+      </div>
+
+      {goals.length === 0 && !isDemo && (
+        <div style={{ textAlign:"center",padding:"24px 0",color:t.textMuted,fontSize:13,lineHeight:1.7 }}
+          dangerouslySetInnerHTML={{ __html: `${_gl.noData}<br/>${_gl.noDataHint}` }} />
+      )}
+
+      {goals.map(g => {
+        const target = parseFloat(g.target_amount) || 0;
+        const current = parseFloat(g.current_amount) || 0;
+        const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+        const reached = current >= target;
+        const overdue = !reached && g.deadline && new Date(g.deadline + "T23:59:59") < today;
+        const cat = g.category ? CATEGORIES.find(c => c.id === g.category) : null;
+        return (
+          <div key={g.id} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:"16px 20px" }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,gap:10 }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontWeight:700,fontSize:14,color:t.text,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" }}>
+                  {cat?.emoji ? `${cat.emoji} ` : ""}{g.description}
+                </div>
+                <div style={{ fontSize:12,color:t.textMuted,marginTop:2 }}>
+                  {fmt(current)} <span style={{ opacity:0.7 }}>{lang==="pt"?"de":"of"}</span> {fmt(target)}
+                  {g.deadline ? ` · ${g.deadline.slice(8,10)}/${g.deadline.slice(5,7)}/${g.deadline.slice(2,4)}` : ""}
+                </div>
+              </div>
+              <div style={{ display:"flex",gap:4,flexShrink:0 }}>
+                <button onClick={() => startEdit(g)}
+                  style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"4px 6px",borderRadius:6,display:"flex",alignItems:"center" }}>
+                  <Icon name="edit" size={14} />
+                </button>
+                <button onClick={() => del(g.id)}
+                  style={{ background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,padding:"4px 6px",borderRadius:6,display:"flex",alignItems:"center" }}>
+                  <Icon name="trash" size={14} />
+                </button>
+              </div>
+            </div>
+            <div style={{ height:8,borderRadius:4,background:t.surfaceHover,overflow:"hidden" }}>
+              <div style={{ height:"100%",width:`${pct}%`,borderRadius:4,background:reached?t.success:overdue?t.danger:t.accent,transition:"width 300ms" }} />
+            </div>
+            <div style={{ display:"flex",justifyContent:"space-between",marginTop:8,fontSize:12,fontWeight:600 }}>
+              <span style={{ color:reached?t.success:overdue?t.danger:t.textMuted }}>
+                {reached ? _gl.reached : overdue ? _gl.overdue : _gl.progress(pct)}
+              </span>
+              {!reached && <span style={{ color:t.textMuted,fontWeight:400 }}>{_gl.remainingToGoal(fmt(Math.max(0, target - current)))}</span>}
+            </div>
+          </div>
+        );
+      })}
+
+      <Modal open={showForm} onClose={resetForm} title={editId ? _gl.editGoal : _gl.newGoal} t={t}>
+        <Input label={_gl.description} t={t} value={form.description} onChange={e=>sf("description",e.target.value)} />
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+          <Input label={_gl.target} t={t} type="number" step="0.01" value={form.target_amount} onChange={e=>sf("target_amount",e.target.value)} placeholder="0,00" />
+          <Input label={_gl.current} t={t} type="number" step="0.01" value={form.current_amount} onChange={e=>sf("current_amount",e.target.value)} placeholder="0,00" />
+        </div>
+        <DateInput label={_gl.deadline} t={t} lang={lang} value={form.deadline} onChange={e=>sf("deadline",e.target.value)} />
+        <Select label={_gl.category} t={t} value={form.category} onChange={e=>sf("category",e.target.value)}>
+          <option value="">{_gl.selectCategory}</option>
+          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
+        </Select>
+        <div style={{ display:"flex",gap:10,marginTop:8 }}>
+          <button onClick={resetForm}
+            style={{ flex:1,background:t.surfaceHover,border:`1px solid ${t.border}`,borderRadius:10,padding:"11px",cursor:"pointer",color:t.text,fontSize:14,fontWeight:600 }}>
+            {_gl.cancelBtn}
+          </button>
+          <button onClick={save} disabled={saving}
+            style={{ flex:1,background:t.accent,border:"none",borderRadius:10,padding:"11px",cursor:saving?"default":"pointer",color:"#fff",fontSize:14,fontWeight:700,opacity:saving?0.7:1 }}>
+            {_gl.saveBtn}
+          </button>
+        </div>
+      </Modal>
+
+      <ConfirmModal open={!!confirmOpts} title={confirmOpts?.title} message={confirmOpts?.message}
+        onConfirm={() => { confirmOpts?.onConfirm(); setConfirmOpts(null); }}
+        onCancel={() => setConfirmOpts(null)} lang={lang} t={t} />
+    </div>
+  );
+}
+
 // ─── SKELETON SCREENS ─────────────────────────────────────────────────────────
 function SummaryCardsSkeleton({ t }) {
   return (
@@ -6438,6 +6644,7 @@ export default function App() {
     {id:"calendar",    label:AL.nav.calendar,     shortLabel:AL.nav.calendar,    icon:"calendar"},
     {id:"charts",      label:AL.nav.charts,       shortLabel:AL.nav.charts,      icon:"chart"},
     {id:"budget",      label:AL.nav.budget,       shortLabel:AL.nav.budget,      icon:"target"},
+    {id:"goals",       label:AL.nav.goals,        shortLabel:AL.nav.goals,       icon:"wallet"},
     {id:"recurring",   label:AL.nav.recurring,    shortLabel:AL.nav.recurring,   icon:"repeat"},
     {id:"transactions",label:AL.nav.transactions, shortLabel:AL.nav.transactions,icon:"list"},
     {id:"import",      label:AL.nav.import,       shortLabel:AL.nav.import,      icon:"upload"},
@@ -6702,6 +6909,15 @@ export default function App() {
                 <BudgetView expenses={expenses} t={t} lang={lang} family={family} user={user} isDemo={isDemo} addToast={addToast} />
               </div>
             )}
+            {tab==="goals"&&(
+              <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
+                <div style={{ marginBottom:20 }}>
+                  <h2 style={{ margin:"0 0 6px",fontSize:22,fontWeight:800,color:t.text,letterSpacing:"-0.02em" }}>💰 {AL.goals.title}</h2>
+                  <p style={{ color:t.textMuted,fontSize:14 }}>{AL.goals.subtitle}</p>
+                </div>
+                <GoalsView t={t} lang={lang} family={family} isDemo={isDemo} addToast={addToast} />
+              </div>
+            )}
             {tab==="transactions"&&(dataLoading ? <TransactionsListSkeleton t={t} /> : <TransactionsList expenses={expenses} incomes={incomes} t={t} lang={lang} onDeleteExpense={deleteExpense} onDeleteIncome={deleteIncome} onDeleteAllExpenses={deleteAllExpenses} onDeleteAllIncomes={deleteAllIncomes} onEditExpense={editExpense} onEditIncome={editIncome} familyMembers={familyMembers} cards={cards} currentUserLabel={currentUserLabel} billingPeriods={billingPeriods} />)}
             {tab==="import"&&<ImportView t={t} lang={lang} darkMode={darkMode} family={family} user={user} isDemo={isDemo} existingExpenses={expenses} existingIncomes={incomes} currentUserLabel={currentUserLabel} onImported={(exps,incs)=>{ setExpenses(p=>[...exps,...p]); setIncomes(p=>[...incs,...p]); }} addToast={addToast} />}
           </main>
@@ -6770,6 +6986,7 @@ export default function App() {
                 {id:"recurring",    icon:"repeat", label:AL.nav.recurring},
                 {id:"transactions", icon:"list",   label:AL.nav.transactions},
                 {id:"budget",       icon:"target", label:AL.nav.budget},
+                {id:"goals",        icon:"wallet", label:AL.nav.goals},
                 {id:"import",       icon:"upload", label:AL.nav.import},
               ].map(item=>(
                 <button key={item.id} onClick={()=>{setTab(item.id);setShowMoreDrawer(false);}} style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"13px 16px",borderRadius:12,border:"none",cursor:"pointer",background:tab===item.id?t.accentSoft:"transparent",color:tab===item.id?t.accent:t.text,fontSize:15,fontWeight:600,textAlign:"left",marginBottom:4 }}>
