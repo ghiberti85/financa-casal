@@ -4115,24 +4115,25 @@ function MonthlySummaryCard({ expenses, t, lang = "pt" }) {
       </h3>
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
         {variation.direction !== "flat" && (
-          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+          <div style={{ display:"flex",alignItems:"flex-start",gap:8 }}>
             <Icon name={variation.direction==="down" ? "arrowDown" : "arrowUp"} size={16}
-              color={variation.direction==="down" ? t.success : t.danger} />
-            <span style={{ fontSize:13,color:t.text }}>
+              color={variation.direction==="down" ? t.success : t.danger}
+              style={{ flexShrink:0,marginTop:2 }} />
+            <span style={{ fontSize:13,color:t.text,minWidth:0,textAlign:"left" }}>
               {variation.direction==="new" ? _ms.newSpending(variation.pct) : _ms.variation(variation.pct, variation.direction==="up")}
             </span>
           </div>
         )}
         {cat && (
-          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-            <span style={{ fontSize:16 }}>{cat.emoji}</span>
-            <span style={{ fontSize:13,color:t.text }}>{_ms.topGrowing(getCatLabel(topGrowingCategory.category), fmt(topGrowingCategory.growth))}</span>
+          <div style={{ display:"flex",alignItems:"flex-start",gap:8 }}>
+            <span style={{ fontSize:16,flexShrink:0 }}>{cat.emoji}</span>
+            <span style={{ fontSize:13,color:t.text,minWidth:0,textAlign:"left" }}>{_ms.topGrowing(getCatLabel(topGrowingCategory.category), fmt(topGrowingCategory.growth))}</span>
           </div>
         )}
         {biggestExpense && (
-          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-            <Icon name="arrowUp" size={16} color={t.textMuted} />
-            <span style={{ fontSize:13,color:t.text }}>{_ms.biggest(biggestExpense.description, fmt(biggestExpense.amount))}</span>
+          <div style={{ display:"flex",alignItems:"flex-start",gap:8 }}>
+            <Icon name="arrowUp" size={16} color={t.textMuted} style={{ flexShrink:0,marginTop:2 }} />
+            <span style={{ fontSize:13,color:t.text,minWidth:0,textAlign:"left" }}>{_ms.biggest(biggestExpense.description, fmt(biggestExpense.amount))}</span>
           </div>
         )}
       </div>
@@ -4211,22 +4212,22 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
       <h3 style={{ margin:"0 0 4px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}>
         🤖 {_ai.title}
       </h3>
-      <p style={{ margin:"0 0 14px",fontSize:11,color:t.textMuted,lineHeight:1.5 }}>{_ai.disclaimer}</p>
+      <p style={{ margin:"0 0 14px",fontSize:11,color:t.textMuted,lineHeight:1.5,textAlign:"left" }}>{_ai.disclaimer}</p>
       <div style={{ display:"flex",gap:8,marginBottom:answer?12:0 }}>
         <input
           value={question}
           onChange={e=>setQuestion(e.target.value)}
           onKeyDown={e=>{ if (e.key==="Enter" && !loading) ask(); }}
           placeholder={_ai.placeholder}
-          style={{ flex:1,background:t.inputBg,border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 12px",color:t.text,fontSize:13,outline:"none" }}
+          style={{ flex:1,minWidth:0,background:t.inputBg,border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 12px",color:t.text,fontSize:13,outline:"none" }}
         />
         <button onClick={ask} disabled={loading}
-          style={{ background:t.accent,border:"none",borderRadius:10,padding:"0 16px",cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.7:1 }}>
+          style={{ flexShrink:0,background:t.accent,border:"none",borderRadius:10,padding:"0 16px",cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.7:1 }}>
           {loading ? "..." : _ai.askBtn}
         </button>
       </div>
       {answer && (
-        <div style={{ background:t.surfaceHover,borderRadius:12,padding:"12px 14px",fontSize:13,color:t.text,lineHeight:1.6,whiteSpace:"pre-wrap" }}>
+        <div style={{ background:t.surfaceHover,borderRadius:12,padding:"12px 14px",fontSize:13,color:t.text,lineHeight:1.6,whiteSpace:"pre-wrap",textAlign:"left" }}>
           {answer}
         </div>
       )}
