@@ -397,9 +397,9 @@ const MONTH_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
 
 > Para cada feature abaixo, ao implementar: (1) escrever o teste correspondente, (2) documentar o caso de teste em CONTEXT.md se ainda não constar, (3) atualizar os três arquivos de docs.
 
-### 1. Resumo Mensal Algorítmico — função pura ✅ implementada (2026-09), card no Dashboard ainda não
-`buildMonthlySummary(expenses, incomes, prevExpenses)` já existe em `src/utils/finance.js`, testada (Fase 1, 4 casos passando). Falta: card no Dashboard consumindo essa função (variação, categoria que mais cresceu, maior gasto único — já retornados pela função; recorrentes pendentes ainda não, a função atual não recebe `recurring_expenses`).
-**Teste obrigatório:** Fase 1 ✅ concluída — ver `src/utils/finance.test.js`.
+### 1. Resumo Mensal Algorítmico — ✅ Implementado (2026-09)
+`buildMonthlySummary(expenses, incomes, prevExpenses)` em `src/utils/finance.js` (testada, Fase 1). `MonthlySummaryCard` no Dashboard mostra: variação vs. mês anterior, categoria que mais cresceu, maior gasto único. **Recorrentes pendentes ainda não incluído** — a função atual não recebe `recurring_expenses`, ficaria bom como extensão futura.
+**Teste obrigatório:** Fase 1 ✅ concluída (`src/utils/finance.test.js`). Fase 2 (componente `MonthlySummaryCard` renderiza os textos certos) ainda pendente.
 
 ### 2. Notificações de Vencimento de Parcelas
 Banner/card no Dashboard alertando parcelas que vencem nos próximos 7 dias.

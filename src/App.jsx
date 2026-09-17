@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
-import { calcGoalProgress } from "./utils/finance.js";
+import { calcGoalProgress, buildMonthlySummary, filterByMonth } from "./utils/finance.js";
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
@@ -852,6 +852,13 @@ const APP_I18N = {
       remainingToGoal:(v) => `${v} left to reach the goal`,
       addProgress:"Add amount",
     },
+    monthlySummary: {
+      title:"Monthly Summary",
+      variation:(pct, up) => up ? `You spent ${pct}% more than last month` : `You spent ${pct}% less than last month`,
+      newSpending:(pct) => `New spending this month — no comparison last month`,
+      topGrowing:(cat, amount) => `${cat} grew the most (+${amount})`,
+      biggest:(desc, amount) => `Biggest expense: ${desc} (${amount})`,
+    },
     recurring: {
       title:"Recurring Expenses",
       subtitle:"Rent, subscriptions, fixed bills and monthly reminders",
@@ -1182,6 +1189,13 @@ const APP_I18N = {
       created:"Meta criada!", updated:"Meta atualizada!", deleted:"Meta removida.",
       remainingToGoal:(v) => `Faltam ${v} pra bater a meta`,
       addProgress:"Adicionar valor",
+    },
+    monthlySummary: {
+      title:"Resumo do Mês",
+      variation:(pct, up) => up ? `Você gastou ${pct}% a mais que mês passado` : `Você gastou ${pct}% a menos que mês passado`,
+      newSpending:(pct) => `Gastos novos esse mês — sem comparação com o mês anterior`,
+      topGrowing:(cat, amount) => `${cat} foi a categoria que mais cresceu (+${amount})`,
+      biggest:(desc, amount) => `Maior gasto: ${desc} (${amount})`,
     },
     recurring: {
       title:"Recorrentes",
@@ -3910,6 +3924,59 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
 
 
 // ─── BUDGET ALERT CARD (shown in Dashboard) ───────────────────────────────────
+// ─── MONTHLY SUMMARY CARD ─────────────────────────────────────────────────────
+function MonthlySummaryCard({ expenses, t, lang = "pt" }) {
+  const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
+  const _ms = APP_I18N[lang].monthlySummary;
+
+  const prefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+  const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth()-1;
+  const prevYear = today.getMonth() === 0 ? today.getFullYear()-1 : today.getFullYear();
+  const prevPrefix = `${prevYear}-${String(prevMonth+1).padStart(2,"0")}`;
+
+  const summary = useMemo(() => buildMonthlySummary(
+    filterByMonth(expenses, prefix),
+    [],
+    filterByMonth(expenses, prevPrefix)
+  ), [expenses, prefix, prevPrefix]);
+
+  if (!summary.hasData) return null;
+
+  const { variation, topGrowingCategory, biggestExpense } = summary;
+  const cat = topGrowingCategory ? CATEGORIES.find(c => c.id === topGrowingCategory.category) : null;
+
+  return (
+    <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:20 }}>
+      <h3 style={{ margin:"0 0 14px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}>
+        📊 {_ms.title}
+      </h3>
+      <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+        {variation.direction !== "flat" && (
+          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            <Icon name={variation.direction==="down" ? "arrowDown" : "arrowUp"} size={16}
+              color={variation.direction==="down" ? t.success : t.danger} />
+            <span style={{ fontSize:13,color:t.text }}>
+              {variation.direction==="new" ? _ms.newSpending(variation.pct) : _ms.variation(variation.pct, variation.direction==="up")}
+            </span>
+          </div>
+        )}
+        {cat && (
+          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            <span style={{ fontSize:16 }}>{cat.emoji}</span>
+            <span style={{ fontSize:13,color:t.text }}>{_ms.topGrowing(getCatLabel(topGrowingCategory.category), fmt(topGrowingCategory.growth))}</span>
+          </div>
+        )}
+        {biggestExpense && (
+          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            <Icon name="arrowUp" size={16} color={t.textMuted} />
+            <span style={{ fontSize:13,color:t.text }}>{_ms.biggest(biggestExpense.description, fmt(biggestExpense.amount))}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BudgetAlertCard({ expenses, t, lang = "pt", family, isDemo, onGoToBudget }) {
   const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
   const [budgets, setBudgets] = useState([]);
@@ -6871,6 +6938,7 @@ export default function App() {
                   <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} lang={lang} />
                   <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["installments"]} />
                 </div>
+                <MonthlySummaryCard expenses={expenses} t={t} lang={lang} />
                 <BudgetAlertCard expenses={expenses} t={t} lang={lang} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} lang={lang} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
