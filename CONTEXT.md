@@ -270,7 +270,7 @@ function useDebounce(value, delay = 300)
 | Componente | Descrição |
 |---|---|
 | `App` | Root — auth, estado global, roteamento por tabs |
-| `LoginPage` | Login/cadastro + fluxo de perfil e família + recuperação de senha (steps: auth, profile, family_setup, forgot, reset) |
+| `LoginPage` | Login + recuperação de senha (steps: auth, forgot, reset). Cadastro (mode `signup`, steps `profile`/`family_setup`) continua implementado mas sem entrada na UI — ver armadilha #24 |
 | `LoginCard` | Wrapper visual do card de login (subcomponente) |
 | `LoginLogo` | Logo + título da tela de login (subcomponente) |
 | `Icon` | Ícone SVG inline via `ICON_PATHS` (Lucide-inspired) |

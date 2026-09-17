@@ -1845,10 +1845,9 @@ function LoginPage({ t, darkMode, onLogin, addToast }) {
     <Btn t={t} type="button" onClick={handleAuth} style={{ width:"100%",marginTop:4 }} disabled={loading || loginCooldown > 0}>
       {loginCooldown > 0 ? `⏳ ${L.waitLabel} ${loginCooldown}s` : loading ? L.loadingAuth : mode==="login" ? L.signIn : L.createAccount}
     </Btn>
-    <p style={{ textAlign:"center",marginTop:18,fontSize:14,color:t.textMuted }}>
-      {mode==="login" ? `${L.noAccount} ` : `${L.hasAccount} `}
-      <span onClick={()=>setMode(mode==="login"?"signup":"login")} style={{ color:t.accent,cursor:"pointer",fontWeight:600 }}>{mode==="login" ? L.signUpLink : L.signInLink}</span>
-    </p>
+    {/* Signup UI hidden intentionally — personal app for 2 known users, no public sign-up.
+        The signup code path (mode==="signup", handleAuth, profile/family_setup steps) stays
+        intact below in case it's needed again; only this entry point is removed. */}
     <div style={{ display:"flex",alignItems:"center",gap:12,margin:"20px 0 4px" }}>
       <div style={{ flex:1,height:1,background:t.border }} />
       <span style={{ fontSize:12,color:t.textMuted }}>{L.or}</span>
