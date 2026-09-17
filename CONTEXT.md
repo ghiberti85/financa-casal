@@ -272,6 +272,7 @@ function useDebounce(value, delay = 300)
 | `IncomeForm` | Receita: descrição, quem recebeu, categoria, valor, data |
 | `EditModal` | Edição de gasto ou receita existente |
 | `BudgetView` | Orçamento por categoria com barra de progresso |
+| `MonthlySummaryCard` | Resumo mensal algorítmico no dashboard (`buildMonthlySummary`): variação vs. mês anterior, categoria que mais cresceu, maior gasto único |
 | `BudgetAlertCard` | Alerta no dashboard quando orçamento > 80% |
 | `GoalsView` | CRUD de metas financeiras com barra de progresso (tabela `goals`) |
 | `RecurringView` | Lembretes mensais e confirmação de pagamentos |
