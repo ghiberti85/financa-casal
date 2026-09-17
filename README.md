@@ -371,7 +371,7 @@ Branch → Code → Tests → Build → Security → Docs → PR → Merge → D
 |---|---|---|
 | Branch | `git checkout -b feat/name` | Created from updated `main` |
 | Code | Edit `App.jsx` | Feature implemented |
-| Tests | `npm run test` | All tests pass (when implemented) |
+| Tests | `npm run test` | All tests pass (Vitest, unit tests for `src/utils/finance.js` — Phase 1 of the test plan started 2026-09) |
 | Build | `npm run build` | Zero compilation errors |
 | Security | Review checklist in `CLAUDE.md` | No critical issues |
 | Docs | Update `CLAUDE.md` + `CONTEXT.md` + `README.md` | All three in sync |

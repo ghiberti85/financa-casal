@@ -397,9 +397,9 @@ const MONTH_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
 
 > Para cada feature abaixo, ao implementar: (1) escrever o teste correspondente, (2) documentar o caso de teste em CONTEXT.md se ainda não constar, (3) atualizar os três arquivos de docs.
 
-### 1. Resumo Mensal Algorítmico
-Card no Dashboard com resumo calculado sem IA: total do mês vs anterior (% variação), categoria que mais cresceu, maior gasto único, recorrentes pendentes. Implementar com string templates e cálculos sobre `expenses`/`incomes` já carregados. Sem nova tabela, sem chamada de API externa.
-**Teste obrigatório:** Fase 1 — função pura `buildMonthlySummary(expenses, incomes, prevExpenses)` com casos de variação positiva, negativa e mês sem dados.
+### 1. Resumo Mensal Algorítmico — função pura ✅ implementada (2026-09), card no Dashboard ainda não
+`buildMonthlySummary(expenses, incomes, prevExpenses)` já existe em `src/utils/finance.js`, testada (Fase 1, 4 casos passando). Falta: card no Dashboard consumindo essa função (variação, categoria que mais cresceu, maior gasto único — já retornados pela função; recorrentes pendentes ainda não, a função atual não recebe `recurring_expenses`).
+**Teste obrigatório:** Fase 1 ✅ concluída — ver `src/utils/finance.test.js`.
 
 ### 2. Notificações de Vencimento de Parcelas
 Banner/card no Dashboard alertando parcelas que vencem nos próximos 7 dias.
@@ -413,11 +413,9 @@ Barra de progresso visual por meta, CRUD completo (criar/editar/deletar), estado
 Integração com saldo do mês atual (item #4/#5 do roadmap) ainda **não** feita — próxima etapa.
 **Teste obrigatório (ainda pendente — ver `CONTEXT.md`, Plano de Testes):** Fase 2 — componente `GoalsView` renderiza barra de progresso com % correto; Fase 3 — criar, editar e deletar meta.
 
-### 4. Comparativo Mês a Mês
-Indicadores de variação (`↑ 23%`, `↓ 8%`) ao lado dos totais no Dashboard.
-Calcular diferença entre mês atual e mês anterior usando `expenses`/`incomes` já carregados.
-Sem nova tabela.
-**Teste obrigatório:** Fase 1 — `calcMonthVariation(current, previous)` com cenários de aumento, queda e mês anterior zerado.
+### 4. Comparativo Mês a Mês — função pura ✅ implementada (2026-09), UI ainda não
+`calcMonthVariation(current, previous)` já existe em `src/utils/finance.js`, testada (Fase 1, 5 casos passando, incluindo divisão por zero). Falta: indicadores visuais (`↑ 23%`, `↓ 8%`) no Dashboard.
+**Teste obrigatório:** Fase 1 ✅ concluída — ver `src/utils/finance.test.js`.
 
 ### 5. Previsão de Saldo ao Fim do Mês
 Estimativa baseada em: recorrentes ativos (`recurring_expenses`) + média de gastos variáveis dos últimos 3 meses. Card simples no Dashboard. Sem nova tabela.
@@ -467,9 +465,10 @@ Somente quando ultrapassar ~6.000 linhas e dificultar manutenção.
 Criar `src/components/` e extrair um a um. Manter padrão de props e inline styles.
 **Teste obrigatório:** Fase 2 — todos os componentes extraídos continuam renderizando identicamente.
 
-### 14. Testes Automatizados (implementação)
+### 14. Testes Automatizados (implementação) — Fase 1 iniciada (2026-09)
 Plano em 3 fases — ver detalhamento completo em `CONTEXT.md` (seção "Plano de Testes Automatizados").
-**Pré-requisito:** extrair funções puras de App.jsx para `src/utils/finance.js` e importá-las de volta. Zero impacto visual ou comportamental no app.
+`vitest` instalado (`npm run test` / `npm run test:watch`). `src/utils/finance.js` criado com 3 funções puras (`buildMonthlySummary`, `calcMonthVariation`, `calcGoalProgress`), 16 testes passando, zero impacto visual — `GoalsView` já foi refatorado pra importar `calcGoalProgress` em vez de duplicar a lógica.
+**Próximo:** continuar extraindo as funções já mapeadas na tabela de `CONTEXT.md` (`monthlyAmount`, `getBillingMonth`, `autoCategory` etc. — risco alto, ainda não têm teste).
 
 ---
 

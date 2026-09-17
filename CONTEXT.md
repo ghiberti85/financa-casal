@@ -574,7 +574,7 @@ Ao remover qualquer feature:
 
 ## Plano de Testes Automatizados
 
-**Status:** Planejado — implementar antes do lançamento público.
+**Status:** Fase 1 iniciada (2026-09) — `vitest` instalado, `src/utils/finance.js` criado com as primeiras 3 funções puras e 16 testes passando (`npm run test`). Fases 2 e 3 (React Testing Library, Playwright) ainda não iniciadas.
 **Regra:** toda feature nova exige caso de teste documentado aqui. Toda feature removida exige remoção do caso de teste correspondente.
 
 ### Stack escolhida
@@ -588,10 +588,9 @@ Ao remover qualquer feature:
 ```
 src/
   utils/
-    finance.js            ← funções puras extraídas de App.jsx (pré-requisito Fase 1)
+    finance.js            ← ✅ criado — funções puras (colocado com o teste, não em __tests__/)
+    finance.test.js       ← ✅ criado — 16 testes, todos passando
   __tests__/
-    utils/
-      finance.test.js     ← unit tests das funções puras
     components/
       ExpenseForm.test.jsx
       SummaryCards.test.jsx
@@ -628,9 +627,10 @@ Pré-requisito: extrair para `src/utils/finance.js` e importar de volta em App.j
 #### Funções a criar (features do roadmap)
 | Função | Feature | Casos obrigatórios |
 |---|---|---|
-| `buildMonthlySummary(expenses, incomes, prev)` | #1 Resumo mensal | variação positiva, negativa, mês sem dados anterior |
+| `buildMonthlySummary(expenses, incomes, prev)` | ✅ Implementado e testado — #1 Resumo mensal (UI da card ainda não feita) | variação positiva, negativa, mês sem dados anterior |
+| `calcGoalProgress(goal, refDate)` | ✅ Implementado, testado e em uso em `GoalsView` — #3 Metas | % concluído, meta atingida, prazo vencido, prazo vencido mas já atingida |
 | `getUpcomingInstallments(expenses, today)` | #2 Notificações parcelas | vence em 0, 7 e 8 dias; sem crédito na lista |
-| `calcMonthVariation(current, previous)` | #4 Comparativo mês a mês | aumento, queda, anterior = 0 (evitar divisão por zero) |
+| `calcMonthVariation(current, previous)` | ✅ Implementado e testado — #4 Comparativo mês a mês | aumento, queda, anterior = 0 (evitar divisão por zero) |
 | `forecastBalance(income, recurring, last3)` | #5 Previsão de saldo | histórico completo, histórico < 3 meses, renda zero |
 | `getCardsNearDue(cards, today)` | #6 Alerta de fatura | vence em 0, 3 e 4 dias; sem cartões |
 | `calcCoupleSplit(expenses)` | #7 Divisão do casal | gastos iguais (acerto zero), membro sem gastos, um membro |

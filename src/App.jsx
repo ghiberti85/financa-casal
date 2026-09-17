@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
+import { calcGoalProgress } from "./utils/finance.js";
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
@@ -4914,9 +4915,7 @@ function GoalsView({ t, lang = "pt", family, isDemo, addToast }) {
       {goals.map(g => {
         const target = parseFloat(g.target_amount) || 0;
         const current = parseFloat(g.current_amount) || 0;
-        const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-        const reached = current >= target;
-        const overdue = !reached && g.deadline && new Date(g.deadline + "T23:59:59") < today;
+        const { pct, reached, overdue, remaining } = calcGoalProgress(g, today);
         const cat = g.category ? CATEGORIES.find(c => c.id === g.category) : null;
         return (
           <div key={g.id} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:"16px 20px" }}>
@@ -4948,7 +4947,7 @@ function GoalsView({ t, lang = "pt", family, isDemo, addToast }) {
               <span style={{ color:reached?t.success:overdue?t.danger:t.textMuted }}>
                 {reached ? _gl.reached : overdue ? _gl.overdue : _gl.progress(pct)}
               </span>
-              {!reached && <span style={{ color:t.textMuted,fontWeight:400 }}>{_gl.remainingToGoal(fmt(Math.max(0, target - current)))}</span>}
+              {!reached && <span style={{ color:t.textMuted,fontWeight:400 }}>{_gl.remainingToGoal(fmt(remaining))}</span>}
             </div>
           </div>
         );
