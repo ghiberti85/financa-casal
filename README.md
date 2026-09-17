@@ -87,6 +87,11 @@ Key design goals:
 - Alert card on the Dashboard when any category exceeds 80%
 - Month-by-month history navigation
 
+### 💰 Financial Goals
+- Create savings goals: description, target amount, current amount, optional deadline and category
+- Progress bar per goal, with "goal reached" and "past deadline" states
+- Edit and delete goals
+
 ### 🔁 Recurring Expenses
 - Create rules for monthly, weekly or yearly fixed bills (rent, utilities, subscriptions)
 - Each rule has: description, category, payment type, due day, and amount type (fixed or variable)
@@ -149,7 +154,7 @@ Supports **CSV, XLSX and PDF** via two modes:
 ### 📱 PWA / Mobile
 - Installable on iPhone and Android home screens
 - **Bottom bar** with 3 primary tabs (Home, Calendar, Charts) + central FAB ("+") + Menu button
-- **Menu button** opens a bottom sheet with secondary tabs in order: Recurring → Transactions → Budget → Import, plus Profile, Family, Cards, Theme and Sign out
+- **Menu button** opens a bottom sheet with secondary tabs in order: Recurring → Transactions → Budget → Goals → Import, plus Profile, Family, Cards, Theme and Sign out
 - **Desktop sidebar rail** — 64px collapsed / 210px expanded with all 7 tabs + user avatar with dropdown submenu
 - `env(safe-area-inset-bottom)` — bottom bar stays above the iPhone home indicator
 - `env(safe-area-inset-top)` — top bar doesn't overlap the iOS status bar in standalone mode
@@ -242,6 +247,10 @@ incomes             -- id, family_id, user_id, description, amount, date,
 profiles            -- id, first_name, last_name, phone, updated_at
 
 budgets             -- id, family_id, category, amount, month (YYYY-MM)
+
+goals               -- id, family_id, description, target_amount,
+                    --   current_amount, deadline, category, active,
+                    --   created_at, updated_at
 
 cards               -- id, family_id, name, holder, closing_day, due_day,
                     --   color, active, created_at

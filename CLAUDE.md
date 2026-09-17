@@ -407,11 +407,11 @@ Filtrar `expenses` onde `type = 'credit'` e `date` está entre hoje e hoje+7.
 Não requer nova tabela — apenas lógica de filtro no frontend.
 **Teste obrigatório:** Fase 1 — `getUpcomingInstallments(expenses, today)` com parcelas vencendo em 0, 7 e 8 dias.
 
-### 3. Metas Financeiras Mensais
-Nova seção no Dashboard ou tab dedicada.
-Nova tabela `goals`: `(id, family_id, description, target_amount, current_amount, deadline, category, created_at)`.
-Barra de progresso visual por meta. Integração com saldo do mês atual.
-**Teste obrigatório:** Fase 2 — componente `GoalsView` renderiza barra de progresso com % correto; Fase 3 — criar, editar e deletar meta.
+### 3. Metas Financeiras Mensais — ✅ Implementado (2026-09)
+Tab dedicada (`GoalsView`), tabela `goals` já criada (RLS por `family_id`, mesmo padrão de `budgets`).
+Barra de progresso visual por meta, CRUD completo (criar/editar/deletar), estado "meta atingida"/"prazo vencido".
+Integração com saldo do mês atual (item #4/#5 do roadmap) ainda **não** feita — próxima etapa.
+**Teste obrigatório (ainda pendente — ver `CONTEXT.md`, Plano de Testes):** Fase 2 — componente `GoalsView` renderiza barra de progresso com % correto; Fase 3 — criar, editar e deletar meta.
 
 ### 4. Comparativo Mês a Mês
 Indicadores de variação (`↑ 23%`, `↓ 8%`) ao lado dos totais no Dashboard.
