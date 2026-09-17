@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calcMonthVariation, buildMonthlySummary, calcGoalProgress, sumAmount, filterByMonth } from "./finance.js";
+import { calcMonthVariation, buildMonthlySummary, calcGoalProgress, sumAmount, filterByMonth, getPendingRecurring } from "./finance.js";
 
 describe("calcMonthVariation", () => {
   it("calcula aumento percentual", () => {
@@ -112,5 +112,46 @@ describe("sumAmount / filterByMonth", () => {
   it("filtra por prefixo de mês", () => {
     const items = [{ date: "2026-09-01" }, { date: "2026-08-31" }, { date: "2026-09-15" }];
     expect(filterByMonth(items, "2026-09")).toHaveLength(2);
+  });
+});
+
+describe("getPendingRecurring", () => {
+  const ref = new Date("2026-09-15");
+
+  it("inclui recorrente ativa sem lembrete registrado no mês", () => {
+    const rules = [{ id: "r1", description: "Netflix", active: true, frequency: "monthly" }];
+    expect(getPendingRecurring(rules, [], ref)).toHaveLength(1);
+  });
+
+  it("exclui recorrente já confirmada (status logged) no mês", () => {
+    const rules = [{ id: "r1", description: "Netflix", active: true, frequency: "monthly" }];
+    const reminders = [{ recurring_id: "r1", status: "logged" }];
+    expect(getPendingRecurring(rules, reminders, ref)).toHaveLength(0);
+  });
+
+  it("exclui recorrente ignorada (status skipped) no mês", () => {
+    const rules = [{ id: "r1", description: "Netflix", active: true, frequency: "monthly" }];
+    const reminders = [{ recurring_id: "r1", status: "skipped" }];
+    expect(getPendingRecurring(rules, reminders, ref)).toHaveLength(0);
+  });
+
+  it("exclui recorrente inativa", () => {
+    const rules = [{ id: "r1", description: "Netflix", active: false, frequency: "monthly" }];
+    expect(getPendingRecurring(rules, [], ref)).toHaveLength(0);
+  });
+
+  it("exclui recorrente anual fora do mês de referência", () => {
+    const rules = [{ id: "r1", description: "IPVA", active: true, frequency: "yearly", month_of_year: 1 }];
+    expect(getPendingRecurring(rules, [], ref)).toHaveLength(0);
+  });
+
+  it("inclui recorrente anual no mês de referência correto", () => {
+    const rules = [{ id: "r1", description: "IPVA", active: true, frequency: "yearly", month_of_year: 9 }];
+    expect(getPendingRecurring(rules, [], ref)).toHaveLength(1);
+  });
+
+  it("exclui recorrente já encerrada (end_date antes do mês de referência)", () => {
+    const rules = [{ id: "r1", description: "Academia", active: true, frequency: "monthly", end_date: "2026-08-15" }];
+    expect(getPendingRecurring(rules, [], ref)).toHaveLength(0);
   });
 });

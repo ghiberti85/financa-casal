@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
-import { calcGoalProgress, buildMonthlySummary, filterByMonth } from "./utils/finance.js";
+import { calcGoalProgress, buildMonthlySummary, filterByMonth, getPendingRecurring } from "./utils/finance.js";
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
@@ -4147,12 +4147,23 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [goals, setGoals] = useState([]);
+  const [recurringRules, setRecurringRules] = useState([]);
+  const [recurringReminders, setRecurringReminders] = useState([]);
 
   useEffect(() => {
     if (isDemo || !family?.family_id) return;
     supabaseFetch(`/goals?family_id=eq.${family.family_id}&active=eq.true&select=*`)
       .then(rows => setGoals(rows || []))
       .catch(() => {});
+    const curMonth = today.getMonth() + 1;
+    const curYear = today.getFullYear();
+    Promise.all([
+      supabaseFetch(`/recurring_expenses?family_id=eq.${family.family_id}&active=eq.true&select=*`),
+      supabaseFetch(`/recurring_reminders?family_id=eq.${family.family_id}&month=eq.${curMonth}&year=eq.${curYear}&select=*`),
+    ]).then(([rules, reminders]) => {
+      setRecurringRules(rules || []);
+      setRecurringReminders(reminders || []);
+    }).catch(() => {});
   }, [family?.family_id, isDemo]);
 
   const ask = async () => {
@@ -4173,6 +4184,8 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
         filterByMonth(expenses, prevPrefix)
       );
       const goalsPayload = goals.map(g => ({ ...g, ...calcGoalProgress(g, today) }));
+      const pendingRecurringPayload = getPendingRecurring(recurringRules, recurringReminders, today)
+        .map(r => ({ description: r.description, amount: r.amount, category: r.category, day_of_month: r.day_of_month }));
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/financial-assistant`, {
         method: "POST",
@@ -4181,7 +4194,7 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
           "Authorization": `Bearer ${_authToken || SUPABASE_ANON_KEY}`,
           "apikey": SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ family_id: family.family_id, summary, goals: goalsPayload, question, lang }),
+        body: JSON.stringify({ family_id: family.family_id, summary, goals: goalsPayload, pendingRecurring: pendingRecurringPayload, question, lang }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);

@@ -400,7 +400,8 @@ const MONTH_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
 ### 0. Assistente Financeiro com IA — ✅ Implementado e testado com usuário real (2026-09)
 Card `AIAssistantCard` no Dashboard + Edge Function `financial-assistant`. Ver `CONTEXT.md` (seção "Assistente de IA") e `DECISIONS.md` (ADR-011) para arquitetura completa — resumo: a IA só narra, todo cálculo é feito por funções puras já testadas (`src/utils/finance.js`).
 Fluxo autenticado de ponta a ponta (login real → pergunta → resposta) confirmado funcionando pelo usuário em produção.
-**Teste obrigatório:** Fase 1 já coberta (funções de cálculo). Fase 2/3 (componente + fluxo completo) validadas manualmente por usuário real — automação ainda pendente.
+**Extensão (2026-09):** contexto da IA agora inclui recorrentes pendentes do mês (`getPendingRecurring`, testada) — Edge Function `financial-assistant` redeployada (v2) com nova seção no prompt.
+**Teste obrigatório:** Fase 1 já coberta (funções de cálculo, incluindo `getPendingRecurring`). Fase 2/3 (componente + fluxo completo) validadas manualmente por usuário real — automação ainda pendente.
 
 ### 1. Resumo Mensal Algorítmico — ✅ Implementado (2026-09)
 `buildMonthlySummary(expenses, incomes, prevExpenses)` em `src/utils/finance.js` (testada, Fase 1). `MonthlySummaryCard` no Dashboard mostra: variação vs. mês anterior, categoria que mais cresceu, maior gasto único. **Recorrentes pendentes ainda não incluído** — a função atual não recebe `recurring_expenses`, ficaria bom como extensão futura.

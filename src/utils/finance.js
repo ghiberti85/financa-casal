@@ -78,6 +78,27 @@ export function buildMonthlySummary(expenses, incomes, prevExpenses) {
 }
 
 /**
+ * Recorrentes ativas que ainda não foram confirmadas (lançadas) nem
+ * ignoradas no mês de referência — mesma regra usada em `RecurringAlertCard`.
+ * `rules` vem de `recurring_expenses`, `reminders` de `recurring_reminders`
+ * (uma linha por recorrente por mês, com `status: "pending"|"logged"|"skipped"`).
+ */
+export function getPendingRecurring(rules, reminders, referenceDate = new Date()) {
+  const curMonth = referenceDate.getMonth() + 1;
+  const curYear = referenceDate.getFullYear();
+  const curPrefix = `${curYear}-${String(curMonth).padStart(2, "0")}`;
+  const remMap = {};
+  (reminders || []).forEach((r) => { remMap[r.recurring_id] = r; });
+  return (rules || []).filter((rule) => {
+    if (rule.active === false) return false;
+    if (rule.frequency === "yearly" && rule.month_of_year !== curMonth) return false;
+    if (rule.end_date && rule.end_date < `${curPrefix}-01`) return false;
+    const rem = remMap[rule.id];
+    return !rem || rem.status === "pending";
+  });
+}
+
+/**
  * Progresso de uma meta financeira (tabela `goals`): % concluído, se já
  * bateu a meta, se o prazo já passou.
  */
