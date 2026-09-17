@@ -101,6 +101,24 @@ async function supabaseAuth(action, email, password)
 | `POST /api/auth/refresh` | Lê cookie HttpOnly, renova sessão, rotaciona token |
 | `POST /api/auth/logout` | Apaga o cookie de sessão |
 
+**Recuperação de senha ("Esqueci minha senha") — ✅ Implementado (2026-09):**
+
+Chamadas diretas ao GoTrue (Supabase Auth) a partir do frontend — não passam por `api/auth/*`, pois não criam sessão/cookie, apenas usam a chave anônima pública:
+
+```javascript
+async function supabaseRecoverPassword(email)      // POST /auth/v1/recover?redirect_to=<origin>
+async function supabaseUpdatePassword(token, pass)  // PUT  /auth/v1/user  (Bearer = token de recovery)
+function parseRecoveryHash()                        // lê #access_token=...&type=recovery do hash
+```
+
+Fluxo:
+1. Usuário clica "Esqueceu sua senha?" no `LoginPage` (step `auth` → `forgot`) → informa e-mail → `supabaseRecoverPassword(email)`.
+2. Supabase envia e-mail com link contendo `#access_token=...&type=recovery&refresh_token=...` no hash, redirecionando para `redirect_to` (a origem atual, `window.location.origin`) — **desde que essa URL esteja na allowlist de Redirect URLs do projeto no Supabase Studio**; caso contrário o GoTrue ignora o `redirect_to` e usa o Site URL padrão do projeto.
+3. Ao abrir o link, `LoginPage` detecta o hash via `parseRecoveryHash()` em um `useEffect` de mount, limpa a URL imediatamente com `window.history.replaceState` (o token não deve ficar exposto na barra de endereço/histórico) e vai para o step `reset`.
+4. Usuário define nova senha (mín. 6 caracteres, com confirmação) → `supabaseUpdatePassword(recoveryToken, newPassword)` → volta para o login.
+
+**Limitação conhecida:** o token de recovery é curto (~1h) e escopado só para `PUT /auth/v1/user` — não gera cookie de sessão. Depois de trocar a senha, o usuário precisa fazer login normalmente (fluxo não faz auto-login).
+
 ---
 
 ## Banco de Dados (Supabase)
@@ -252,7 +270,7 @@ function useDebounce(value, delay = 300)
 | Componente | Descrição |
 |---|---|
 | `App` | Root — auth, estado global, roteamento por tabs |
-| `LoginPage` | Login/cadastro + fluxo de perfil e família (3 etapas) |
+| `LoginPage` | Login/cadastro + fluxo de perfil e família + recuperação de senha (steps: auth, profile, family_setup, forgot, reset) |
 | `LoginCard` | Wrapper visual do card de login (subcomponente) |
 | `LoginLogo` | Logo + título da tela de login (subcomponente) |
 | `Icon` | Ícone SVG inline via `ICON_PATHS` (Lucide-inspired) |
@@ -518,7 +536,7 @@ Ao remover qualquer feature:
 
 - [ ] Auditar e documentar RLS policies no Supabase para todas as tabelas (`expenses`, `incomes`, `families`, `family_members`, `profiles`, `budgets`, `cards`, `recurring_expenses`, `recurring_reminders`)
 - [ ] Ativar email confirmation no Supabase + tela "Verifique seu e-mail" no `LoginPage`
-- [ ] "Esqueci minha senha" no `LoginPage` (link → e-mail de reset → tela de nova senha)
+- [x] "Esqueci minha senha" no `LoginPage` (link → e-mail de reset → tela de nova senha) — ✅ Implementado (2026-09). Ver seção "Recuperação de Senha" abaixo. **Pendente de verificação manual:** conferir em Supabase Studio → Authentication → URL Configuration se a Redirect URL de produção (`https://financa-casal.vercel.app`) está na allowlist — sem isso, o e-mail de recuperação redireciona para o Site URL padrão (visto em produção apontando para `localhost:3000`) em vez da origem correta.
 - [ ] Rate limiting no `api/auth/signup.js` (igual ao `login.js`: 10 tentativas / 15 min por IP)
 - [ ] Página de Política de Privacidade (informar data residency: AWS us-east-1 via Supabase)
 - [ ] Página de Termos de Uso + Política de Reembolso

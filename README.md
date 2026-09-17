@@ -42,6 +42,7 @@ Key design goals:
 - **Secure session:** refresh token in an `HttpOnly; Secure` cookie (inaccessible to JS), access token kept in memory only
 - Skeleton loading during session restore
 - Profile with first name, last name and phone with international dial code (14 countries)
+- **Password recovery** — "Forgot your password?" link sends a Supabase reset email; the link's one-time token sets a new password directly (no manual database access needed)
 - **Demo mode** — no sign-up required: `demo@financacasal.app` / `demo1234`
 
 ### 👨‍👩‍👦 Family System
@@ -445,7 +446,7 @@ financa-casal/
 | Component | Description |
 |---|---|
 | `App` | Root — authentication, global state and tab routing |
-| `LoginPage` | Sign-up/login with profile and family setup flow (3 steps) |
+| `LoginPage` | Sign-up/login with profile, family setup and password recovery flow (steps: auth, profile, family_setup, forgot, reset) |
 | `SummaryCards` | Cards: Monthly Income, Expenses, Balance, Future Installments |
 | `CalendarView` | Monthly calendar with visual indicators and day detail panel |
 | `ChartsView` | Income×Expenses bar, category donut (interactive) and installment timeline |
