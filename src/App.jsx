@@ -907,6 +907,8 @@ const APP_I18N = {
       disclaimer:"Educational summaries and suggestions only — not registered financial advice.",
       placeholder:"Ask about your month, spending or goals...",
       askBtn:"Ask",
+      asking:"Asking...",
+      thinking:"Thinking...",
       demoAnswer:"This is a demo — the AI assistant is disabled here. Log in with a real account to try it.",
     },
     recurring: {
@@ -1252,6 +1254,8 @@ const APP_I18N = {
       disclaimer:"Resumos e sugestões educacionais — não é consultoria financeira registrada.",
       placeholder:"Pergunte sobre seu mês, gastos ou metas...",
       askBtn:"Perguntar",
+      asking:"Perguntando...",
+      thinking:"Pensando...",
       demoAnswer:"Isso é uma demonstração — o assistente de IA está desativado aqui. Entre com uma conta real pra testar.",
     },
     recurring: {
@@ -4213,19 +4217,26 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
         🤖 {_ai.title}
       </h3>
       <p style={{ margin:"0 0 14px",fontSize:11,color:t.textMuted,lineHeight:1.5,textAlign:"left" }}>{_ai.disclaimer}</p>
-      <div style={{ display:"flex",gap:8,marginBottom:answer?12:0 }}>
+      <div className="ai-ask-row" style={{ display:"flex",gap:8,marginBottom:answer||loading?12:0 }}>
         <input
           value={question}
           onChange={e=>setQuestion(e.target.value)}
           onKeyDown={e=>{ if (e.key==="Enter" && !loading) ask(); }}
           placeholder={_ai.placeholder}
-          style={{ flex:1,minWidth:0,background:t.inputBg,border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 12px",color:t.text,fontSize:13,outline:"none" }}
+          disabled={loading}
+          style={{ flex:1,minWidth:0,background:t.inputBg,border:`1px solid ${t.border}`,borderRadius:10,padding:"11px 12px",color:t.text,fontSize:13,outline:"none",opacity:loading?0.6:1 }}
         />
-        <button onClick={ask} disabled={loading}
-          style={{ flexShrink:0,background:t.accent,border:"none",borderRadius:10,padding:"0 16px",cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.7:1 }}>
-          {loading ? "..." : _ai.askBtn}
+        <button className="ai-ask-btn" onClick={ask} disabled={loading}
+          style={{ flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:t.accent,border:"none",borderRadius:10,padding:"0 16px",minHeight:40,cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.85:1 }}>
+          {loading && <span style={{ width:14,height:14,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.35)",borderTopColor:"#fff",animation:"aiSpin 0.7s linear infinite",flexShrink:0 }} />}
+          {loading ? _ai.asking : _ai.askBtn}
         </button>
       </div>
+      {loading && !answer && (
+        <div style={{ background:t.surfaceHover,borderRadius:12,padding:"12px 14px",fontSize:13,color:t.textMuted,textAlign:"left" }}>
+          {_ai.thinking}
+        </div>
+      )}
       {answer && (
         <div style={{ background:t.surfaceHover,borderRadius:12,padding:"12px 14px",fontSize:13,color:t.text,lineHeight:1.6,whiteSpace:"pre-wrap",textAlign:"left" }}>
           {answer}
@@ -7002,7 +7013,10 @@ export default function App() {
       .desktop-topbar{display:none!important;}
       .desktop-fab{display:none!important;}
       .main-content-wrap{margin-left:0!important;padding-top:calc(56px + env(safe-area-inset-top))!important;padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;}
+      .ai-ask-row{flex-direction:column!important;}
+      .ai-ask-btn{width:100%!important;padding:11px 16px!important;}
     }
+    @keyframes aiSpin{to{transform:rotate(360deg)}}
     @media(min-width:601px){
       .mobile-topbar{display:none!important;}
       .mobile-bottombar{display:none!important;}

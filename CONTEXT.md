@@ -413,6 +413,10 @@ Card no Dashboard onde o usuário pergunta livremente sobre o mês, gastos ou me
 
 **Testado com usuário real (2026-09):** fluxo autenticado de ponta a ponta (login real → pergunta → resposta da IA) confirmado funcionando em produção.
 
+**Bug corrigido (2026-09) — respostas vazias/erro em toda pergunta real:** `financial-assistant` v2 usava `max_tokens: 500` e lia `data.content[0].text` direto. Modelos Sonnet 5 rodam *adaptive thinking* ligado por padrão, que consome do mesmo orçamento de `max_tokens` — com 500 tokens, o thinking podia consumir tudo antes de gerar texto visível, e mesmo quando sobrava texto, o primeiro bloco em `content[]` podia ser um bloco `thinking` (sem campo `.text`), fazendo a extração falhar. Corrigido na v3: `max_tokens: 1024`, `output_config: { effort: "low" }` (narrativa simples não precisa de raciocínio profundo) e busca o primeiro bloco com `type === "text"` em vez de indexar `[0]` cegamente. Também adicionado `console.error` nos dois pontos de falha (erro da Anthropic e resposta vazia) pra facilitar debug futuro via `query_logs`.
+
+**UX mobile (2026-09):** `AIAssistantCard` empilha input + botão "Perguntar" em telas ≤600px (`.ai-ask-row`/`.ai-ask-btn`, botão full-width) em vez de ficarem espremidos lado a lado. Estado de loading agora mostra spinner + texto "Perguntando.../Pensando..." em vez de só "...".
+
 ---
 
 ## Variáveis de Ambiente
