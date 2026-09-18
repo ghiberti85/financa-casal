@@ -396,9 +396,10 @@ import       → ImportView
 Card no Dashboard onde o usuário pergunta livremente sobre o mês, gastos ou metas.
 
 **Arquitetura — cálculo determinístico vs. narrativa (decisão deliberada, ver o plano original desta feature):**
-- Todo número (totais, variação, categoria que mais cresceu, progresso de metas) é calculado no **frontend** via `buildMonthlySummary`/`calcGoalProgress` (`src/utils/finance.js`) e mandado **já pronto** pro backend.
+- Todo número (totais, variação, categoria que mais cresceu, progresso de metas, recorrentes pendentes) é calculado no **frontend** via `buildMonthlySummary`/`calcGoalProgress`/`getPendingRecurring` (`src/utils/finance.js`) e mandado **já pronto** pro backend.
 - A Edge Function `financial-assistant` (Deno) só recebe esse resumo + a pergunta e gera a **narrativa** — nunca soma, nunca recalcula, nunca inventa número. Isso elimina a classe de erro mais perigosa (IA "alucinando" um saldo errado) e reduz MUITO o custo de tokens (manda um resumo compacto, não a lista crua de transações).
 - Modelo: `claude-sonnet-5`, com `cache_control: ephemeral` no system prompt (fixo entre chamadas — barato de reusar).
+- **Contexto enviado à IA (payload do POST):** `{ family_id, summary, goals, pendingRecurring, question, lang }`. `pendingRecurring` (✅ 2026-09) vem de `getPendingRecurring(recurringRules, recurringReminders, today)` — mesma regra de "não lançada nem ignorada este mês" usada em `RecurringAlertCard` — mapeado para `{ description, amount, category, day_of_month }` antes de enviar (nunca a linha crua da `recurring_expenses`).
 
 **Segurança:**
 - `verify_jwt: true` na Edge Function — exige JWT válido do Supabase.
@@ -410,7 +411,7 @@ Card no Dashboard onde o usuário pergunta livremente sobre o mês, gastos ou me
 
 **Tabela `assistant_usage`:** `(id, family_id, day, count, updated_at)`, `UNIQUE(family_id, day)`. RLS: família só lê o próprio uso; só a Edge Function (service role) escreve.
 
-**Limitação conhecida:** não foi possível testar o fluxo autenticado de ponta a ponta nesta sessão (modo demo não gera JWT real do Supabase) — testado até onde dava (deploy ativo, build, render da UI). Primeira pergunta real de um usuário logado serve como teste de aceitação.
+**Testado com usuário real (2026-09):** fluxo autenticado de ponta a ponta (login real → pergunta → resposta da IA) confirmado funcionando em produção.
 
 ---
 
@@ -674,6 +675,7 @@ Pré-requisito: extrair para `src/utils/finance.js` e importar de volta em App.j
 | `calcGoalProgress(goal, refDate)` | ✅ Implementado, testado e em uso em `GoalsView` — #3 Metas | % concluído, meta atingida, prazo vencido, prazo vencido mas já atingida |
 | `getUpcomingInstallments(expenses, today)` | #2 Notificações parcelas | vence em 0, 7 e 8 dias; sem crédito na lista |
 | `calcMonthVariation(current, previous)` | ✅ Implementado e testado — #4 Comparativo mês a mês | aumento, queda, anterior = 0 (evitar divisão por zero) |
+| `getPendingRecurring(rules, reminders, refDate)` | ✅ Implementado e testado (2026-09) — usada no contexto do Assistente de IA (recorrentes pendentes) | sem lembrete, status logged, status skipped, inativa, anual fora do mês, anual no mês certo, encerrada por end_date |
 | `forecastBalance(income, recurring, last3)` | #5 Previsão de saldo | histórico completo, histórico < 3 meses, renda zero |
 | `getCardsNearDue(cards, today)` | #6 Alerta de fatura | vence em 0, 3 e 4 dias; sem cartões |
 | `calcCoupleSplit(expenses)` | #7 Divisão do casal | gastos iguais (acerto zero), membro sem gastos, um membro |
