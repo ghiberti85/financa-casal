@@ -290,8 +290,9 @@ function useDebounce(value, delay = 300)
 | `IncomeForm` | Receita: descrição, quem recebeu, categoria, valor, data |
 | `EditModal` | Edição de gasto ou receita existente |
 | `BudgetView` | Orçamento por categoria com barra de progresso |
-| `MonthlySummaryCard` | Resumo mensal algorítmico no dashboard (`buildMonthlySummary`): variação vs. mês anterior, categoria que mais cresceu, maior gasto único |
-| `AIAssistantCard` | Card de pergunta livre no dashboard — chama a Edge Function `financial-assistant`, que só narra dados já calculados no frontend (nunca faz conta sozinha) |
+| `MonthlySummaryCard` | Resumo mensal algorítmico no dashboard (`buildMonthlySummary`): variação vs. mês anterior, categoria que mais cresceu, maior gasto único — layout de `StatRow` (rótulo + valor) |
+| `StatRow` | Subcomponente de linha "rótulo em cima, valor embaixo" com badge de ícone — usado pelo `MonthlySummaryCard` para não deixar número órfão em quebra de linha no mobile |
+| `AIAssistantCard` | Card de pergunta livre no dashboard — chama a Edge Function `financial-assistant`, que só narra dados já calculados no frontend (nunca faz conta sozinha). Tem chips de sugestão de pergunta e mostra erro inline com botão "Tentar de novo" |
 | `BudgetAlertCard` | Alerta no dashboard quando orçamento > 80% |
 | `GoalsView` | CRUD de metas financeiras com barra de progresso (tabela `goals`) |
 | `RecurringView` | Lembretes mensais e confirmação de pagamentos |
@@ -412,6 +413,12 @@ Card no Dashboard onde o usuário pergunta livremente sobre o mês, gastos ou me
 **Tabela `assistant_usage`:** `(id, family_id, day, count, updated_at)`, `UNIQUE(family_id, day)`. RLS: família só lê o próprio uso; só a Edge Function (service role) escreve.
 
 **Testado com usuário real (2026-09):** fluxo autenticado de ponta a ponta (login real → pergunta → resposta da IA) confirmado funcionando em produção.
+
+**Bug corrigido (2026-09) — respostas vazias/erro em toda pergunta real:** `financial-assistant` v2 usava `max_tokens: 500` e lia `data.content[0].text` direto. Modelos Sonnet 5 rodam *adaptive thinking* ligado por padrão, que consome do mesmo orçamento de `max_tokens` — com 500 tokens, o thinking podia consumir tudo antes de gerar texto visível, e mesmo quando sobrava texto, o primeiro bloco em `content[]` podia ser um bloco `thinking` (sem campo `.text`), fazendo a extração falhar. Corrigido na v3: `max_tokens: 1024`, `output_config: { effort: "low" }` (narrativa simples não precisa de raciocínio profundo) e busca o primeiro bloco com `type === "text"` em vez de indexar `[0]` cegamente. Também adicionado `console.error` nos dois pontos de falha (erro da Anthropic e resposta vazia) pra facilitar debug futuro via `query_logs`.
+
+**UX mobile (2026-09):** `AIAssistantCard` empilha input + botão "Perguntar" em telas ≤600px (`.ai-ask-row`/`.ai-ask-btn`, botão full-width) em vez de ficarem espremidos lado a lado. Estado de loading mostra spinner + texto "Perguntando.../Pensando..." em vez de só "...". Chips de sugestão (`assistant.suggestions`) evitam ter que digitar no celular — clicar já dispara a pergunta. **Erro aparece dentro do card** (bloco vermelho com a mensagem + botão "Tentar de novo"), não mais só como toast: no mobile o toast cobre a tela e some sozinho, deixando o usuário sem saber o que houve.
+
+**`MonthlySummaryCard` — layout de `StatRow` (2026-09):** antes cada linha era uma frase corrida ("Você gastou 38% a menos que mês passado"), que no mobile quebrava em 2 linhas e deixava o valor órfão, com o ícone desalinhado. Agora cada linha é badge de ícone + rótulo curto (11px, muted) + valor em negrito embaixo — o número nunca quebra no meio (`whiteSpace:"nowrap"` no valor monetário) e a leitura fica scaneável. As strings de i18n mudaram de funções de frase (`variation`, `topGrowing`, `biggest`) para rótulos + valores (`labelVariation`, `valueVariation`, `labelTopGrowing`, `labelBiggest`, `valueNew`).
 
 ---
 
