@@ -897,10 +897,11 @@ const APP_I18N = {
     },
     monthlySummary: {
       title:"Monthly Summary",
-      variation:(pct, up) => up ? `You spent ${pct}% more than last month` : `You spent ${pct}% less than last month`,
-      newSpending:(pct) => `New spending this month — no comparison last month`,
-      topGrowing:(cat, amount) => `${cat} grew the most (+${amount})`,
-      biggest:(desc, amount) => `Biggest expense: ${desc} (${amount})`,
+      labelVariation:"vs. last month",
+      valueVariation:(pct, up) => up ? `${pct}% more spending` : `${pct}% less spending`,
+      valueNew:"First month with spending",
+      labelTopGrowing:"Fastest-growing category",
+      labelBiggest:"Biggest expense",
     },
     assistant: {
       title:"AI Assistant",
@@ -909,6 +910,9 @@ const APP_I18N = {
       askBtn:"Ask",
       asking:"Asking...",
       thinking:"Thinking...",
+      suggestions:["How am I doing this month?", "Where can I save?", "What's still due?"],
+      errorTitle:"Couldn't answer right now",
+      retry:"Try again",
       demoAnswer:"This is a demo — the AI assistant is disabled here. Log in with a real account to try it.",
     },
     recurring: {
@@ -1244,10 +1248,11 @@ const APP_I18N = {
     },
     monthlySummary: {
       title:"Resumo do Mês",
-      variation:(pct, up) => up ? `Você gastou ${pct}% a mais que mês passado` : `Você gastou ${pct}% a menos que mês passado`,
-      newSpending:(pct) => `Gastos novos esse mês — sem comparação com o mês anterior`,
-      topGrowing:(cat, amount) => `${cat} foi a categoria que mais cresceu (+${amount})`,
-      biggest:(desc, amount) => `Maior gasto: ${desc} (${amount})`,
+      labelVariation:"vs. mês anterior",
+      valueVariation:(pct, up) => up ? `${pct}% a mais de gastos` : `${pct}% a menos de gastos`,
+      valueNew:"Primeiro mês com gastos",
+      labelTopGrowing:"Categoria que mais cresceu",
+      labelBiggest:"Maior gasto do mês",
     },
     assistant: {
       title:"Assistente de IA",
@@ -1256,6 +1261,9 @@ const APP_I18N = {
       askBtn:"Perguntar",
       asking:"Perguntando...",
       thinking:"Pensando...",
+      suggestions:["Como estou esse mês?", "Onde posso economizar?", "O que falta pagar?"],
+      errorTitle:"Não consegui responder agora",
+      retry:"Tentar de novo",
       demoAnswer:"Isso é uma demonstração — o assistente de IA está desativado aqui. Entre com uma conta real pra testar.",
     },
     recurring: {
@@ -4091,6 +4099,23 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
 
 
 // ─── BUDGET ALERT CARD (shown in Dashboard) ───────────────────────────────────
+// ─── STAT ROW (usado pelo MonthlySummaryCard) ────────────────────────────────
+// Rótulo curto em cima, valor embaixo: em telas estreitas o número nunca fica
+// órfão no meio de uma frase longa que quebrou em duas linhas.
+function StatRow({ t, label, badge, badgeBg, children }) {
+  return (
+    <div style={{ display:"flex",alignItems:"center",gap:12,textAlign:"left" }}>
+      <div style={{ width:32,height:32,borderRadius:10,background:badgeBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+        {badge}
+      </div>
+      <div style={{ minWidth:0,flex:1 }}>
+        <div style={{ fontSize:11,color:t.textMuted,fontWeight:600,letterSpacing:"0.01em",marginBottom:1 }}>{label}</div>
+        <div style={{ fontSize:13.5,fontWeight:700,color:t.text,lineHeight:1.35,overflowWrap:"anywhere" }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MONTHLY SUMMARY CARD ─────────────────────────────────────────────────────
 function MonthlySummaryCard({ expenses, t, lang = "pt" }) {
   const getCatLabel = (id) => APP_I18N[lang].categoryLabels?.[id] || CATEGORIES.find(c=>c.id===id)?.label || id;
@@ -4117,28 +4142,28 @@ function MonthlySummaryCard({ expenses, t, lang = "pt" }) {
       <h3 style={{ margin:"0 0 14px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}>
         📊 {_ms.title}
       </h3>
-      <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+      <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
         {variation.direction !== "flat" && (
-          <div style={{ display:"flex",alignItems:"flex-start",gap:8 }}>
-            <Icon name={variation.direction==="down" ? "arrowDown" : "arrowUp"} size={16}
-              color={variation.direction==="down" ? t.success : t.danger}
-              style={{ flexShrink:0,marginTop:2 }} />
-            <span style={{ fontSize:13,color:t.text,minWidth:0,textAlign:"left" }}>
-              {variation.direction==="new" ? _ms.newSpending(variation.pct) : _ms.variation(variation.pct, variation.direction==="up")}
+          <StatRow t={t} label={_ms.labelVariation} badgeBg={variation.direction==="down" ? t.successSoft : t.dangerSoft}
+            badge={<Icon name={variation.direction==="down" ? "arrowDown" : "arrowUp"} size={15}
+              color={variation.direction==="down" ? t.success : t.danger} />}>
+            <span style={{ color:variation.direction==="down" ? t.success : t.danger }}>
+              {variation.direction==="new" ? _ms.valueNew : _ms.valueVariation(variation.pct, variation.direction==="up")}
             </span>
-          </div>
+          </StatRow>
         )}
         {cat && (
-          <div style={{ display:"flex",alignItems:"flex-start",gap:8 }}>
-            <span style={{ fontSize:16,flexShrink:0 }}>{cat.emoji}</span>
-            <span style={{ fontSize:13,color:t.text,minWidth:0,textAlign:"left" }}>{_ms.topGrowing(getCatLabel(topGrowingCategory.category), fmt(topGrowingCategory.growth))}</span>
-          </div>
+          <StatRow t={t} label={_ms.labelTopGrowing} badgeBg={t.surfaceHover} badge={<span style={{ fontSize:15 }}>{cat.emoji}</span>}>
+            {getCatLabel(topGrowingCategory.category)}
+            <span style={{ color:t.textMuted,whiteSpace:"nowrap" }}> · +{fmt(topGrowingCategory.growth)}</span>
+          </StatRow>
         )}
         {biggestExpense && (
-          <div style={{ display:"flex",alignItems:"flex-start",gap:8 }}>
-            <Icon name="arrowUp" size={16} color={t.textMuted} style={{ flexShrink:0,marginTop:2 }} />
-            <span style={{ fontSize:13,color:t.text,minWidth:0,textAlign:"left" }}>{_ms.biggest(biggestExpense.description, fmt(biggestExpense.amount))}</span>
-          </div>
+          <StatRow t={t} label={_ms.labelBiggest} badgeBg={t.surfaceHover}
+            badge={<Icon name="arrowUp" size={15} color={t.textMuted} />}>
+            {biggestExpense.description}
+            <span style={{ color:t.textMuted,whiteSpace:"nowrap" }}> · {fmt(biggestExpense.amount)}</span>
+          </StatRow>
         )}
       </div>
     </div>
@@ -4146,10 +4171,11 @@ function MonthlySummaryCard({ expenses, t, lang = "pt" }) {
 }
 
 // ─── AI ASSISTANT CARD ────────────────────────────────────────────────────────
-function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, addToast }) {
+function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo }) {
   const _ai = APP_I18N[lang].assistant;
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [goals, setGoals] = useState([]);
   const [recurringRules, setRecurringRules] = useState([]);
@@ -4171,13 +4197,16 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
     }).catch(() => {});
   }, [family?.family_id, isDemo]);
 
-  const ask = async () => {
+  const ask = async (overrideQuestion) => {
+    const q = typeof overrideQuestion === "string" ? overrideQuestion : question;
     if (isDemo) {
+      setError("");
       setAnswer(_ai.demoAnswer);
       return;
     }
     setLoading(true);
     setAnswer("");
+    setError("");
     try {
       const prefix = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
       const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth()-1;
@@ -4199,25 +4228,29 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
           "Authorization": `Bearer ${_authToken || SUPABASE_ANON_KEY}`,
           "apikey": SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ family_id: family.family_id, summary, goals: goalsPayload, pendingRecurring: pendingRecurringPayload, question, lang }),
+        body: JSON.stringify({ family_id: family.family_id, summary, goals: goalsPayload, pendingRecurring: pendingRecurringPayload, question: q, lang }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
       setAnswer(data.message || "");
     } catch (e) {
-      addToast(e.message, "error");
+      // Erro fica dentro do card: no mobile o toast cobre a tela e some sozinho,
+      // deixando o usuário sem saber o que aconteceu nem como tentar de novo.
+      setError(e.message || String(e));
     } finally {
       setLoading(false);
     }
   };
+
+  const askSuggestion = (s) => { setQuestion(s); ask(s); };
 
   return (
     <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:20 }}>
       <h3 style={{ margin:"0 0 4px",fontSize:15,fontWeight:700,color:t.text,letterSpacing:"-0.02em",display:"flex",alignItems:"center",gap:8 }}>
         🤖 {_ai.title}
       </h3>
-      <p style={{ margin:"0 0 14px",fontSize:11,color:t.textMuted,lineHeight:1.5,textAlign:"left" }}>{_ai.disclaimer}</p>
-      <div className="ai-ask-row" style={{ display:"flex",gap:8,marginBottom:answer||loading?12:0 }}>
+      <p style={{ margin:"0 0 12px",fontSize:11,color:t.textMuted,lineHeight:1.5,textAlign:"left" }}>{_ai.disclaimer}</p>
+      <div className="ai-ask-row" style={{ display:"flex",gap:8,marginBottom:10 }}>
         <input
           value={question}
           onChange={e=>setQuestion(e.target.value)}
@@ -4226,15 +4259,35 @@ function AIAssistantCard({ expenses, incomes, t, lang = "pt", family, isDemo, ad
           disabled={loading}
           style={{ flex:1,minWidth:0,background:t.inputBg,border:`1px solid ${t.border}`,borderRadius:10,padding:"11px 12px",color:t.text,fontSize:13,outline:"none",opacity:loading?0.6:1 }}
         />
-        <button className="ai-ask-btn" onClick={ask} disabled={loading}
-          style={{ flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:t.accent,border:"none",borderRadius:10,padding:"0 16px",minHeight:40,cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.85:1 }}>
+        <button className="ai-ask-btn" onClick={()=>ask()} disabled={loading}
+          style={{ flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:t.accent,border:"none",borderRadius:10,padding:"0 16px",minHeight:42,cursor:loading?"default":"pointer",color:"#fff",fontSize:13,fontWeight:700,opacity:loading?0.85:1 }}>
           {loading && <span style={{ width:14,height:14,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.35)",borderTopColor:"#fff",animation:"aiSpin 0.7s linear infinite",flexShrink:0 }} />}
           {loading ? _ai.asking : _ai.askBtn}
         </button>
       </div>
+      {!answer && !loading && !error && (
+        <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+          {_ai.suggestions.map(s => (
+            <button key={s} onClick={()=>askSuggestion(s)}
+              style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:999,padding:"7px 12px",fontSize:12,color:t.textSecondary,cursor:"pointer",textAlign:"left",lineHeight:1.3 }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
       {loading && !answer && (
         <div style={{ background:t.surfaceHover,borderRadius:12,padding:"12px 14px",fontSize:13,color:t.textMuted,textAlign:"left" }}>
           {_ai.thinking}
+        </div>
+      )}
+      {error && (
+        <div style={{ background:t.dangerSoft,border:`1px solid ${t.danger}33`,borderRadius:12,padding:"12px 14px",textAlign:"left" }}>
+          <div style={{ fontSize:13,fontWeight:700,color:t.danger,marginBottom:4 }}>{_ai.errorTitle}</div>
+          <div style={{ fontSize:11,color:t.textMuted,lineHeight:1.5,overflowWrap:"anywhere",marginBottom:10 }}>{error}</div>
+          <button onClick={()=>ask()}
+            style={{ background:"transparent",border:`1px solid ${t.danger}55`,borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,color:t.danger,cursor:"pointer" }}>
+            {_ai.retry}
+          </button>
         </div>
       )}
       {answer && (
@@ -7211,7 +7264,7 @@ export default function App() {
                   <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["installments"]} />
                 </div>
                 <MonthlySummaryCard expenses={expenses} t={t} lang={lang} />
-                <AIAssistantCard expenses={expenses} incomes={incomes} t={t} lang={lang} family={family} isDemo={isDemo} addToast={addToast} />
+                <AIAssistantCard expenses={expenses} incomes={incomes} t={t} lang={lang} family={family} isDemo={isDemo} />
                 <BudgetAlertCard expenses={expenses} t={t} lang={lang} family={family} isDemo={isDemo} onGoToBudget={()=>setTab("budget")} />
                 <RecurringAlertCard t={t} lang={lang} family={family} isDemo={isDemo} onGoToRecurring={()=>setTab("recurring")} />
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
