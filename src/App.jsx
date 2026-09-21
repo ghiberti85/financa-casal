@@ -1031,7 +1031,6 @@ const APP_I18N = {
       recurringFreq:"Frequency", recurringDay:"Due day",
       recurringType:"Amount type", recurringFixed:"💰 Fixed", recurringVariable:"🔔 Variable",
       recurringEndDate:"End date (optional)",
-      creditWarning:"⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.",
       installmentCount:"No. of installments",
       installmentAmt:"Installment (R$)", totalAmt:"Total (R$)",
       installmentInfo:(from, to, total) => `Spread from ${from} to ${to} · Total: ${total}`,
@@ -1053,7 +1052,6 @@ const APP_I18N = {
       type:"Payment type", card:"Card", noCard:"No specific card",
       category:"Category", date:"Date",
       installments:"No. of installments", installmentAmt:"Installment (R$)", totalAmt:"Total (R$)",
-      creditWarning:"⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.",
       save:"Save changes", saving:"Saving...", cancel:"Cancel",
       paymentTypes: { debito:"Debit", credito:"Credit", pix:"Pix", dinheiro:"Cash", outro:"Other" },
     },
@@ -1382,7 +1380,6 @@ const APP_I18N = {
       recurringFreq:"Frequência", recurringDay:"Dia de vencimento",
       recurringType:"Tipo de valor", recurringFixed:"💰 Fixo", recurringVariable:"🔔 Variável",
       recurringEndDate:"Data de término (opcional)",
-      creditWarning:"⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.",
       installmentCount:"Nº de parcelas",
       installmentAmt:"Parcela (R$)", totalAmt:"Total (R$)",
       installmentInfo:(from, to, total) => `Propagado de ${from} até ${to} · Total: ${total}`,
@@ -1404,7 +1401,6 @@ const APP_I18N = {
       type:"Tipo de pagamento", card:"Cartão", noCard:"Sem cartão específico",
       category:"Categoria", date:"Data",
       installments:"Nº de parcelas", installmentAmt:"Parcela (R$)", totalAmt:"Total (R$)",
-      creditWarning:"⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.",
       save:"Salvar alterações", saving:"Salvando...", cancel:"Cancelar",
       paymentTypes: { debito:"Débito", credito:"Crédito", pix:"Pix", dinheiro:"Dinheiro", outro:"Outro" },
     },
@@ -3262,8 +3258,8 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
               </div>
               <DateInput label={APP_I18N[lang].editModal.date} t={t} lang={lang} value={form.date} onChange={e=>set("date",e.target.value)} />
             </div>
-            <div style={{ fontSize:11,color:t.warning,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
-              {lang==="pt" ? <>⚠️ Informe quando a <strong>1ª parcela cai na fatura</strong>, não a data da compra.</> : <>⚠️ Enter when the <strong>1st installment hits the bill</strong>, not the purchase date.</>}
+            <div style={{ fontSize:11,color:t.textMuted,marginTop:-10,marginBottom:12,lineHeight:1.5 }}>
+              {lang==="pt" ? <>Informe a <strong>data da compra</strong> — o app calcula sozinho em qual fatura cada parcela cai.</> : <>Enter the <strong>purchase date</strong> — the app figures out which bill each installment lands on.</>}
             </div>
             <div style={{ display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",minWidth:0 }}>
               <Input label={APP_I18N[lang].editModal.installmentAmt} t={t} type="number" step="0.01"

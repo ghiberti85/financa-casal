@@ -789,6 +789,10 @@ npx playwright install chromium
 **Pendências em aberto:**
 - `billing_periods` não cobre set/2026 em diante (fatura ainda não fechou) — meses fora dessa janela caem no fallback genérico e podem estar imprecisos.
 
+### 2026-09 (follow-up) — Aviso antigo de "data da fatura" ainda aparecia no EditModal
+
+O item #2 acima reverteu o formulário de **novo** gasto (`ExpenseForm`) para pedir a data da compra, mas o texto de aviso amarelo no formulário de **editar** gasto (`EditModal`) ficou esquecido com a string antiga hardcoded inline ("Informe quando a 1ª parcela cai na fatura, não a data da compra") — o `ExpenseForm` usa a mensagem certa, o `EditModal` tinha uma cópia própria da mensagem que não foi atualizada junto. A esposa reportou confusão ao editar um gasto. Corrigido: `EditModal` agora usa a mesma mensagem do `ExpenseForm` ("Informe a data da compra..."). Também removidas as chaves de i18n `expenseForm.creditWarning`/`editModal.creditWarning` (EN+PT) que tinham o texto antigo e não eram mais referenciadas em lugar nenhum — dead code que poderia confundir uma edição futura. **Lição:** quando o mesmo aviso/texto existe em mais de um formulário (novo vs. editar), sempre buscar por todas as ocorrências da string antes de considerar uma correção de texto completa.
+
 ### 2026-09 (continuação) — Conferência item a item com os extratos reais do Santander
 
 O usuário enviou os PDFs das faturas de janeiro, agosto e setembro/2026. Cruzamento item a item revelou:
