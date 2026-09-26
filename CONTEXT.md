@@ -776,6 +776,10 @@ O usuário desconfiou (corretamente) que o gráfico de barras Receitas × Gastos
 
 **Escopo:** esse gráfico mostra só parcelas já ocorridas/confirmadas (compras já cadastradas), sem projetar recorrentes pendentes — diferente do `appBillingData`/"Fatura do Cartão" que projeta 12 meses à frente incluindo recorrentes. Decisão consciente: é um gráfico histórico ("o que já aconteceu"), não uma previsão.
 
+**Segunda ocorrência do mesmo bug, achada depois:** a aba "Charts" (sub-view "Monthly", `AL.charts.monthlyTitle`) tem seu **próprio** gráfico Receitas × Gastos dos últimos 6 meses, implementado de forma totalmente separada (`barData` useMemo dentro de `ChartsView`) — tinha o mesmo bug (agrupava por data da compra) e não foi corrigido junto na primeira passada. Só foi descoberto porque o usuário reportou repetidamente "o gráfico não mudou" mesmo após o fix e o deploy — ele estava olhando essa segunda tela, não o Dashboard. Uma busca por grep inicial (`charts.incomes\]:Math.round`) não achou essa ocorrência porque o código usa um alias local `_c = APP_I18N[lang].charts` em vez de `AL.charts` diretamente. **Corrigido** com a mesma lógica (`getBillingMonth` + projeção de parcelas), adaptada pra também emitir `balance` (esse gráfico tem 3 séries: Receitas/Gastos/Saldo, o do Dashboard só tem 2).
+
+**Lição:** ao corrigir um bug de lógica de cálculo, sempre grep por variações de nome/alias antes de considerar a correção completa — duas implementações paralelas do "mesmo" gráfico/cálculo é uma armadilha real neste código (ver armadilha #29 em CLAUDE.md).
+
 ### 2026-09 — Atribuição de usuário na importação e cálculo da fatura de crédito
 
 **Sintomas relatados:**

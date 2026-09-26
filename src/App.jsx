@@ -2344,15 +2344,48 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
   const creditRefMonth = selectedMonth;
 
   // ── Bar chart: 6 months ending at the reference month (always by purchase date) ──
-  const barData = useMemo(() => Array.from({length:6},(_,i) => {
-    const d = new Date(refYear, refMonth - 5 + i, 1);
-    const yr=d.getFullYear(), mn=d.getMonth();
-    const prefix=`${yr}-${String(mn+1).padStart(2,"0")}`;
-    const inc = incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
-    const exp = expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  // Gastos de crédito agrupados pelo mês de vencimento da parcela (getBillingMonth),
+  // não pela data da compra — mesma lógica usada no last6MonthsData do Dashboard.
+  const barData = useMemo(() => {
     const _c = APP_I18N[lang].charts;
-    return { name:MONTHS[mn], [_c.incomes]:Math.round(inc), [_c.expenses]:Math.round(exp), [_c.balance]:Math.round(inc-exp) };
-  }), [expenses, incomes, refYear, refMonth, lang]);
+    const result = {};
+    for (let i=0;i<6;i++) {
+      const d = new Date(refYear, refMonth-5+i, 1);
+      result[`${d.getFullYear()}-${d.getMonth()}`] = { name:MONTHS[d.getMonth()], [_c.incomes]:0, [_c.expenses]:0 };
+    }
+    incomes.forEach(inc => {
+      if (!inc.date) return;
+      const [iYr, iMoStr] = inc.date.slice(0,7).split("-");
+      const k = `${iYr}-${parseInt(iMoStr)-1}`;
+      if (result[k]) result[k][_c.incomes] += parseFloat(inc.amount) || 0;
+    });
+    expenses.forEach(e => {
+      if (!e.date) return;
+      const amt = parseFloat(e.amount) || 0;
+      if (e.type === "credito") {
+        const p = parseInt(e.parcelas) || 1;
+        const card = cards.find(c => c.id === e.card_id);
+        const closingDay = card?.closing_day ?? 28;
+        const cardPeriods = billingPeriods.filter(bp => bp.card_id === e.card_id);
+        const [dYr, dMoStr, dDayStr] = e.date.slice(0,10).split("-");
+        const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
+        for (let i=0; i<p; i++) {
+          const totalMo=purMo+i, instMo=totalMo%12, instYr=purYr+Math.floor(totalMo/12);
+          const maxDay=new Date(instYr,instMo+1,0).getDate(), instDay=Math.min(purDay,maxDay);
+          const instDate=`${instYr}-${String(instMo+1).padStart(2,"0")}-${String(instDay).padStart(2,"0")}`;
+          const bm = getBillingMonth(instDate, cardPeriods, closingDay);
+          if (!bm) continue;
+          const k = `${bm.year}-${bm.month-1}`;
+          if (result[k]) result[k][_c.expenses] += amt;
+        }
+      } else {
+        const [eYr, eMoStr] = e.date.slice(0,7).split("-");
+        const k = `${eYr}-${parseInt(eMoStr)-1}`;
+        if (result[k]) result[k][_c.expenses] += amt;
+      }
+    });
+    return Object.values(result).map(r => ({ ...r, [_c.incomes]: Math.round(r[_c.incomes]), [_c.expenses]: Math.round(r[_c.expenses]), [_c.balance]: Math.round(r[_c.incomes] - r[_c.expenses]) }));
+  }, [expenses, incomes, cards, billingPeriods, refYear, refMonth, lang]);
 
   // ── Category evolution: all categories available in the 6-month window ──
   const availableCatsEvolution = useMemo(() => {
