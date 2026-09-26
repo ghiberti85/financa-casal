@@ -6658,6 +6658,50 @@ export default function App() {
 
   // Billing data anchored to today — same algorithm as billingChartData in ChartsView
   // but with fixed sm/sy so BillingCard always matches the chart's default view
+  // Últimos 6 meses (Dashboard): agrupa gastos de crédito pelo mês de vencimento da
+  // parcela (mesma lógica de projeção do appBillingData), não pela data da compra —
+  // débito/pix/dinheiro continuam pela data em si, já que o dinheiro sai na hora.
+  const last6MonthsData = useMemo(() => {
+    const sm = today.getMonth(), sy = today.getFullYear();
+    const result = {};
+    for (let i=0;i<6;i++) {
+      const d=new Date(sy,sm-5+i,1);
+      result[`${d.getFullYear()}-${d.getMonth()}`]={ name:MONTHS[d.getMonth()], [AL.charts.incomes]:0, [AL.charts.expenses]:0 };
+    }
+    incomes.forEach(inc => {
+      if (!inc.date) return;
+      const [iYr, iMoStr] = inc.date.slice(0,7).split("-");
+      const k = `${iYr}-${parseInt(iMoStr)-1}`;
+      if (result[k]) result[k][AL.charts.incomes] += parseFloat(inc.amount) || 0;
+    });
+    expenses.forEach(e => {
+      if (!e.date) return;
+      const amt = parseFloat(e.amount) || 0;
+      if (e.type === "credito") {
+        const p = parseInt(e.parcelas) || 1;
+        const card = cards.find(c => c.id === e.card_id);
+        const closingDay = card?.closing_day ?? 28;
+        const cardPeriods = billingPeriods.filter(bp => bp.card_id === e.card_id);
+        const [dYr, dMoStr, dDayStr] = e.date.slice(0,10).split("-");
+        const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
+        for (let i=0; i<p; i++) {
+          const totalMo=purMo+i, instMo=totalMo%12, instYr=purYr+Math.floor(totalMo/12);
+          const maxDay=new Date(instYr,instMo+1,0).getDate(), instDay=Math.min(purDay,maxDay);
+          const instDate=`${instYr}-${String(instMo+1).padStart(2,"0")}-${String(instDay).padStart(2,"0")}`;
+          const bm = getBillingMonth(instDate, cardPeriods, closingDay);
+          if (!bm) continue;
+          const k = `${bm.year}-${bm.month-1}`;
+          if (result[k]) result[k][AL.charts.expenses] += amt;
+        }
+      } else {
+        const [eYr, eMoStr] = e.date.slice(0,7).split("-");
+        const k = `${eYr}-${parseInt(eMoStr)-1}`;
+        if (result[k]) result[k][AL.charts.expenses] += amt;
+      }
+    });
+    return Object.values(result).map(r => ({ ...r, [AL.charts.incomes]: Math.round(r[AL.charts.incomes]), [AL.charts.expenses]: Math.round(r[AL.charts.expenses]) }));
+  }, [expenses, incomes, cards, billingPeriods, lang]);
+
   const appBillingData = useMemo(() => {
     const sm = today.getMonth(), sy = today.getFullYear();
     const result = {};
@@ -7266,7 +7310,7 @@ export default function App() {
                 <div style={{ background:t.glassModal,border:`1px solid ${t.glassBorder}`,backdropFilter:"blur(16px)",borderRadius:20,padding:24 }}>
                   <h3 style={{ margin:"0 0 20px",fontSize:16,fontWeight:700,color:t.text,letterSpacing:"-0.02em" }}>{AL.app.last6months}</h3>
                   <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={Array.from({length:6},(_,i)=>{ const baseYr=today.getFullYear(),baseMo=today.getMonth(); const totalMo=baseMo-5+i; const yr=baseYr+Math.floor(totalMo/12), mn=((totalMo%12)+12)%12; const px=`${yr}-${String(mn+1).padStart(2,"0")}`; return { name:MONTHS[mn], [AL.charts.incomes]:Math.round(incomes.filter(i=>i.date?.startsWith(px)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0)), [AL.charts.expenses]:Math.round(expenses.filter(e=>e.date?.startsWith(px)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0)) }; })} barGap={4} barCategoryGap="30%">
+                    <BarChart data={last6MonthsData} barGap={4} barCategoryGap="30%">
                       <CartesianGrid strokeDasharray="3 3" stroke={t.border} vertical={false} />
                       <XAxis dataKey="name" tick={{ fill:t.textMuted,fontSize:12 }} axisLine={false} tickLine={false} />
                       <YAxis tickFormatter={fmtShort} tick={{ fill:t.textMuted,fontSize:11 }} axisLine={false} tickLine={false} />

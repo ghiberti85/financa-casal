@@ -768,6 +768,14 @@ npx playwright install chromium
 
 ## Histórico de Correções
 
+### 2026-09 — Gráfico "Últimos 6 meses" (Dashboard) agrupava crédito pela data da compra
+
+O usuário desconfiou (corretamente) que o gráfico de barras Receitas × Gastos dos últimos 6 meses no Dashboard não estava refletindo o comportamento real do crédito. Investigação confirmou: o código somava `expenses.filter(e=>e.date?.startsWith(prefix))` — agrupava **todo** gasto (débito, pix, crédito) pela data da compra. Para débito/pix/dinheiro isso é correto (dinheiro sai na hora), mas para crédito o gasto só é cobrado no mês da fatura (que pode ser o mês seguinte, dependendo do `closing_day` do cartão), diferente do gráfico "Fatura do Cartão" (aba Charts) que já usava `getBillingMonth()` corretamente.
+
+**Correção:** novo `useMemo` `last6MonthsData` em `App()` (ao lado de `appBillingData`, mesmo padrão) — para gastos `type==="credito"`, projeta cada parcela (`for i<parcelas`) e usa `getBillingMonth(instDate, cardPeriods, closingDay)` pra descobrir o mês de vencimento real de cada uma, igual ao gráfico de fatura. Débito/pix/dinheiro continuam agrupados pela data em si. `amount` já era corretamente o valor da parcela (armadilha #1), então não havia risco de contar o total da compra — só o "balde" (mês) estava errado.
+
+**Escopo:** esse gráfico mostra só parcelas já ocorridas/confirmadas (compras já cadastradas), sem projetar recorrentes pendentes — diferente do `appBillingData`/"Fatura do Cartão" que projeta 12 meses à frente incluindo recorrentes. Decisão consciente: é um gráfico histórico ("o que já aconteceu"), não uma previsão.
+
 ### 2026-09 — Atribuição de usuário na importação e cálculo da fatura de crédito
 
 **Sintomas relatados:**
