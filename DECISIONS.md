@@ -265,6 +265,34 @@ A Edge Function `financial-assistant` **nunca** recebe dados crus nem faz matem�
 
 ---
 
+## ADR-012 — Receitas x Gastos conta crédito só no pagamento da fatura, não na projeção por mês de vencimento
+
+**Status:** Aceito
+
+**Contexto:**
+Os gráficos "Receitas x Gastos — Últimos 6 meses" (Dashboard `last6MonthsData` e Charts→Monthly `barData`) agrupavam gastos de crédito pelo mês de vencimento real da parcela, via `getBillingMonth` — cada parcela projetada pro mês em que sua fatura vence, somada com débito/pix/dinheiro do mês. Essa lógica foi construída e validada com cuidado (PRs #44/#45), mas tem uma limitação conceitual: o valor **projetado** (soma das parcelas cadastradas que vencem naquele mês) pode divergir do valor **realmente pago** na fatura — que inclui IOF, juros, anuidade, ou eventuais pagamentos parciais, nenhum desses capturado pela soma de parcelas. Verificação feita nesta sessão: comparando soma de parcelas vs. `total_pdf` real de 9 faturas, a maioria tinha diferença pequena, mas 4 delas tinham diferenças grandes (R$217 a R$1.176) — parte é imprecisão de projeção, parte é possível problema de qualidade de dados nos gastos cadastrados (investigação separada, não bloqueou esta mudança).
+
+**Decisão:**
+`last6MonthsData`/`barData` passam a **ignorar `type==="credito"` inteiramente**. O crédito só entra nesses 2 gráficos quando a fatura é paga de verdade — ação manual "Pagar Fatura" (novo botão no `BillingCard`) cria um gasto real `type:"debito"`, valor e data reais (não projetados), vinculado ao período de fatura via nova coluna `expenses.billing_period_id` (índice único — uma fatura só pode ter um pagamento vinculado). Esse gasto débito já é somado normalmente pelos dois gráficos, sem lógica especial.
+
+`getBillingMonth` continua em `App.jsx` (usado em 9+ lugares) — as novas funções puras (`projectInstallmentsToBillingMonths`, `computeSuggestedInvoiceTotal` em `src/utils/finance.js`) recebem ela como parâmetro injetado, em vez de mover a função ou duplicá-la, mantendo `finance.js` livre de dependência do arquivo principal.
+
+**O que NÃO muda:** `appBillingData`/`billingChartData`/`BillingCard`'s total ("Fatura do Cartão"), `BudgetView`, `MonthlySummaryCard` e o contexto do assistente de IA continuam somando crédito pela data da compra — respondem uma pergunta diferente ("quanto gastei em Mercado esse mês" ≠ "quanto realmente saiu da conta"), e mudar isso não foi pedido.
+
+**Alternativas descartadas:**
+- Registrar o pagamento automaticamente na data de vencimento com o valor projetado — rejeitado: é exatamente o modelo antigo (mesma imprecisão), só mudando onde o número é calculado.
+- Aplicar o novo modelo em todo o app (Orçamento, Resumo Mensal, IA) — descartado por ora: essas telas respondem "quanto gastei por categoria/no total", que faz mais sentido na data da compra; misturar os dois conceitos ali seria confuso. Fica como possível revisão futura se o usuário pedir consistência total.
+
+**Consequências:**
+- ✅ Os 2 gráficos passam a refletir dinheiro que realmente saiu da conta, incluindo IOF/juros/anuidade que a projeção não capturava.
+- ✅ `last6MonthsData`/`barData` ficaram mais simples (menos código) — a remoção do branch de projeção por parcela é uma simplificação líquida, não uma complexidade nova.
+- ⚠️ Depende de ação manual — se o usuário esquecer de clicar "Pagar Fatura", o mês mostra menos gasto até o pagamento ser registrado (não é "errado", só "ainda não pago").
+- ⚠️ Backfill histórico (9 faturas jan-set/2026, valores de `total_pdf` já reconciliado) foi necessário pra manter o histórico dos gráficos consistente com o novo modelo.
+
+**Quando revisar:** se o usuário pedir que o novo modelo (baseado em pagamento) também valha pra Orçamento/Resumo Mensal/IA, ou se o backfill/registro manual se mostrar trabalhoso demais no uso real (candidato a virar automático com confirmação, em vez de totalmente manual).
+
+---
+
 ## Como adicionar um ADR
 
 1. Copie o template abaixo
