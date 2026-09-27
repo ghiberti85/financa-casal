@@ -1,5 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { calcMonthVariation, buildMonthlySummary, calcGoalProgress, sumAmount, filterByMonth, getPendingRecurring } from "./finance.js";
+import { calcMonthVariation, buildMonthlySummary, calcGoalProgress, sumAmount, filterByMonth, getPendingRecurring, projectInstallmentsToBillingMonths, computeSuggestedInvoiceTotal } from "./finance.js";
+
+// Stub simplificado de getBillingMonth (mesma assinatura/lógica da real em App.jsx):
+// checa billing_periods primeiro, senão cai no fallback por closingDay.
+function stubGetBillingMonth(dateStr, billingPeriods = [], closingDay = 28) {
+  if (billingPeriods.length > 0) {
+    const period = billingPeriods.find((p) => dateStr >= p.period_start && dateStr <= p.period_end);
+    if (period) return { month: period.fatura_month, year: period.fatura_year, fromPeriod: true };
+  }
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDate(), month = d.getMonth() + 1, year = d.getFullYear();
+  let closeMonth = month, closeYear = year;
+  if (day > closingDay) { closeMonth = month === 12 ? 1 : month + 1; closeYear = month === 12 ? year + 1 : year; }
+  const dueMonth = closeMonth === 12 ? 1 : closeMonth + 1;
+  const dueYear = closeMonth === 12 ? closeYear + 1 : closeYear;
+  return { month: dueMonth, year: dueYear, fromPeriod: false };
+}
 
 describe("calcMonthVariation", () => {
   it("calcula aumento percentual", () => {
@@ -153,5 +169,63 @@ describe("getPendingRecurring", () => {
   it("exclui recorrente já encerrada (end_date antes do mês de referência)", () => {
     const rules = [{ id: "r1", description: "Academia", active: true, frequency: "monthly", end_date: "2026-08-15" }];
     expect(getPendingRecurring(rules, [], ref)).toHaveLength(0);
+  });
+});
+
+describe("projectInstallmentsToBillingMonths", () => {
+  it("projeta compra à vista (1 parcela) pro mês de vencimento via fallback de closingDay", () => {
+    const expense = { date: "2026-09-10", amount: 100, parcelas: 1 };
+    const result = projectInstallmentsToBillingMonths(expense, [], 28, stubGetBillingMonth);
+    expect(result).toEqual([{ month: 10, year: 2026, amount: 100 }]);
+  });
+
+  it("projeta cada parcela pro seu próprio mês de vencimento", () => {
+    const expense = { date: "2026-09-10", amount: 100, parcelas: 3 };
+    const result = projectInstallmentsToBillingMonths(expense, [], 28, stubGetBillingMonth);
+    expect(result).toEqual([
+      { month: 10, year: 2026, amount: 100 },
+      { month: 11, year: 2026, amount: 100 },
+      { month: 12, year: 2026, amount: 100 },
+    ]);
+  });
+
+  it("usa billing_periods quando a data cai dentro de um período cadastrado", () => {
+    const expense = { date: "2026-09-10", amount: 100, parcelas: 1 };
+    const periods = [{ period_start: "2026-08-29", period_end: "2026-09-28", fatura_month: 9, fatura_year: 2026 }];
+    const result = projectInstallmentsToBillingMonths(expense, periods, 28, stubGetBillingMonth);
+    expect(result).toEqual([{ month: 9, year: 2026, amount: 100 }]);
+  });
+
+  it("retorna array vazio sem data", () => {
+    expect(projectInstallmentsToBillingMonths({ amount: 100 }, [], 28, stubGetBillingMonth)).toEqual([]);
+  });
+});
+
+describe("computeSuggestedInvoiceTotal", () => {
+  const cards = [{ id: "card1", closing_day: 28 }];
+
+  it("usa total_pdf quando presente, ignorando o cálculo por parcelas", () => {
+    const period = { id: "p1", card_id: "card1", fatura_month: 9, fatura_year: 2026, total_pdf: "6206.71" };
+    const result = computeSuggestedInvoiceTotal(period, [], cards, [], stubGetBillingMonth);
+    expect(result).toEqual({ amount: 6206.71, source: "total_pdf" });
+  });
+
+  it("calcula somando parcelas de múltiplas compras que vencem no período, quando total_pdf é null", () => {
+    const period = { id: "p1", card_id: "card1", fatura_month: 9, fatura_year: 2026, total_pdf: null };
+    const expenses = [
+      { date: "2026-08-05", amount: 200, parcelas: 1, type: "credito", card_id: "card1" }, // fecha ago (dia<=28), vence set
+      { date: "2026-07-10", amount: 50, parcelas: 2, type: "credito", card_id: "card1" }, // parcela 1 vence ago, parcela 2 vence set
+      { date: "2026-08-05", amount: 300, parcelas: 1, type: "credito", card_id: "card2" }, // outro cartão, não conta
+      { date: "2026-08-05", amount: 999, parcelas: 1, type: "debito", card_id: "card1" }, // não é crédito, não conta
+    ];
+    const result = computeSuggestedInvoiceTotal(period, expenses, cards, [], stubGetBillingMonth);
+    expect(result.source).toBe("computed");
+    expect(result.amount).toBe(250);
+  });
+
+  it("retorna 0 quando não há parcelas correspondentes ao período", () => {
+    const period = { id: "p1", card_id: "card1", fatura_month: 9, fatura_year: 2026, total_pdf: null };
+    const result = computeSuggestedInvoiceTotal(period, [], cards, [], stubGetBillingMonth);
+    expect(result).toEqual({ amount: 0, source: "computed" });
   });
 });

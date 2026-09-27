@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
-import { calcGoalProgress, buildMonthlySummary, filterByMonth, getPendingRecurring } from "./utils/finance.js";
+import { calcGoalProgress, buildMonthlySummary, filterByMonth, getPendingRecurring, computeSuggestedInvoiceTotal } from "./utils/finance.js";
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
@@ -341,6 +341,7 @@ const CATEGORIES = [
   { id: "tecnologia", label: "Tecnologia", emoji: "💻" },
   { id: "gyovana", label: "Gyovana", emoji: "💳" },
   { id: "metlife", label: "MetLife", emoji: "🛡️" },
+  { id: "fatura", label: "Fatura do Cartão", emoji: "💳" },
   { id: "outros", label: "Outros", emoji: "📦" },
 ];
 
@@ -1144,6 +1145,24 @@ const APP_I18N = {
       dueOn:(dd,dm,dy) => `Due ${dd}/${dm}/${dy}`,
       dueDay:(d,m,y) => `Due day ${d}/${String(m).padStart(2,"0")}/${y}`,
       openBilling:"Open Billing",
+      payInvoice:"Pay Invoice",
+      paid:"Paid",
+      alreadyPaid:"already paid",
+      payInvoiceTitle:"Pay Invoice",
+      periodLabel:"Billing period",
+      periodPlaceholder:"Select a period",
+      amountLabel:"Amount paid",
+      amountHint:"Suggested — adjust if the real invoice had interest, IOF, annual fee, etc.",
+      dateLabel:"Payment date",
+      descLabel:"Description",
+      whoLabel:"Who paid?",
+      fillAll:"Fill in the amount, period and date",
+      confirmTitle:"Confirm invoice payment",
+      confirmMsg:(amt,date)=>`Confirm payment of ${amt} on ${date}? This will be logged as a debit expense.`,
+      paymentSaved:"Invoice payment registered! ✓",
+      cancel:"Cancel",
+      confirm:"Confirm",
+      noPeriods:"No billing periods registered for this card yet.",
     },
     toasts: {
       expenseSaved:"Expense saved! ✓", expenseUpdated:"Expense updated! ✓",
@@ -1493,6 +1512,24 @@ const APP_I18N = {
       dueOn:(dd,dm,dy) => `Vence ${dd}/${dm}/${dy}`,
       dueDay:(d,m,y) => `Vence dia ${d}/${String(m).padStart(2,"0")}/${y}`,
       openBilling:"Fatura em Aberto",
+      payInvoice:"Pagar Fatura",
+      paid:"Paga",
+      alreadyPaid:"já paga",
+      payInvoiceTitle:"Pagar Fatura",
+      periodLabel:"Período da fatura",
+      periodPlaceholder:"Selecione um período",
+      amountLabel:"Valor pago",
+      amountHint:"Sugerido — ajuste se a fatura real teve juros, IOF, anuidade, etc.",
+      dateLabel:"Data do pagamento",
+      descLabel:"Descrição",
+      whoLabel:"Quem pagou?",
+      fillAll:"Preencha o valor, o período e a data",
+      confirmTitle:"Confirmar pagamento de fatura",
+      confirmMsg:(amt,date)=>`Confirmar pagamento de ${amt} em ${date}? Isso será registrado como um gasto de débito.`,
+      paymentSaved:"Pagamento de fatura registrado! ✓",
+      cancel:"Cancelar",
+      confirm:"Confirmar",
+      noPeriods:"Nenhum período de fatura cadastrado para esse cartão ainda.",
     },
     toasts: {
       expenseSaved:"Gasto salvo! ✓", expenseUpdated:"Gasto atualizado! ✓",
@@ -2343,9 +2380,11 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
   const creditRefYear = selectedYear;
   const creditRefMonth = selectedMonth;
 
-  // ── Bar chart: 6 months ending at the reference month (always by purchase date) ──
-  // Gastos de crédito agrupados pelo mês de vencimento da parcela (getBillingMonth),
-  // não pela data da compra — mesma lógica usada no last6MonthsData do Dashboard.
+  // ── Bar chart: 6 months ending at the reference month (always by raw date) ──
+  // Gastos no crédito (type==="credito") não entram aqui — só contam quando a
+  // fatura é paga (gasto tipo débito com billing_period_id, registrado via
+  // "Pagar fatura"). Ver DECISIONS.md: contabilidade baseada em pagamento real,
+  // não em projeção de mês de vencimento (que não captura IOF/juros/anuidade).
   const barData = useMemo(() => {
     const _c = APP_I18N[lang].charts;
     const result = {};
@@ -2360,32 +2399,14 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       if (result[k]) result[k][_c.incomes] += parseFloat(inc.amount) || 0;
     });
     expenses.forEach(e => {
-      if (!e.date) return;
+      if (!e.date || e.type === "credito") return;
       const amt = parseFloat(e.amount) || 0;
-      if (e.type === "credito") {
-        const p = parseInt(e.parcelas) || 1;
-        const card = cards.find(c => c.id === e.card_id);
-        const closingDay = card?.closing_day ?? 28;
-        const cardPeriods = billingPeriods.filter(bp => bp.card_id === e.card_id);
-        const [dYr, dMoStr, dDayStr] = e.date.slice(0,10).split("-");
-        const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
-        for (let i=0; i<p; i++) {
-          const totalMo=purMo+i, instMo=totalMo%12, instYr=purYr+Math.floor(totalMo/12);
-          const maxDay=new Date(instYr,instMo+1,0).getDate(), instDay=Math.min(purDay,maxDay);
-          const instDate=`${instYr}-${String(instMo+1).padStart(2,"0")}-${String(instDay).padStart(2,"0")}`;
-          const bm = getBillingMonth(instDate, cardPeriods, closingDay);
-          if (!bm) continue;
-          const k = `${bm.year}-${bm.month-1}`;
-          if (result[k]) result[k][_c.expenses] += amt;
-        }
-      } else {
-        const [eYr, eMoStr] = e.date.slice(0,7).split("-");
-        const k = `${eYr}-${parseInt(eMoStr)-1}`;
-        if (result[k]) result[k][_c.expenses] += amt;
-      }
+      const [eYr, eMoStr] = e.date.slice(0,7).split("-");
+      const k = `${eYr}-${parseInt(eMoStr)-1}`;
+      if (result[k]) result[k][_c.expenses] += amt;
     });
     return Object.values(result).map(r => ({ ...r, [_c.incomes]: Math.round(r[_c.incomes]), [_c.expenses]: Math.round(r[_c.expenses]), [_c.balance]: Math.round(r[_c.incomes] - r[_c.expenses]) }));
-  }, [expenses, incomes, cards, billingPeriods, refYear, refMonth, lang]);
+  }, [expenses, incomes, refYear, refMonth, lang]);
 
   // ── Category evolution: all categories available in the 6-month window ──
   const availableCatsEvolution = useMemo(() => {
@@ -6598,15 +6619,142 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
   );
 }
 
-// ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
-function BillingCard({ cards, billingPeriods = [], appBillingData = [], t, lang = "pt" }) {
+// ─── PAY INVOICE MODAL ────────────────────────────────────────────────────────
+// Registra o pagamento real de uma fatura como um gasto tipo débito, vinculado
+// ao billing_period via billing_period_id. É esse gasto (não a projeção por
+// parcelas) que passa a contar nos gráficos Receitas x Gastos. Ver DECISIONS.md.
+function PayInvoiceModal({ open, onClose, cards, billingPeriods, expenses, paidPeriodIds, defaultCardId, defaultPeriodId, t, lang, darkMode, family, user, isDemo, addToast, familyMembers, currentUserLabel, onPaid }) {
   const _bc = APP_I18N[lang].billingCard;
+  const MONTH_FULL = APP_I18N[lang].months.full;
+  const [cardId, setCardId] = useState(defaultCardId || cards[0]?.id || "");
+  const [periodId, setPeriodId] = useState(defaultPeriodId || "");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(today.toISOString().slice(0,10));
+  const [description, setDescription] = useState("");
+  const [userLabel, setUserLabel] = useState(currentUserLabel);
+  const [confirmOpts, setConfirmOpts] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const cardPeriods = billingPeriods.filter(bp => bp.card_id === cardId).sort((a,b) => `${b.fatura_year}${String(b.fatura_month).padStart(2,"0")}`.localeCompare(`${a.fatura_year}${String(a.fatura_month).padStart(2,"0")}`));
+
+  useEffect(() => {
+    if (!open) return;
+    const initialCard = defaultCardId || cards[0]?.id || "";
+    setCardId(initialCard);
+    setPeriodId(defaultPeriodId || "");
+    setDate(today.toISOString().slice(0,10));
+    setUserLabel(currentUserLabel);
+  }, [open]);
+
+  useEffect(() => {
+    if (!periodId) { setAmount(""); setDescription(""); return; }
+    const period = billingPeriods.find(bp => bp.id === periodId);
+    const card = cards.find(c => c.id === cardId);
+    if (!period || !card) return;
+    const suggestion = computeSuggestedInvoiceTotal(period, expenses, cards, billingPeriods, getBillingMonth);
+    setAmount(suggestion.amount ? String(suggestion.amount) : "");
+    setDescription(`Fatura ${card.name} ${MONTH_FULL[(period.fatura_month||1)-1]}/${period.fatura_year}`);
+  }, [periodId, cardId]);
+
+  const doSave = async () => {
+    const period = billingPeriods.find(bp => bp.id === periodId);
+    const card = cards.find(c => c.id === cardId);
+    const payload = {
+      description: description.trim() || `Fatura ${card?.name || ""}`,
+      amount: parseFloat(amount) || 0,
+      date,
+      category: "fatura",
+      type: "debito",
+      card_id: cardId,
+      billing_period_id: periodId,
+      family_id: family?.family_id,
+      user_id: user?.id,
+      user_label: userLabel,
+    };
+    setSaving(true);
+    if (!isDemo) {
+      try {
+        const s = await supabaseFetch("/expenses", { method:"POST", body: JSON.stringify(payload), headers:{ "Prefer":"return=representation" } });
+        onPaid(s[0]);
+        addToast(_bc.paymentSaved, "success");
+        onClose();
+      } catch (err) {
+        addToast(err.message, "error");
+      } finally { setSaving(false); }
+      return;
+    }
+    onPaid({ ...payload, id: `demo-${Date.now()}` });
+    addToast(_bc.paymentSaved, "success");
+    setSaving(false);
+    onClose();
+  };
+
+  const handleConfirm = () => {
+    if (!cardId || !periodId || !(parseFloat(amount) > 0) || !date) { addToast(_bc.fillAll, "error"); return; }
+    const [y,m,d] = date.split("-");
+    setConfirmOpts({
+      title: _bc.confirmTitle,
+      message: _bc.confirmMsg(fmt(parseFloat(amount)), `${d}/${m}/${y}`),
+      onConfirm: doSave,
+    });
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={_bc.payInvoiceTitle} t={t} darkMode={darkMode}>
+      <div style={{marginBottom:16}}>
+        <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>{APP_I18N[lang].cardsManager.periodCard}</label>
+        <select value={cardId} onChange={e=>{ setCardId(e.target.value); setPeriodId(""); }} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:t.text,fontSize:13,outline:"none"}}>
+          {cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+      <div style={{marginBottom:16}}>
+        <label style={{display:"block",marginBottom:6,fontSize:13,fontWeight:600,color:t.textSecondary}}>{_bc.periodLabel}</label>
+        <select value={periodId} onChange={e=>setPeriodId(e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${t.border}`,background:t.inputBg,color:periodId?t.text:t.textMuted,fontSize:13,outline:"none"}}>
+          <option value="">{_bc.periodPlaceholder}</option>
+          {cardPeriods.map(bp => (
+            <option key={bp.id} value={bp.id} disabled={paidPeriodIds.has(bp.id)}>
+              {MONTH_FULL[(bp.fatura_month||1)-1]}/{bp.fatura_year}{paidPeriodIds.has(bp.id) ? ` (${_bc.alreadyPaid})` : ""}
+            </option>
+          ))}
+        </select>
+        {cardPeriods.length === 0 && <div style={{fontSize:11,color:t.textMuted,marginTop:6}}>{_bc.noPeriods}</div>}
+      </div>
+      <Input label={_bc.amountLabel} t={t} type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" />
+      {periodId && <div style={{fontSize:11,color:t.textMuted,marginTop:-10,marginBottom:16}}>{_bc.amountHint}</div>}
+      <DateInput label={_bc.dateLabel} t={t} lang={lang} value={date} onChange={e=>setDate(e.target.value)} />
+      <Input label={_bc.descLabel} t={t} value={description} onChange={e=>setDescription(e.target.value)} />
+      <MemberSelect label={_bc.whoLabel} t={t} value={userLabel} onChange={e=>setUserLabel(e.target.value)} familyMembers={familyMembers} />
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:8}}>
+        <Btn t={t} variant="ghost" onClick={onClose}>{_bc.cancel}</Btn>
+        <Btn t={t} onClick={handleConfirm} disabled={saving}>{_bc.confirm}</Btn>
+      </div>
+      <ConfirmModal
+        open={!!confirmOpts}
+        title={confirmOpts?.title}
+        message={confirmOpts?.message}
+        onConfirm={() => { confirmOpts?.onConfirm(); setConfirmOpts(null); }}
+        onCancel={() => setConfirmOpts(null)}
+        lang={lang}
+        t={t}
+      />
+    </Modal>
+  );
+}
+
+// ─── BILLING CARD (Dashboard) ─────────────────────────────────────────────────
+function BillingCard({ cards, billingPeriods = [], appBillingData = [], expenses = [], t, lang = "pt", darkMode, family, user, isDemo, addToast, familyMembers, currentUserLabel, setExpenses }) {
+  const _bc = APP_I18N[lang].billingCard;
+  const [showPay, setShowPay] = useState(false);
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
   // Determine current fatura using first available card's closing_day/periods
   const firstCard = cards[0];
   const firstCardPeriods = billingPeriods.filter(p => p.card_id === firstCard?.id);
   const curFatura = getBillingMonth(todayStr, firstCardPeriods, firstCard?.closing_day ?? 28);
+
+  const paidPeriodIds = useMemo(() => new Set(expenses.filter(e => e.billing_period_id).map(e => e.billing_period_id)), [expenses]);
+  const currentPeriod = firstCardPeriods.find(p => p.fatura_month === curFatura?.month && p.fatura_year === curFatura?.year);
+  const isPaid = currentPeriod && paidPeriodIds.has(currentPeriod.id);
 
   if (!curFatura) return null;
 
@@ -6637,7 +6785,38 @@ function BillingCard({ cards, billingPeriods = [], appBillingData = [], t, lang 
       <div style={{fontSize:26,marginBottom:10}}>💳</div>
       <div style={{fontSize:10,fontWeight:700,color:t.textMuted,letterSpacing:"0.08em",marginBottom:4,textTransform:"uppercase"}}>{_bc.openBilling}</div>
       <div style={{fontSize:11,color:t.textMuted,marginBottom:6}}>{dueLabel}</div>
-      <div style={{fontSize:22,fontWeight:800,color:t.accent,letterSpacing:"-0.02em"}}>{fmt(total)}</div>
+      <div style={{fontSize:22,fontWeight:800,color:t.accent,letterSpacing:"-0.02em",marginBottom:12}}>{fmt(total)}</div>
+      {isPaid ? (
+        <div style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,color:t.success||t.accent,background:(t.success||t.accent)+"22",padding:"5px 10px",borderRadius:8}}>
+          <Icon name="check" size={12} />{_bc.paid}
+        </div>
+      ) : (
+        <button onClick={()=>setShowPay(true)} style={{fontSize:12,fontWeight:700,color:t.accent,background:"transparent",border:`1px solid ${t.accent}55`,borderRadius:10,padding:"7px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          <Icon name="check" size={13} />{_bc.payInvoice}
+        </button>
+      )}
+      {showPay && (
+        <PayInvoiceModal
+          open={showPay}
+          onClose={()=>setShowPay(false)}
+          cards={cards}
+          billingPeriods={billingPeriods}
+          expenses={expenses}
+          paidPeriodIds={paidPeriodIds}
+          defaultCardId={firstCard?.id}
+          defaultPeriodId={currentPeriod?.id}
+          t={t}
+          lang={lang}
+          darkMode={darkMode}
+          family={family}
+          user={user}
+          isDemo={isDemo}
+          addToast={addToast}
+          familyMembers={familyMembers}
+          currentUserLabel={currentUserLabel}
+          onPaid={(row)=>setExpenses(p=>[row,...p])}
+        />
+      )}
     </div>
   );
 }
@@ -6689,11 +6868,11 @@ export default function App() {
     return name || user?.email || "Você";
   }, [profile, user]);
 
-  // Billing data anchored to today — same algorithm as billingChartData in ChartsView
-  // but with fixed sm/sy so BillingCard always matches the chart's default view
-  // Últimos 6 meses (Dashboard): agrupa gastos de crédito pelo mês de vencimento da
-  // parcela (mesma lógica de projeção do appBillingData), não pela data da compra —
-  // débito/pix/dinheiro continuam pela data em si, já que o dinheiro sai na hora.
+  // Últimos 6 meses (Dashboard): gastos no crédito (type==="credito") não entram
+  // aqui — só contam quando a fatura é paga (gasto tipo débito com
+  // billing_period_id, registrado via "Pagar fatura" no BillingCard). Débito/pix/
+  // dinheiro continuam pela data em si. Ver DECISIONS.md: contabilidade baseada
+  // em pagamento real, não em projeção de mês de vencimento.
   const last6MonthsData = useMemo(() => {
     const sm = today.getMonth(), sy = today.getFullYear();
     const result = {};
@@ -6708,32 +6887,14 @@ export default function App() {
       if (result[k]) result[k][AL.charts.incomes] += parseFloat(inc.amount) || 0;
     });
     expenses.forEach(e => {
-      if (!e.date) return;
+      if (!e.date || e.type === "credito") return;
       const amt = parseFloat(e.amount) || 0;
-      if (e.type === "credito") {
-        const p = parseInt(e.parcelas) || 1;
-        const card = cards.find(c => c.id === e.card_id);
-        const closingDay = card?.closing_day ?? 28;
-        const cardPeriods = billingPeriods.filter(bp => bp.card_id === e.card_id);
-        const [dYr, dMoStr, dDayStr] = e.date.slice(0,10).split("-");
-        const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
-        for (let i=0; i<p; i++) {
-          const totalMo=purMo+i, instMo=totalMo%12, instYr=purYr+Math.floor(totalMo/12);
-          const maxDay=new Date(instYr,instMo+1,0).getDate(), instDay=Math.min(purDay,maxDay);
-          const instDate=`${instYr}-${String(instMo+1).padStart(2,"0")}-${String(instDay).padStart(2,"0")}`;
-          const bm = getBillingMonth(instDate, cardPeriods, closingDay);
-          if (!bm) continue;
-          const k = `${bm.year}-${bm.month-1}`;
-          if (result[k]) result[k][AL.charts.expenses] += amt;
-        }
-      } else {
-        const [eYr, eMoStr] = e.date.slice(0,7).split("-");
-        const k = `${eYr}-${parseInt(eMoStr)-1}`;
-        if (result[k]) result[k][AL.charts.expenses] += amt;
-      }
+      const [eYr, eMoStr] = e.date.slice(0,7).split("-");
+      const k = `${eYr}-${parseInt(eMoStr)-1}`;
+      if (result[k]) result[k][AL.charts.expenses] += amt;
     });
     return Object.values(result).map(r => ({ ...r, [AL.charts.incomes]: Math.round(r[AL.charts.incomes]), [AL.charts.expenses]: Math.round(r[AL.charts.expenses]) }));
-  }, [expenses, incomes, cards, billingPeriods, lang]);
+  }, [expenses, incomes, lang]);
 
   const appBillingData = useMemo(() => {
     const sm = today.getMonth(), sy = today.getFullYear();
@@ -7333,7 +7494,7 @@ export default function App() {
                 </div>
                 {dataLoading ? <SummaryCardsSkeleton t={t} /> : <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["income","expenses","balance"]} />}
                 <div className="dashboard-row2">
-                  <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} t={t} lang={lang} />
+                  <BillingCard cards={cards} billingPeriods={billingPeriods} appBillingData={appBillingData} expenses={expenses} t={t} lang={lang} darkMode={darkMode} family={family} user={user} isDemo={isDemo} addToast={addToast} familyMembers={familyMembers} currentUserLabel={currentUserLabel} setExpenses={setExpenses} />
                   <SummaryCards expenses={expenses} incomes={incomes} t={t} lang={lang} only={["installments"]} />
                 </div>
                 <MonthlySummaryCard expenses={expenses} t={t} lang={lang} />

@@ -132,13 +132,20 @@ family_members      (id, family_id, user_id, role, joined_at)
 
 expenses            (id, family_id, user_id, description, amount, date,
                      category, type, parcelas, user_label, card_id,
-                     split_group_id, created_at)
+                     split_group_id, billing_period_id, created_at)
                    type: 'pix' | 'debito' | 'credito' | 'dinheiro'
                    amount: SEMPRE o valor da PARCELA, nunca o total
                    parcelas: número total de parcelas (null para não-parcelado)
                    card_id: FK para cards (nullable)
                    split_group_id: UUID compartilhado por dois registros de um
                                    pagamento dividido (nullable)
+                   billing_period_id: FK para billing_periods (nullable) —
+                     só preenchido no gasto tipo débito que representa o
+                     PAGAMENTO real de uma fatura (via "Pagar Fatura" no
+                     BillingCard). Índice único: uma fatura só pode ter um
+                     pagamento vinculado. É esse gasto (não os gastos de
+                     crédito em si) que conta em last6MonthsData/barData
+                     (Receitas x Gastos) — ver Histórico de Correções 2026-09.
 
 incomes             (id, family_id, user_id, description, amount, date,
                      source, category, user_label, created_at)
@@ -299,7 +306,8 @@ function useDebounce(value, delay = 300)
 | `RecurringForm` | Cadastro/edição de regra recorrente |
 | `RecurringAlertCard` | Alerta de gastos recorrentes pendentes no dashboard |
 | `CardsManager` | CRUD de cartões de crédito (nome, titular, fechamento, vencimento) |
-| `BillingCard` | Card no dashboard com total da fatura do mês atual por cartão |
+| `BillingCard` | Card no dashboard com total da fatura do mês atual por cartão + botão "Pagar Fatura" (abre `PayInvoiceModal`) e badge "Paga" quando já há gasto vinculado via `billing_period_id` |
+| `PayInvoiceModal` | Registra o pagamento real de uma fatura como gasto `type:"debito"` vinculado ao `billing_period_id` — valor pré-preenchido via `computeSuggestedInvoiceTotal`, editável; é esse gasto que passa a contar em `last6MonthsData`/`barData` (Receitas x Gastos), não a projeção por parcela |
 | `FamilyModal` | Código de convite, membros, papéis |
 | `ProfileModal` | Edição de perfil com telefone e DDI |
 | `MemberSelect` | Dropdown de membros da família |
@@ -683,6 +691,8 @@ Pré-requisito: extrair para `src/utils/finance.js` e importar de volta em App.j
 | `getUpcomingInstallments(expenses, today)` | #2 Notificações parcelas | vence em 0, 7 e 8 dias; sem crédito na lista |
 | `calcMonthVariation(current, previous)` | ✅ Implementado e testado — #4 Comparativo mês a mês | aumento, queda, anterior = 0 (evitar divisão por zero) |
 | `getPendingRecurring(rules, reminders, refDate)` | ✅ Implementado e testado (2026-09) — usada no contexto do Assistente de IA (recorrentes pendentes) | sem lembrete, status logged, status skipped, inativa, anual fora do mês, anual no mês certo, encerrada por end_date |
+| `projectInstallmentsToBillingMonths(expense, cardPeriods, closingDay, getBillingMonthFn)` | ✅ Implementado e testado (2026-09) — pagamento de fatura como débito | 1 parcela, múltiplas parcelas em meses diferentes, uso de billing_periods cadastrado, sem data |
+| `computeSuggestedInvoiceTotal(period, expenses, cards, allBillingPeriods, getBillingMonthFn)` | ✅ Implementado e testado (2026-09) — sugere valor no `PayInvoiceModal` | total_pdf presente, calculado por soma de parcelas (múltiplos cartões/meses), zero parcelas |
 | `forecastBalance(income, recurring, last3)` | #5 Previsão de saldo | histórico completo, histórico < 3 meses, renda zero |
 | `getCardsNearDue(cards, today)` | #6 Alerta de fatura | vence em 0, 3 e 4 dias; sem cartões |
 | `calcCoupleSplit(expenses)` | #7 Divisão do casal | gastos iguais (acerto zero), membro sem gastos, um membro |
@@ -779,6 +789,20 @@ O usuário desconfiou (corretamente) que o gráfico de barras Receitas × Gastos
 **Segunda ocorrência do mesmo bug, achada depois:** a aba "Charts" (sub-view "Monthly", `AL.charts.monthlyTitle`) tem seu **próprio** gráfico Receitas × Gastos dos últimos 6 meses, implementado de forma totalmente separada (`barData` useMemo dentro de `ChartsView`) — tinha o mesmo bug (agrupava por data da compra) e não foi corrigido junto na primeira passada. Só foi descoberto porque o usuário reportou repetidamente "o gráfico não mudou" mesmo após o fix e o deploy — ele estava olhando essa segunda tela, não o Dashboard. Uma busca por grep inicial (`charts.incomes\]:Math.round`) não achou essa ocorrência porque o código usa um alias local `_c = APP_I18N[lang].charts` em vez de `AL.charts` diretamente. **Corrigido** com a mesma lógica (`getBillingMonth` + projeção de parcelas), adaptada pra também emitir `balance` (esse gráfico tem 3 séries: Receitas/Gastos/Saldo, o do Dashboard só tem 2).
 
 **Lição:** ao corrigir um bug de lógica de cálculo, sempre grep por variações de nome/alias antes de considerar a correção completa — duas implementações paralelas do "mesmo" gráfico/cálculo é uma armadilha real neste código (ver armadilha #29 em CLAUDE.md).
+
+### 2026-09 — Mudança de modelo: Receitas x Gastos passa a contar crédito só no pagamento da fatura
+
+Mesmo depois de corrigido (entradas acima), o modelo de projeção por mês de vencimento (`getBillingMonth` + soma das parcelas) tem uma limitação conceitual: o valor projetado pode divergir do valor **realmente pago** na fatura, que inclui IOF, juros, anuidade ou pagamento parcial — coisas que a soma das parcelas cadastradas não capta. Verificado nesta sessão: comparando a soma das parcelas por mês de vencimento contra o `total_pdf` real de cada fatura, mar-ago tinham diferença pequena (R$6 a R$72), mas jan (+R$1.176), mai (-R$217), jun (-R$354) e jul (+R$465) tinham diferenças grandes — provavelmente parcela em mês/cartão errado, faltando ou duplicada nos dados cadastrados (investigação dessas 4 faturas específicas fica como pendência separada, não bloqueou a mudança abaixo).
+
+**Mudança de modelo (ver DECISIONS.md, novo ADR):** `last6MonthsData` (Dashboard) e `barData` (Charts→Monthly) agora **ignoram `type==="credito"` inteiramente** — não somam mais gasto de crédito de jeito nenhum. Em vez disso, o crédito só entra nesses 2 gráficos quando a fatura é **paga de verdade**, registrado via nova ação "Pagar Fatura" no `BillingCard` (Dashboard), que cria um gasto `type:"debito"` real, vinculado ao período via nova coluna `expenses.billing_period_id` (índice único — uma fatura só pode ter um pagamento vinculado). Esse gasto débito já é somado normalmente pelos dois gráficos, sem precisar de nenhuma lógica especial — só a projeção por parcela do crédito bruto foi removida.
+
+**Escopo:** só afeta esses 2 gráficos. `appBillingData`/`billingChartData`/`BillingCard`'s total ("Fatura do Cartão"), `BudgetView`, `MonthlySummaryCard` e o contexto do assistente de IA continuam somando crédito pela data da compra, sem mudança — respondem uma pergunta diferente ("quanto gastei em Mercado" ≠ "quanto realmente saiu da conta").
+
+**Backfill histórico:** as 9 faturas já vencidas (jan-set/2026, todas com `total_pdf` já reconciliado contra o extrato real) receberam um gasto débito retroativo (`date = billing_periods.due_date`, `user_label:"Você"`, `category:"fatura"`). Cross-check pós-backfill: setembro em `last6MonthsData` soma R$30.810,20 (R$6.206,71 da fatura real + R$24.603,49 de débito/pix/dinheiro) — bate com o valor já validado contra o extrato em sessão anterior.
+
+**Novas funções puras** em `src/utils/finance.js`: `projectInstallmentsToBillingMonths` (projeta parcelas pros meses de vencimento, `getBillingMonth` injetado como parâmetro pra manter o arquivo livre de dependência do App.jsx) e `computeSuggestedInvoiceTotal` (valor sugerido de uma fatura: usa `total_pdf` quando existe, senão soma as parcelas via a função acima) — usada pra pré-preencher o valor no modal "Pagar Fatura".
+
+**Novo componente:** `PayInvoiceModal` (dentro do bloco de `BillingCard` em App.jsx) — formulário com cartão, período (esconde/desabilita períodos já pagos), valor sugerido editável, data, descrição auto, quem pagou, `ConfirmModal` antes de gravar.
 
 ### 2026-09 — Atribuição de usuário na importação e cálculo da fatura de crédito
 

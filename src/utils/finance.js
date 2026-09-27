@@ -111,3 +111,49 @@ export function calcGoalProgress(goal, referenceDate = new Date()) {
   const remaining = Math.max(0, target - current);
   return { pct, reached, overdue, remaining };
 }
+
+/**
+ * Projeta as parcelas de um gasto de crédito para seus meses de vencimento
+ * reais. `getBillingMonthFn` é injetado (em vez de importado) para manter
+ * este arquivo livre de dependência do App.jsx, que é onde `getBillingMonth`
+ * vive de verdade (usada em vários outros pontos do app).
+ */
+export function projectInstallmentsToBillingMonths(expense, cardPeriods, closingDay, getBillingMonthFn) {
+  const amt = parseFloat(expense?.amount) || 0;
+  const parcelas = parseInt(expense?.parcelas) || 1;
+  if (!expense?.date) return [];
+  const [dYr, dMoStr, dDayStr] = expense.date.slice(0, 10).split("-");
+  const purYr = parseInt(dYr), purMo = parseInt(dMoStr) - 1, purDay = parseInt(dDayStr) || 1;
+  const result = [];
+  for (let i = 0; i < parcelas; i++) {
+    const totalMo = purMo + i, instMo = totalMo % 12, instYr = purYr + Math.floor(totalMo / 12);
+    const maxDay = new Date(instYr, instMo + 1, 0).getDate(), instDay = Math.min(purDay, maxDay);
+    const instDate = `${instYr}-${String(instMo + 1).padStart(2, "0")}-${String(instDay).padStart(2, "0")}`;
+    const bm = getBillingMonthFn(instDate, cardPeriods, closingDay);
+    if (!bm) continue;
+    result.push({ month: bm.month, year: bm.year, amount: amt });
+  }
+  return result;
+}
+
+/**
+ * Valor sugerido da fatura de um período: usa `billing_periods.total_pdf`
+ * quando existir (valor real já reconciliado com o extrato), senão soma
+ * as parcelas de `expenses` cujo mês de vencimento bate com esse período.
+ */
+export function computeSuggestedInvoiceTotal(period, expenses, cards, allBillingPeriods, getBillingMonthFn) {
+  if (period?.total_pdf != null) {
+    return { amount: parseFloat(period.total_pdf) || 0, source: "total_pdf" };
+  }
+  const card = (cards || []).find((c) => c.id === period?.card_id);
+  const closingDay = card?.closing_day ?? 28;
+  const cardPeriods = (allBillingPeriods || []).filter((bp) => bp.card_id === period?.card_id);
+  let sum = 0;
+  (expenses || []).forEach((e) => {
+    if (e.type !== "credito" || e.card_id !== period?.card_id) return;
+    projectInstallmentsToBillingMonths(e, cardPeriods, closingDay, getBillingMonthFn).forEach((inst) => {
+      if (inst.month === period.fatura_month && inst.year === period.fatura_year) sum += inst.amount;
+    });
+  });
+  return { amount: Math.round(sum * 100) / 100, source: "computed" };
+}

@@ -57,12 +57,12 @@ Key design goals:
 
 ### 🏠 Dashboard
 - Summary cards: Monthly Income, Monthly Expenses, Balance and Future Installments
-- Bar chart: Income × Expenses for the last 6 months — credit purchases are grouped by their **billing month** (same projection logic as the credit card bill), not the purchase date
+- Bar chart: Income × Expenses for the last 6 months — credit card purchases don't count here on their own; only the **actual invoice payment** (logged via "Pay Invoice") counts, on the date and amount really paid
 - **Monthly summary card** — algorithmic (no AI): spending variation vs. last month, fastest-growing category, biggest single expense
 - **AI Assistant card** — ask free-form questions about your month, spending, goals or pending recurring bills; Claude narrates a summary that's already computed by the app (never does the math itself) via a Supabase Edge Function, rate-limited per family
 - **Budget alert card** — appears automatically when any category exceeds 80% of its limit
 - **Recurring reminders card** — lists fixed bills not yet confirmed for the current month
-- **Billing card** — current month's credit card statement total grouped by card with due date
+- **Billing card** — current month's credit card statement total grouped by card with due date, plus a **"Pay Invoice"** action to log the real payment (amount/date) as a debit expense once you actually pay the bill — that's what feeds the Income × Expenses chart above
 - Personalized greeting with the logged-in user's name
 
 ### 📅 Calendar
