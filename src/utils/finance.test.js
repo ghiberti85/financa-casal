@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calcMonthVariation, buildMonthlySummary, calcGoalProgress, sumAmount, filterByMonth, getPendingRecurring, projectInstallmentsToBillingMonths, computeSuggestedInvoiceTotal } from "./finance.js";
+import { calcMonthVariation, buildMonthlySummary, calcGoalProgress, sumAmount, filterByMonth, getPendingRecurring, projectInstallmentsToBillingMonths, computeSuggestedInvoiceTotal, isCashOutflow, isSpendingDetail } from "./finance.js";
 
 // Stub simplificado de getBillingMonth (mesma assinatura/lógica da real em App.jsx):
 // checa billing_periods primeiro, senão cai no fallback por closingDay.
@@ -80,6 +80,44 @@ describe("buildMonthlySummary", () => {
     expect(s.biggestExpense).toBe(null);
     expect(s.topGrowingCategory).toBe(null);
     expect(s.hasData).toBe(false);
+  });
+});
+
+describe("isCashOutflow / isSpendingDetail", () => {
+  const credito = { type: "credito", category: "supermercado", amount: 300 };
+  const pix = { type: "pix", category: "alimentacao", amount: 50 };
+  const fatura = { type: "debito", category: "fatura", billing_period_id: "bp1", amount: 6000 };
+
+  it("isCashOutflow exclui compra no crédito e mantém pix e pagamento de fatura", () => {
+    expect(isCashOutflow(credito)).toBe(false);
+    expect(isCashOutflow(pix)).toBe(true);
+    expect(isCashOutflow(fatura)).toBe(true);
+  });
+
+  it("isSpendingDetail mantém compra no crédito e pix, exclui pagamento de fatura", () => {
+    expect(isSpendingDetail(credito)).toBe(true);
+    expect(isSpendingDetail(pix)).toBe(true);
+    expect(isSpendingDetail(fatura)).toBe(false);
+  });
+});
+
+describe("buildMonthlySummary com crédito e pagamento de fatura", () => {
+  const expenses = [
+    { description: "Mercado no cartão", amount: 300, type: "credito", category: "supermercado" },
+    { description: "Padaria", amount: 50, type: "pix", category: "alimentacao" },
+    { description: "Fatura Santander", amount: 6000, type: "debito", category: "fatura", billing_period_id: "bp1" },
+  ];
+
+  it("total do mês soma só saída de caixa (pix + fatura), sem a compra no crédito", () => {
+    const s = buildMonthlySummary(expenses, [{ amount: 10000 }], []);
+    expect(s.totalExpenses).toBe(6050);
+    expect(s.balance).toBe(3950);
+  });
+
+  it("maior gasto e categoria que mais cresceu ignoram a linha da fatura", () => {
+    const s = buildMonthlySummary(expenses, [], []);
+    expect(s.biggestExpense.description).toBe("Mercado no cartão");
+    expect(s.topGrowingCategory.category).toBe("supermercado");
   });
 });
 

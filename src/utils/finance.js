@@ -18,6 +18,20 @@ export function filterByMonth(items, monthPrefix) {
 }
 
 /**
+ * Saída real de caixa: compra no crédito não conta — ela só entra no mês em
+ * que a fatura é paga, via linha de pagamento (type "debito", category
+ * "fatura"). Usar em todo TOTAL de gastos do mês (ADR-012).
+ */
+export const isCashOutflow = (e) => e?.type !== "credito";
+
+/**
+ * Consumo real por categoria: inclui compras no crédito (na data da compra)
+ * e exclui a linha de pagamento de fatura, que é só o reflexo delas. Usar
+ * em toda visão POR CATEGORIA (pizza, orçamento, maior gasto etc.).
+ */
+export const isSpendingDetail = (e) => !e?.billing_period_id && e?.category !== "fatura";
+
+/**
  * Variação percentual entre o valor atual e o anterior.
  * Trata o caso de mês anterior zerado (não dá pra calcular % de variação
  * de um total que era zero — retorna direction "new" em vez de dividir por 0).
@@ -37,15 +51,15 @@ export function calcMonthVariation(current, previous) {
  * cresceu, e o maior gasto único do mês. Sem chamada de IA.
  */
 export function buildMonthlySummary(expenses, incomes, prevExpenses) {
-  const totalExpenses = sumAmount(expenses);
+  const totalExpenses = sumAmount((expenses || []).filter(isCashOutflow));
   const totalIncomes = sumAmount(incomes);
-  const totalPrevExpenses = sumAmount(prevExpenses);
+  const totalPrevExpenses = sumAmount((prevExpenses || []).filter(isCashOutflow));
   const balance = totalIncomes - totalExpenses;
   const variation = calcMonthVariation(totalExpenses, totalPrevExpenses);
 
   const byCategory = (items) => {
     const map = {};
-    (items || []).forEach((e) => {
+    (items || []).filter(isSpendingDetail).forEach((e) => {
       const cat = e.category || "outros";
       map[cat] = (map[cat] || 0) + (parseFloat(e.amount) || 0);
     });
@@ -61,7 +75,7 @@ export function buildMonthlySummary(expenses, incomes, prevExpenses) {
     if (growth > topGrowth) { topGrowth = growth; topGrowingCategory = cat; }
   });
 
-  const biggestExpense = (expenses || []).reduce((max, e) => {
+  const biggestExpense = (expenses || []).filter(isSpendingDetail).reduce((max, e) => {
     const amt = parseFloat(e.amount) || 0;
     return !max || amt > max.amount ? { description: e.description, amount: amt, category: e.category } : max;
   }, null);

@@ -277,11 +277,17 @@ Os gráficos "Receitas x Gastos — Últimos 6 meses" (Dashboard `last6MonthsDat
 
 `getBillingMonth` continua em `App.jsx` (usado em 9+ lugares) — as novas funções puras (`projectInstallmentsToBillingMonths`, `computeSuggestedInvoiceTotal` em `src/utils/finance.js`) recebem ela como parâmetro injetado, em vez de mover a função ou duplicá-la, mantendo `finance.js` livre de dependência do arquivo principal.
 
-**O que NÃO muda:** `appBillingData`/`billingChartData`/`BillingCard`'s total ("Fatura do Cartão"), `BudgetView`, `MonthlySummaryCard` e o contexto do assistente de IA continuam somando crédito pela data da compra — respondem uma pergunta diferente ("quanto gastei em Mercado esse mês" ≠ "quanto realmente saiu da conta"), e mudar isso não foi pedido.
+**Escopo (ampliado em 2026-09, PR seguinte ao #46):** a regra vale pro app inteiro, via dois predicados em `src/utils/finance.js`:
+- `isCashOutflow(e)` (`type !== "credito"`) — todo **total** de gastos do mês: cards Gastos/Saldo, Receitas x Gastos, `buildMonthlySummary` (Resumo Mensal + IA), total de Lançamentos, totais do Calendário.
+- `isSpendingDetail(e)` (sem `billing_period_id` e categoria ≠ `"fatura"`) — toda visão **por categoria**: pizza, evolução, orçamento por categoria e total do orçamento, "maior gasto", "categoria que mais cresceu". Aqui as compras no crédito continuam contando na data da compra e a linha da fatura sai, pra não duplicar e continuar mostrando onde o dinheiro foi gasto.
+
+A primeira versão (PR #46) aplicou a regra só nos 2 gráficos Receitas x Gastos; como os pagamentos históricos já estavam no banco, o resto do app passou a somar compra no crédito + fatura (dupla contagem) até essa ampliação.
+
+**O que não muda:** `appBillingData`/`billingChartData`/`BillingCard` ("Fatura do Cartão"), `creditData` (parcelas futuras) — são as visões próprias do cartão e usam só as compras no crédito.
 
 **Alternativas descartadas:**
 - Registrar o pagamento automaticamente na data de vencimento com o valor projetado — rejeitado: é exatamente o modelo antigo (mesma imprecisão), só mudando onde o número é calculado.
-- Aplicar o novo modelo em todo o app (Orçamento, Resumo Mensal, IA) — descartado por ora: essas telas respondem "quanto gastei por categoria/no total", que faz mais sentido na data da compra; misturar os dois conceitos ali seria confuso. Fica como possível revisão futura se o usuário pedir consistência total.
+- Tirar as compras no crédito também das visões por categoria (fatura inteira como uma categoria só) — descartado: perde a informação de onde o dinheiro do cartão foi gasto.
 
 **Consequências:**
 - ✅ Os 2 gráficos passam a refletir dinheiro que realmente saiu da conta, incluindo IOF/juros/anuidade que a projeção não capturava.
@@ -289,7 +295,7 @@ Os gráficos "Receitas x Gastos — Últimos 6 meses" (Dashboard `last6MonthsDat
 - ⚠️ Depende de ação manual — se o usuário esquecer de clicar "Pagar Fatura", o mês mostra menos gasto até o pagamento ser registrado (não é "errado", só "ainda não pago").
 - ⚠️ Backfill histórico (9 faturas jan-set/2026, valores de `total_pdf` já reconciliado) foi necessário pra manter o histórico dos gráficos consistente com o novo modelo.
 
-**Quando revisar:** se o usuário pedir que o novo modelo (baseado em pagamento) também valha pra Orçamento/Resumo Mensal/IA, ou se o backfill/registro manual se mostrar trabalhoso demais no uso real (candidato a virar automático com confirmação, em vez de totalmente manual).
+**Quando revisar:** se o registro manual do pagamento se mostrar trabalhoso demais no uso real (candidato a virar automático com confirmação).
 
 ---
 

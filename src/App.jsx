@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
-import { calcGoalProgress, buildMonthlySummary, filterByMonth, getPendingRecurring, computeSuggestedInvoiceTotal } from "./utils/finance.js";
+import { calcGoalProgress, buildMonthlySummary, filterByMonth, getPendingRecurring, computeSuggestedInvoiceTotal, projectInstallmentsToBillingMonths, isCashOutflow, isSpendingDetail } from "./utils/finance.js";
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
@@ -417,13 +417,14 @@ function makeDemoData() {
     { desc: "Spotify", cat: "lazer", type: "credito", amount: 21.90, parcelas: 1 },
     { desc: "Médico", cat: "saude", type: "pix", amount: 300.00 },
     { desc: "Internet", cat: "moradia", type: "debito", amount: 120.00 },
-    { desc: "Notebook Apple", cat: "tecnologia", type: "credito", amount: 6499.00, parcelas: 12 },
+    { desc: "Notebook Apple", cat: "tecnologia", type: "credito", amount: 541.58, parcelas: 12 },
   ];
   for (let mo = -5; mo <= 0; mo++) {
     const d = new Date(y, m + mo, 1);
     const yr = d.getFullYear(), mn = d.getMonth();
     const days = new Date(yr, mn + 1, 0).getDate();
     tpl.forEach((t) => {
+      if (t.parcelas > 1 && mo !== -5) return;
       const day = Math.floor(Math.random() * days) + 1;
       expenses.push({ id: id++, description: t.desc, amount: t.amount + (Math.random()-0.5)*20, date: `${yr}-${String(mn+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`, category: t.cat, type: t.type, parcelas: t.parcelas || 1, user_label: Math.random() > 0.5 ? "Você" : "Esposa" });
     });
@@ -431,6 +432,22 @@ function makeDemoData() {
     incomes.push({ id: id++, description: "Salário", amount: 4800+(Math.random()-0.5)*150, date: `${yr}-${String(mn+1).padStart(2,"0")}-05`, source: "salario", user_label: "Esposa" });
     if (Math.random() > 0.6) incomes.push({ id: id++, description: "Freelance", amount: 800+Math.random()*1200, date: `${yr}-${String(mn+1).padStart(2,"0")}-${Math.floor(Math.random()*28)+1}`, source: "freelance", user_label: "Você" });
   }
+  // Pagamentos de fatura já vencidos (ADR-012): sem eles, os totais do demo
+  // ficariam sem o gasto de crédito, que só conta quando a fatura é paga.
+  const invoiceTotals = {};
+  expenses.filter(e => e.type === "credito").forEach(e => {
+    projectInstallmentsToBillingMonths(e, [], 28, getBillingMonth).forEach(inst => {
+      const k = `${inst.year}-${String(inst.month).padStart(2,"0")}`;
+      invoiceTotals[k] = (invoiceTotals[k] || 0) + inst.amount;
+    });
+  });
+  const todayStr = today.toISOString().slice(0,10);
+  Object.entries(invoiceTotals).forEach(([ym, total]) => {
+    const date = `${ym}-06`;
+    if (date > todayStr) return;
+    const [fy, fm] = ym.split("-").map(Number);
+    expenses.push({ id: id++, description: `Fatura Cartão ${String(fm).padStart(2,"0")}/${fy}`, amount: Math.round(total*100)/100, date, category: "fatura", type: "debito", parcelas: 1, billing_period_id: `demo-bp-${ym}`, user_label: "Você" });
+  });
   return { expenses, incomes };
 }
 
@@ -2146,7 +2163,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
           const hasExp = expByDay[day]?.length > 0, hasInc = incByDay[day]?.length > 0;
           const isToday = yr===today.getFullYear()&&mo===today.getMonth()&&day===today.getDate();
           const isSel = selectedDay === day;
-          const totalDay = (expByDay[day]||[]).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+          const totalDay = (expByDay[day]||[]).filter(isCashOutflow).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
           // On day 1, use gridColumn to place it in the correct weekday column
           const gridStyle = day === 1 ? { gridColumn: firstDay + 1 } : {};
           return (
@@ -2173,7 +2190,7 @@ function CalendarView({ expenses, incomes, t, lang = "pt", onDeleteExpense, onDe
             <h3 style={{ margin: 0, color: t.text, fontSize: 16, fontWeight: 700, letterSpacing:"-0.02em" }}>{selectedDay} de {MONTH_FULL[mo]}</h3>
             <div style={{ display: "flex", gap: 12 }}>
               {sInc.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.success }}>{fmt(sInc.reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</span>}
-              {sExp.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(sExp.reduce((s,e)=>s+(parseFloat(e.amount)||0),0))}</span>}
+              {sExp.length>0&&<span style={{ fontSize:13,fontWeight:700,color:t.danger }}>{fmt(sExp.filter(isCashOutflow).reduce((s,e)=>s+(parseFloat(e.amount)||0),0))}</span>}
             </div>
           </div>
           {sExp.length===0&&sInc.length===0&&(recurByDay[selectedDay]||[]).length===0 ? <p style={{ color:t.textMuted,fontSize:14,margin:0,textAlign:"center" }}>{APP_I18N[lang].calendar.noEvents}</p> : (
@@ -2399,7 +2416,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       if (result[k]) result[k][_c.incomes] += parseFloat(inc.amount) || 0;
     });
     expenses.forEach(e => {
-      if (!e.date || e.type === "credito") return;
+      if (!e.date || !isCashOutflow(e)) return;
       const amt = parseFloat(e.amount) || 0;
       const [eYr, eMoStr] = e.date.slice(0,7).split("-");
       const k = `${eYr}-${parseInt(eMoStr)-1}`;
@@ -2416,7 +2433,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
     });
     const totals = {};
     expenses.forEach(e => {
-      if (!e.category || !e.date) return;
+      if (!e.category || !e.date || !isSpendingDetail(e)) return;
       if (!prefixes.some(p => e.date.startsWith(p))) return;
       totals[e.category] = (totals[e.category] || 0) + (parseFloat(e.amount) || 0);
     });
@@ -2446,7 +2463,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
         const cat = availableCatsEvolution.find(c => c.id === id);
         if (!cat) return;
         row[cat.label] = Math.round(
-          expenses.filter(e => e.category===id && e.date?.startsWith(prefix))
+          expenses.filter(e => e.category===id && e.date?.startsWith(prefix) && isSpendingDetail(e))
             .reduce((s,e) => s + (parseFloat(e.amount)||0), 0)
         );
       });
@@ -2468,7 +2485,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
       ? expenses.filter(e=>e.date?.startsWith(`${selectedYear}-${String(selectedMonth+1).padStart(2,"0")}`))
       : expenses.filter(e=>e.date?.startsWith(`${selectedYear}`));
     const map = {};
-    filtered.forEach(e=>{ map[e.category]=(map[e.category]||0)+e.amount; });
+    filtered.filter(isSpendingDetail).forEach(e=>{ map[e.category]=(map[e.category]||0)+(parseFloat(e.amount)||0); });
     return Object.entries(map).map(([id,value]) => { const cat=CATEGORIES.find(c=>c.id===id); return { id, name:getCatLabel(id), value:Math.round(value), emoji:cat?.emoji||"📦" }; }).sort((a,b)=>b.value-a.value);
   }, [expenses, period, selectedMonth, selectedYear, lang]);
 
@@ -2650,7 +2667,7 @@ function ChartsView({ expenses, incomes, t, lang = "pt", onEditExpense, onDelete
             ? `${selectedYear}-${String(selectedMonth+1).padStart(2,"0")}`
             : `${selectedYear}`;
           const catExpenses = expenses
-            .filter(e => e.category===selectedPieCategory && e.date?.startsWith(prefix))
+            .filter(e => e.category===selectedPieCategory && e.date?.startsWith(prefix) && isSpendingDetail(e))
             .sort((a,b)=> (b.date||"").localeCompare(a.date||""));
           const catObj = CATEGORIES.find(c=>c.id===selectedPieCategory);
           const total = catExpenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
@@ -3027,7 +3044,7 @@ function ExpenseForm({ t, lang = "pt", onSave, onClose, familyMembers, initialDa
       )}
       <Select label={APP_I18N[lang].expenseForm.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
         <option value="">{APP_I18N[lang].expenseForm.selectCategory}</option>
-        {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
+        {CATEGORIES.filter(c=>c.id!=="fatura").map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
       </Select>
       {isCredit ? (
         <>
@@ -3291,7 +3308,7 @@ function EditModal({ t, lang = "pt", item, onSave, onClose, familyMembers, cards
           </>
         )}
         <Select label={APP_I18N[lang].editModal.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
-          {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
+          {CATEGORIES.filter(c=>c.id!=="fatura"||form.category==="fatura").map(c=><option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
         </Select>
         {form.type === "credito" ? (() => {
           const parcelas = parseInt(form.parcelas) || 1;
@@ -3385,7 +3402,7 @@ function groupByDate(items, lang = "pt") {
       date,
       label: formatDateHeader(date, lang),
       items: its,
-      net: its.reduce((s,i) => s + (i._type==="income"?1:-1)*(parseFloat(i.amount)||0), 0),
+      net: its.filter(i => i._type==="income" || isCashOutflow(i)).reduce((s,i) => s + (i._type==="income"?1:-1)*(parseFloat(i.amount)||0), 0),
     }));
 }
 
@@ -3604,7 +3621,7 @@ function TransactionsList({ expenses, incomes, t, lang = "pt", onDeleteExpense, 
     return true;
   }), [all, filter, debouncedSearch, showDupsOnly, dupIds, paymentFilter, categoryFilter, memberFilter]);
 
-  const totalExp = filtered.filter(i=>i._type==="expense").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  const totalExp = filtered.filter(i=>i._type==="expense" && isCashOutflow(i)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const totalInc = filtered.filter(i=>i._type==="income").reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const dupCount = dupIds.size;
   const dupIdsArray = Array.from(dupIds);
@@ -4365,7 +4382,7 @@ function BudgetAlertCard({ expenses, t, lang = "pt", family, isDemo, onGoToBudge
 
   const alerts = budgets.map(b => {
     const cat = CATEGORIES.find(c => c.id === b.category);
-    const spent = expenses.filter(e => e.date?.startsWith(prefix) && e.category === b.category)
+    const spent = expenses.filter(e => e.date?.startsWith(prefix) && e.category === b.category && isSpendingDetail(e))
                           .reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
     const pct = (spent / parseFloat(b.amount)) * 100;
     return { ...b, cat, spent, pct };
@@ -4914,7 +4931,7 @@ function RecurringForm({ t, lang = "pt", rule, family, user, familyMembers, addT
 
         <Select label={_rfi18n.common.category} t={t} value={form.category} onChange={e=>set("category",e.target.value)}>
           <option value="">{_rfi18n.common.selectDots}</option>
-          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
+          {CATEGORIES.filter(c => c.id !== "fatura").map(c => <option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
         </Select>
 
         <Select label={_rfi18n.recurring.frequency} t={t} value={form.frequency} onChange={e=>set("frequency",e.target.value)}>
@@ -5107,7 +5124,7 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
 
   // Totals
   const totalBudgeted = budgets.reduce((s, b) => s + parseFloat(b.amount), 0);
-  const totalSpent    = expenses.filter(e => e.date?.startsWith(prefix)).reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+  const totalSpent    = expenses.filter(e => e.date?.startsWith(prefix) && isSpendingDetail(e)).reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
   const totalPct      = totalBudgeted > 0 ? Math.min(100, (totalSpent / totalBudgeted) * 100) : 0;
 
   // Month navigation
@@ -5162,9 +5179,9 @@ function BudgetView({ expenses, t, lang = "pt", family, user, isDemo, addToast }
         <div style={{ textAlign:"center",padding:"32px 0",color:t.textMuted,fontSize:14 }}>{APP_I18N[lang].budget.loading}</div>
       ) : (
         <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-          {CATEGORIES.map(cat => {
+          {CATEGORIES.filter(cat => cat.id !== "fatura").map(cat => {
             const budget = getBudget(cat.id);
-            const spent  = expenses.filter(e => e.date?.startsWith(prefix) && e.category === cat.id)
+            const spent  = expenses.filter(e => e.date?.startsWith(prefix) && e.category === cat.id && isSpendingDetail(e))
                                    .reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
             const pct    = budget ? Math.min(100, (spent / parseFloat(budget.amount)) * 100) : 0;
             const over   = budget && spent > parseFloat(budget.amount);
@@ -5401,7 +5418,7 @@ function GoalsView({ t, lang = "pt", family, isDemo, addToast }) {
         <DateInput label={_gl.deadline} t={t} lang={lang} value={form.deadline} onChange={e=>sf("deadline",e.target.value)} />
         <Select label={_gl.category} t={t} value={form.category} onChange={e=>sf("category",e.target.value)}>
           <option value="">{_gl.selectCategory}</option>
-          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
+          {CATEGORIES.filter(c => c.id !== "fatura").map(c => <option key={c.id} value={c.id}>{c.emoji} {getCatLabel(c.id)}</option>)}
         </Select>
         <div style={{ display:"flex",gap:10,marginTop:8 }}>
           <button onClick={resetForm}
@@ -5472,7 +5489,7 @@ function ChartsViewSkeleton({ t }) {
 function SummaryCards({ expenses, incomes, t, lang = "pt", only = null }) {
   const prefix=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
   // Use monthlyAmount: for credit installments, amount is already the monthly value
-  const monthExp=expenses.filter(e=>e.date?.startsWith(prefix)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  const monthExp=expenses.filter(e=>e.date?.startsWith(prefix) && isCashOutflow(e)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
   const monthInc=incomes.filter(i=>i.date?.startsWith(prefix)).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
   const balance=monthInc-monthExp;
   // Parcelas futuras: amount = valor de cada parcela, parcelas = total de parcelas
@@ -6887,7 +6904,7 @@ export default function App() {
       if (result[k]) result[k][AL.charts.incomes] += parseFloat(inc.amount) || 0;
     });
     expenses.forEach(e => {
-      if (!e.date || e.type === "credito") return;
+      if (!e.date || !isCashOutflow(e)) return;
       const amt = parseFloat(e.amount) || 0;
       const [eYr, eMoStr] = e.date.slice(0,7).split("-");
       const k = `${eYr}-${parseInt(eMoStr)-1}`;
