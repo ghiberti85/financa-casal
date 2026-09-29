@@ -56,7 +56,7 @@ Key design goals:
 - Theme applied across all components via the `t` theme object (inline styles)
 
 ### 🏠 Dashboard
-- Summary cards: Monthly Income, Monthly Expenses, Balance and Future Installments
+- Summary cards: Monthly Income, Monthly Expenses, Balance and Future Installments — expenses/balance count money that actually left the account: credit card purchases enter only through the invoice payment, in the month it's paid
 - Bar chart: Income × Expenses for the last 6 months — credit card purchases don't count here on their own; only the **actual invoice payment** (logged via "Pay Invoice") counts, on the date and amount really paid
 - **Monthly summary card** — algorithmic (no AI): spending variation vs. last month, fastest-growing category, biggest single expense
 - **AI Assistant card** — ask free-form questions about your month, spending, goals or pending recurring bills; Claude narrates a summary that's already computed by the app (never does the math itself) via a Supabase Edge Function, rate-limited per family
@@ -86,6 +86,7 @@ Key design goals:
 ### 🎯 Monthly Budget
 - Set spending limits per category (e.g. Dining: R$ 2,000)
 - Progress bar per category with percentage used
+- Category spending uses the real purchases (credit card purchases count in their own category on the purchase date); the invoice payment itself is not counted again here
 - Color coding: green (< 80%), yellow (80–100%), red (> 100%)
 - Alert card on the Dashboard when any category exceeds 80%
 - Month-by-month history navigation
