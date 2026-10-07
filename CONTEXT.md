@@ -305,7 +305,7 @@ function useDebounce(value, delay = 300)
 | `RecurringView` | Lembretes mensais e confirmação de pagamentos |
 | `RecurringForm` | Cadastro/edição de regra recorrente |
 | `RecurringAlertCard` | Alerta de gastos recorrentes pendentes no dashboard |
-| `CardsManager` | CRUD de cartões de crédito (nome, titular, fechamento, vencimento) |
+| `CardsManager` | CRUD de cartões de crédito e períodos de fatura. Ao salvar período com `total_pdf`, cria/atualiza automaticamente o pagamento da fatura (`syncInvoicePayment`) na `due_date`; ao excluir, remove o pagamento vinculado |
 | `BillingCard` | Card no dashboard com total da fatura do mês atual por cartão + botão "Pagar Fatura" (abre `PayInvoiceModal`) e badge "Paga" quando já há gasto vinculado via `billing_period_id` |
 | `PayInvoiceModal` | Registra o pagamento real de uma fatura como gasto `type:"debito"` vinculado ao `billing_period_id` — valor pré-preenchido via `computeSuggestedInvoiceTotal`, editável; é esse gasto que passa a contar em `last6MonthsData`/`barData` (Receitas x Gastos), não a projeção por parcela |
 | `FamilyModal` | Código de convite, membros, papéis |

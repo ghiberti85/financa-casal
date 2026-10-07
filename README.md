@@ -62,7 +62,7 @@ Key design goals:
 - **AI Assistant card** — ask free-form questions about your month, spending, goals or pending recurring bills; Claude narrates a summary that's already computed by the app (never does the math itself) via a Supabase Edge Function, rate-limited per family
 - **Budget alert card** — appears automatically when any category exceeds 80% of its limit
 - **Recurring reminders card** — lists fixed bills not yet confirmed for the current month
-- **Billing card** — current month's credit card statement total grouped by card with due date, plus a **"Pay Invoice"** action to log the real payment (amount/date) as a debit expense once you actually pay the bill — that's what feeds the Income × Expenses chart above
+- **Billing card** — current month's credit card statement total grouped by card with due date, plus a **"Pay Invoice"** action to log the real payment (amount/date) as a debit expense once you actually pay the bill — that's what feeds the Income × Expenses chart above. Saving the invoice total in **My Cards** registers this payment automatically on the due date
 - Personalized greeting with the logged-in user's name
 
 ### 📅 Calendar

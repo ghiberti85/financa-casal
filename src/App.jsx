@@ -1152,7 +1152,7 @@ const APP_I18N = {
       periodStart:"Period start", periodEnd:"Period end",
       periodDue:"Due date", periodTotal:"PDF total (optional)",
       periodSave:"Save changes", periodAdd:"Add period", periodSaving:"Saving...",
-      periodDeleteTitle:"Delete period", periodDeleteMsg:"Delete this billing period?",
+      periodDeleteTitle:"Delete period", periodDeleteMsg:"Delete this billing period? Its invoice payment entry (if any) will be deleted too.", paymentAutoSaved:"Invoice payment registered on the due date ✓",
       periodDeleted:"Period deleted.", periodUpdated:"Period updated!", periodAdded:"Period added!",
       periodFillAll:"Please fill in card, period dates and due date.",
       dueFmt:(dd,dm,dy) => `Due ${dd}/${dm}/${dy}`,
@@ -1519,7 +1519,7 @@ const APP_I18N = {
       periodStart:"Início do período", periodEnd:"Fim do período",
       periodDue:"Data de vencimento", periodTotal:"Total do extrato PDF (opcional)",
       periodSave:"Salvar alterações", periodAdd:"Adicionar período", periodSaving:"Salvando...",
-      periodDeleteTitle:"Excluir período", periodDeleteMsg:"Excluir este período de fatura?",
+      periodDeleteTitle:"Excluir período", periodDeleteMsg:"Excluir este período de fatura? O pagamento da fatura vinculado (se houver) também será excluído.", paymentAutoSaved:"Pagamento da fatura registrado na data de vencimento ✓",
       periodDeleted:"Período excluído.", periodUpdated:"Período atualizado!", periodAdded:"Período adicionado!",
       periodFillAll:"Preencha cartão, datas do período e vencimento.",
       dueFmt:(dd,dm,dy) => `Vence ${dd}/${dm}/${dy}`,
@@ -6382,7 +6382,7 @@ function FamilyModal({ t, lang = "pt", family, currentUserId, familyMembers, set
 }
 
 // ─── CARDS MANAGER ───────────────────────────────────────────────────────────
-function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods = [], setBillingPeriods = ()=>{} }) {
+function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods = [], setBillingPeriods = ()=>{}, expenses = [], setExpenses = ()=>{}, user, currentUserLabel = "Você" }) {
   const MONTHS = APP_I18N[lang].months.short;
   const MONTH_FULL = APP_I18N[lang].months.full;
   const _cm = APP_I18N[lang].cardsManager;
@@ -6469,17 +6469,46 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
     };
     try {
       if (bpEditId) {
+        const prev = billingPeriods.find(bp => bp.id===bpEditId);
         await supabaseFetch(`/billing_periods?id=eq.${bpEditId}`,{method:"PATCH",body:JSON.stringify(payload)});
         setBillingPeriods(p => p.map(bp => bp.id===bpEditId ? {...bp,...payload} : bp));
         addToast(_cm.periodUpdated,"success");
+        await syncInvoicePayment({ ...prev, ...payload, id: bpEditId }, prev?.total_pdf);
       } else {
         const cr = await supabaseFetch("/billing_periods",{method:"POST",body:JSON.stringify(payload)});
         if (cr?.[0]) setBillingPeriods(p => [...p, cr[0]]);
         addToast(_cm.periodAdded,"success");
+        if (cr?.[0]) await syncInvoicePayment(cr[0], null);
       }
       resetBpForm();
     } catch(err) { addToast(err.message,"error"); }
     finally { setBpLoading(false); }
+  };
+
+  // Total da fatura cadastrado = pagamento da fatura (ADR-012): cria a linha de
+  // débito na data de vencimento, ou atualiza se ainda não foi editada à mão.
+  const syncInvoicePayment = async (period, prevTotal) => {
+    const total = parseFloat(period.total_pdf);
+    if (!total || isDemo) return;
+    const card = cards.find(c => c.id === period.card_id);
+    const existing = expenses.find(e => e.billing_period_id === period.id);
+    try {
+      if (!existing) {
+        const row = {
+          description: `Fatura ${card?.name || ""} ${MONTH_FULL[(period.fatura_month||1)-1]}/${period.fatura_year}`.replace(/\s+/g," "),
+          amount: total, date: period.due_date, category: "fatura", type: "debito", parcelas: 1,
+          card_id: period.card_id, billing_period_id: period.id,
+          family_id: family?.family_id, user_id: user?.id, user_label: currentUserLabel,
+        };
+        const cr = await supabaseFetch("/expenses",{method:"POST",body:JSON.stringify(row),headers:{"Prefer":"return=representation"}});
+        if (cr?.[0]) setExpenses(p => [cr[0], ...p]);
+        addToast(_cm.paymentAutoSaved,"success");
+      } else if (prevTotal != null && Math.abs(parseFloat(existing.amount) - parseFloat(prevTotal)) < 0.005) {
+        const patch = { amount: total, date: period.due_date };
+        await supabaseFetch(`/expenses?id=eq.${existing.id}`,{method:"PATCH",body:JSON.stringify(patch)});
+        setExpenses(p => p.map(e => e.id===existing.id ? {...e,...patch} : e));
+      }
+    } catch(err) { addToast(err.message,"error"); }
   };
 
   const delBp = (id) => {
@@ -6488,6 +6517,11 @@ function CardsManager({ t, lang = "pt", family, isDemo, addToast, billingPeriods
       message: _cm.periodDeleteMsg,
       onConfirm: async () => {
         try {
+          const payment = expenses.find(e => e.billing_period_id === id);
+          if (payment) {
+            await supabaseFetch(`/expenses?id=eq.${payment.id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
+            setExpenses(p => p.filter(e => e.id !== payment.id));
+          }
           await supabaseFetch(`/billing_periods?id=eq.${id}`,{method:"DELETE",headers:{"Prefer":"return=minimal"}});
           setBillingPeriods(p => p.filter(bp => bp.id !== id));
           addToast(_cm.periodDeleted,"info");
@@ -7682,7 +7716,7 @@ export default function App() {
       </Modal>
 
       <Modal open={showCardsManager} onClose={()=>setShowCardsManager(false)} title={`💳 ${AL.cardsManager.title}`} t={t} darkMode={darkMode}>
-        {showCardsManager && <CardsManager t={t} lang={lang} family={family} isDemo={isDemo} addToast={addToast} billingPeriods={billingPeriods} setBillingPeriods={setBillingPeriods} />}
+        {showCardsManager && <CardsManager t={t} lang={lang} family={family} isDemo={isDemo} addToast={addToast} billingPeriods={billingPeriods} setBillingPeriods={setBillingPeriods} expenses={expenses} setExpenses={setExpenses} user={user} currentUserLabel={currentUserLabel} />}
       </Modal>
 
       <Toast toasts={toasts} remove={removeToast} />
