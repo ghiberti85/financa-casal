@@ -297,6 +297,8 @@ A primeira versão (PR #46) aplicou a regra só nos 2 gráficos Receitas x Gasto
 
 **Quando revisar:** se o registro manual do pagamento se mostrar trabalhoso demais no uso real (candidato a virar automático com confirmação).
 
+**Atualização (2026-10):** virou automático — cadastrar o total da fatura (`total_pdf`) em Meus Cartões cria o pagamento na data de vencimento (`syncInvoicePayment` em `CardsManager`). O "Pagar Fatura" do `BillingCard` continua para pagar antes do total estar cadastrado ou registrar valor/data diferentes.
+
 ---
 
 ## Como adicionar um ADR
